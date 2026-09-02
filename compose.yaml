@@ -1,0 +1,89 @@
+services:
+  web:
+    image: docker.io/library/httpd:2.4.62 # Fully qualified image name for Podman/Docker short-name resolution.
+    volumes:
+      # Mount the application code for live updates
+      - ./:/var/www
+      # Mount the Apache configuration file
+      - ./docker/development/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+    ports:
+      # Map port 80 inside the container to the port specified by 'HTTPD_PORT' on the host machine.
+      # The default is >1024 so rootless Podman can bind it without a privileged-port sysctl.
+      - "${HTTPD_PORT:-8080}:80"
+    networks:
+      - nath-development
+    depends_on:
+      php-fpm:
+        condition: service_started  # Wait for php-fpm to start
+
+  php-fpm:
+    # For the php-fpm service, we will create a custom image to install the necessary PHP extensions and setup proper permissions.
+    build:
+      context: .
+      dockerfile: ./docker/common/php-fpm/Dockerfile
+      target: development
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    userns_mode: keep-id
+    env_file:
+      # Load the environment variables from the Laravel application
+      - .env
+    user: "${UID:-1000}:${GID:-1000}"
+    volumes:
+      # Mount the application code for live updates
+      - ./:/var/www
+    networks:
+      - nath-development
+    depends_on:
+      postgres:
+        condition: service_started  # Wait for postgres to start
+
+  workspace:
+   # For the workspace service, we will also create a custom image to install and setup all the necessary stuff.
+    build:
+      context: .
+      dockerfile: ./docker/development/workspace/Dockerfile
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+        XDEBUG_ENABLED: ${XDEBUG_ENABLED:-true}
+        XDEBUG_MODE: develop,coverage,debug,profile
+        XDEBUG_HOST: ${XDEBUG_HOST:-host.docker.internal}
+        XDEBUG_IDE_KEY: ${XDEBUG_IDE_KEY:-DOCKER}
+        XDEBUG_LOG: /dev/stdout
+        XDEBUG_LOG_LEVEL: 0
+    userns_mode: keep-id
+    tty: true  # Enables an interactive terminal
+    stdin_open: true  # Keeps standard input open for 'docker exec'
+    env_file:
+      - .env
+    volumes:
+      - ./:/var/www
+    networks:
+      - nath-development
+
+  postgres:
+    image: docker.io/library/postgres:15.10
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=app
+      - POSTGRES_USER=nath
+      - POSTGRES_PASSWORD=secret
+    volumes:
+      - postgres-data-development:/var/lib/postgresql/data
+    networks:
+      - nath-development
+
+networks:
+  nath-development:
+
+volumes:
+  postgres-data-development:
