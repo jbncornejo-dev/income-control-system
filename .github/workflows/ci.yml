@@ -89,7 +89,7 @@ jobs:
       # CORREGIDO: "php artisan" solo no ejecuta ninguna prueba y siempre
       # sale con código 0 (falso positivo). Debe invocar el runner de tests.
       - name: Ejecutar pruebas PHPUnit
-        run: php artisan test --configuration=phpunit.xml
+        run: php artisan test 
         env:
           DB_CONNECTION: pgsql
           DB_HOST: 127.0.0.1
