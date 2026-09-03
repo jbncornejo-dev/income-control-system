@@ -1,8 +1,8 @@
 import './bootstrap'
 import { createApp } from 'vue'
+import App from '../views/App.vue' // O tu componente raíz con <router-view>
+import router from './router'
 
-const App = {
-  template: '<div><h2>Vue 3 está configurado y funcionando</h2></div>'
-}
-
-createApp(App).mount('#app')
+const app = createApp({})
+app.use(router)
+app.mount('#app')
