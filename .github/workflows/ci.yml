@@ -1,0 +1,125 @@
+name: CI Pipeline
+
+# Se ejecuta en cada push y en cada pull request hacia cualquier rama.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+
+  # ==========================================================
+  # 1) VALIDACIÓN DEL BACKEND (Laravel)
+  # ==========================================================
+  backend-laravel:
+    name: Backend - Laravel (PHPUnit)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15.10
+        env:
+          POSTGRES_DB: laravel_testing
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_pgsql, pgsql, bcmath, xml, curl, zip
+          coverage: none
+
+      - name: Instalar dependencias PHP (composer.json)
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      - name: Preparar entorno (.env.example)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # NOTA DE DISEÑO: este bloque compila los assets de Vite dentro del job
+      # de backend porque tus tests de Feature dependen del manifest de Vite
+      # (@vite en Blade). Si no es tu caso, puedes eliminar este paso y dejar
+      # que el job frontend-vue sea el único responsable del build; así un
+      # error de Vite deja de tumbar también las pruebas de PHPUnit.
+      - name: Configurar Node.js (para compilar assets requeridos por tests)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Compilar assets de Vite para pruebas
+        run: |
+          npm ci
+          npm run build
+
+      - name: Configurar conexión a base de datos de pruebas
+        run: php artisan config:clear
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: Ejecutar migraciones de prueba
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      # CORREGIDO: "php artisan" solo no ejecuta ninguna prueba y siempre
+      # sale con código 0 (falso positivo). Debe invocar el runner de tests.
+      - name: Ejecutar pruebas PHPUnit
+        run: php artisan test --configuration=phpunit.xml
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+  # ==========================================================
+  # 2) VALIDACIÓN DEL FRONTEND (Vue.js)
+  # ==========================================================
+  frontend-vue:
+    name: Frontend - Vue.js (ESLint + Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Instalar dependencias (package-lock.json)
+        run: npm ci
+
+      - name: Ejecutar ESLint (eslint.config.js)
+        run: npx eslint resources/js --config eslint.config.js
+
+      - name: Compilar assets (Vite build)
+        run: npm run build
