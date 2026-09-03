@@ -72,6 +72,15 @@ jobs:
       - run: |
           npm ci
           npm run build
+      - name: Ejecutar migraciones de prueba
+        run: php artisan migrate --force
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
 
       # Ejecución de la suite de PHPUnit definida en phpunit.xml
       # (cubre automáticamente tests/Feature/ y tests/Unit/)
@@ -118,7 +127,7 @@ jobs:
   # ==========================================================
   # 3) COMPROBACIÓN DE INFRAESTRUCTURA (Docker)
   # ==========================================================
- infra-docker:
+  infra-docker:
     name: Infraestructura - Docker
     runs-on: ubuntu-latest
 
