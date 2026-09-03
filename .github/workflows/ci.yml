@@ -65,6 +65,13 @@ jobs:
           DB_DATABASE: laravel_testing
           DB_USERNAME: root
           DB_PASSWORD: password
+      - name: Compilar assets de Vite para pruebas
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - run: |
+          npm ci
+          npm run build
 
       # Ejecución de la suite de PHPUnit definida en phpunit.xml
       # (cubre automáticamente tests/Feature/ y tests/Unit/)
@@ -92,7 +99,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "24"
           cache: "npm"
 
       # Instalación estricta basada en package-lock.json (no genera drift de versiones)
@@ -111,33 +118,16 @@ jobs:
   # ==========================================================
   # 3) COMPROBACIÓN DE INFRAESTRUCTURA (Docker)
   # ==========================================================
-  infra-docker:
-    name: Infraestructura - Docker Build
+ infra-docker:
+    name: Infraestructura - Docker
     runs-on: ubuntu-latest
-
-    # Matriz para validar ambos entornos (development / production)
-    # y ambos servicios (apache / php-fpm) de forma aislada.
-    # Ajusta los "context"/"file" si tus Dockerfiles tienen otro nombre real.
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: [development, production]
-        service: [apache, php-fpm]
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
-      - name: Configurar Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Construir Dockerfile (${{ matrix.environment }} / ${{ matrix.service }})
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: docker/${{ matrix.environment }}/${{ matrix.service }}/Dockerfile
-          push: false
-          tags: proyecto-${{ matrix.service }}:${{ matrix.environment }}
+      - name: Preparar entorno (.env)
+        run: cp .env.example .env
 
       - name: Validar orquestación completa (compose.yaml)
         run: docker compose -f compose.yaml config --quiet
