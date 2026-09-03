@@ -1,0 +1,143 @@
+name: CI Pipeline
+
+# Se ejecuta en cada push y en cada pull request hacia cualquier rama.
+# Ajusta las ramas si tu flujo de trabajo académico usa 'main' o 'develop' de forma exclusiva.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+
+  # ==========================================================
+  # 1) VALIDACIÓN DEL BACKEND (Laravel)
+  # ==========================================================
+  backend-laravel:
+    name: Backend - Laravel (PHPUnit)
+    runs-on: ubuntu-latest
+
+    # Servicio de base de datos para que las pruebas de Feature/
+    # tengan un contexto real (ajusta motor/versión si usas otro SGBD).
+    services:
+      postgres:
+        image: postgres:15.10
+        env:
+          POSTGRES_DB: laravel_testing
+          POSTGRES_USER: root
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: mbstring, pdo_pgsql, pgsql, bcmath, xml, curl, zip
+          coverage: none
+
+      # Instalación de dependencias leyendo composer.json / composer.lock
+      - name: Instalar dependencias PHP (composer.json)
+        run: composer install --no-progress --prefer-dist --no-interaction
+
+      # Preparación del entorno: copiar .env.example y generar la key con artisan
+      - name: Preparar entorno (.env.example)
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Configurar conexión a base de datos de pruebas
+        run: |
+          php artisan config:clear
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      # Ejecución de la suite de PHPUnit definida en phpunit.xml
+      # (cubre automáticamente tests/Feature/ y tests/Unit/)
+      - name: Ejecutar pruebas PHPUnit
+        run: php artisan test --configuration=phpunit.xml
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: laravel_testing
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+  # ==========================================================
+  # 2) VALIDACIÓN DEL FRONTEND (Vue.js)
+  # ==========================================================
+  frontend-vue:
+    name: Frontend - Vue.js (ESLint + Build)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # Instalación estricta basada en package-lock.json (no genera drift de versiones)
+      - name: Instalar dependencias (package-lock.json)
+        run: npm ci
+
+      # Análisis estático sobre resources/js/ (incluye componentes como App.vue)
+      - name: Ejecutar ESLint (eslint.config.js)
+        run: npx eslint resources/js --config eslint.config.js
+
+      # Verifica que la build de producción compile correctamente
+      # (usa vite.config.js y procesa resources/css/app.css)
+      - name: Compilar assets (Vite build)
+        run: npm run build
+
+  # ==========================================================
+  # 3) COMPROBACIÓN DE INFRAESTRUCTURA (Docker)
+  # ==========================================================
+  infra-docker:
+    name: Infraestructura - Docker Build
+    runs-on: ubuntu-latest
+
+    # Matriz para validar ambos entornos (development / production)
+    # y ambos servicios (apache / php-fpm) de forma aislada.
+    # Ajusta los "context"/"file" si tus Dockerfiles tienen otro nombre real.
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [development, production]
+        service: [apache, php-fpm]
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Construir Dockerfile (${{ matrix.environment }} / ${{ matrix.service }})
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/${{ matrix.environment }}/${{ matrix.service }}/Dockerfile
+          push: false
+          tags: proyecto-${{ matrix.service }}:${{ matrix.environment }}
+
+      - name: Validar orquestación completa (compose.yaml)
+        run: docker compose -f compose.yaml config --quiet
