@@ -1,8 +1,8 @@
 import './bootstrap'
 import { createApp } from 'vue'
-import App from '../views/App.vue' // O tu componente raíz con <router-view>
+import App from './App.vue'
 import router from './router'
 
-const app = createApp({})
+const app = createApp(App)
 app.use(router)
 app.mount('#app')
