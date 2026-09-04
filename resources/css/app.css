@@ -1,0 +1,19 @@
+:root {
+    --color-primary: #1a2b4c;
+    --color-secondary: #d32f2f;
+    --color-bg-base: #f5f7fa;
+    --color-text-main: #333333;
+    --color-white: #ffffff;
+
+    --font-main: 'Inter', system-ui, sans-serif;
+
+    --radius-md: 8px;
+    --transition-base: 0.3s ease-in-out;
+}
+
+body {
+    background-color: var(--color-bg-base);
+    color: var(--color-text-main);
+    font-family: var(--font-main);
+    margin: 0;
+}

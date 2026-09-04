@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import './bootstrap';
 import { createApp } from 'vue';
 import Modal from './components/ui/Modal.vue';
@@ -44,3 +45,13 @@ const App = {
 
 const app = createApp(App);
 app.mount('#app');
+=======
+import './bootstrap'
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
+
+const app = createApp(App)
+app.use(router)
+app.mount('#app')
+>>>>>>> c92d9bbeb782bbc94db65448a06e88a938d3a628
