@@ -4,7 +4,7 @@
     
     <div class="toolbar">
       <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
-      <button class="btn-primary">Añadir Estudiante</button>
+      <button class="btn-primary" @click="mostrarModal = true">Añadir Estudiante</button>
     </div>
 
     <div class="table-responsive">
@@ -31,6 +31,14 @@
     </div>
 
     <Pagination :currentPage="page" :totalPages="5" @change-page="page = $event" />
+    <Modal :open="mostrarModal" title="Registrar Estudiante" @close="mostrarModal = false">
+      <EstudianteForm ref="refFormulario" @guardar="guardarEstudiante" />
+      
+      <template #footer>
+        <button @click="mostrarModal = false" style="margin-right: 15px; background: transparent; border: none; cursor: pointer;">Cancelar</button>
+        <button class="btn-primary" @click="refFormulario.emitirGuardado()">Guardar Registro</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -39,9 +47,13 @@ import { ref, computed } from 'vue';
 import SearchInput from '../components/SearchInput.vue';
 import StatusBadge from '../components/StatusBadge.vue';
 import Pagination from '../components/Pagination.vue';
+import Modal from '../components/ui/Modal.vue';
+import EstudianteForm from '../components/forms/EstudianteForm.vue';
 
 const searchQuery = ref('');
 const page = ref(1);
+const mostrarModal = ref(false);
+const refFormulario = ref(null);
 
 const students = ref([
   { id: 1, ci: '1234567', name: 'Ana Perez', career: 'Ing. Sistemas', status: 'active', statusText: 'Habilitada' },
@@ -54,6 +66,11 @@ const filteredStudents = computed(() => {
     s.ci.includes(searchQuery.value) || s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
+
+const guardarEstudiante = (datos) => {
+  console.log('Datos recibidos del formulario:', datos);
+  mostrarModal.value = false; // Cierra el modal tras recibir datos
+};
 </script>
 
 <style scoped>
