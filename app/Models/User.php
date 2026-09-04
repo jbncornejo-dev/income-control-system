@@ -17,8 +17,10 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
+        'id_rol',
         'name',
         'email',
+        'username',
         'password',
     ];
 
@@ -43,5 +45,29 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    // Relación de muchos a uno (user-rol)
+    public function rol()
+    {
+        return $this->belongsTo(Rol::class, 'id_rol', 'id_rol');
+    }
+
+    // Relación de uno a muchos (user-registro_ingreso)
+    public function registrosIngreso()
+    {
+        return $this->hasMany(RegistroIngreso::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a muchos (user-incidencia)
+    public function incidencias()
+    {
+        return $this->hasMany(Incidencia::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a muchos (user-auditoria_log)
+    public function auditorias()
+    {
+        return $this->hasMany(AuditoriaLog::class, 'id_usuario', 'id');
     }
 }
