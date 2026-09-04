@@ -1,23 +1,17 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 
 export const useAuthStore = defineStore('auth', () => {
-  // Solo guardamos los metadatos del usuario para la UI
-  const user = ref(JSON.parse(localStorage.getItem('user')) || null)
-
-  // Si hay datos de usuario, asumimos que la sesión web está activa
+  // Auth ahora viene de Inertia shared props (HandleInertiaRequests), no localStorage
+  const page = usePage()
+  const user = computed(() => page.props.auth?.user ?? null)
   const isAuthenticated = computed(() => !!user.value)
   const userRole = computed(() => user.value?.role || null)
 
-  const setUser = (userData) => {
-    user.value = userData
-    localStorage.setItem('user', JSON.stringify(userData))
-  }
-
-  const logout = () => {
-    user.value = null
-    localStorage.removeItem('user')
-  }
+  // Compatibilidad con vistas previas que llamaban setUser/logout; ahora son no-ops o helpers UI
+  const setUser = () => {}
+  const logout = () => {}
 
   return { user, isAuthenticated, userRole, setUser, logout }
 })

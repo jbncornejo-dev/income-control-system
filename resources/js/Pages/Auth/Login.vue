@@ -11,30 +11,33 @@
           <input
             type="text"
             placeholder="Nombre Completo"
-            v-model.trim="registerData.name"
+            v-model.trim="registerForm.name"
             required
             autocomplete="name"
           />
+          <p v-if="registerForm.errors.name" class="form-error" role="alert">{{ registerForm.errors.name }}</p>
           <input
             type="email"
             placeholder="Correo Electrónico"
-            v-model.trim="registerData.email"
+            v-model.trim="registerForm.email"
             required
             autocomplete="email"
           />
+          <p v-if="registerForm.errors.email" class="form-error" role="alert">{{ registerForm.errors.email }}</p>
           <input
             type="password"
             placeholder="Contraseña"
-            v-model="registerData.password"
+            v-model="registerForm.password"
             required
             autocomplete="new-password"
             minlength="8"
           />
+          <p v-if="registerForm.errors.password" class="form-error" role="alert">{{ registerForm.errors.password }}</p>
 
           <p v-if="registerError" class="form-error" role="alert">{{ registerError }}</p>
 
-          <button type="submit" :disabled="isRegisterLoading">
-            {{ isRegisterLoading ? 'Registrando...' : 'Registrarse' }}
+          <button type="submit" :disabled="registerForm.processing">
+            {{ registerForm.processing ? 'Registrando...' : 'Registrarse' }}
           </button>
         </form>
       </div>
@@ -48,23 +51,25 @@
           <input
             type="email"
             placeholder="Correo Electrónico"
-            v-model.trim="loginData.email"
+            v-model.trim="loginForm.email"
             required
             autocomplete="email"
           />
+          <p v-if="loginForm.errors.email" class="form-error" role="alert">{{ loginForm.errors.email }}</p>
           <input
             type="password"
             placeholder="Contraseña"
-            v-model="loginData.password"
+            v-model="loginForm.password"
             required
             autocomplete="current-password"
           />
+          <p v-if="loginForm.errors.password" class="form-error" role="alert">{{ loginForm.errors.password }}</p>
           <a href="#" @click.prevent>¿Olvidaste tu contraseña?</a>
 
           <p v-if="loginError" class="form-error" role="alert">{{ loginError }}</p>
 
-          <button type="submit" :disabled="isLoginLoading">
-            {{ isLoginLoading ? 'Ingresando...' : 'Ingresar' }}
+          <button type="submit" :disabled="loginForm.processing">
+            {{ loginForm.processing ? 'Ingresando...' : 'Ingresar' }}
           </button>
         </form>
       </div>
@@ -95,35 +100,24 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-
-const router = useRouter()
-const authStore = useAuthStore()
+import { ref } from 'vue'
+import { useForm } from '@inertiajs/vue3'
 
 const isActive = ref(false)
 
-const loginData = reactive({ email: '', password: '' })
-const registerData = reactive({ name: '', email: '', password: '' })
+const loginForm = useForm({
+  email: '',
+  password: '',
+})
 
-const isLoginLoading = ref(false)
-const isRegisterLoading = ref(false)
+const registerForm = useForm({
+  name: '',
+  email: '',
+  password: '',
+})
+
 const loginError = ref('')
 const registerError = ref('')
-
-function resetLoginForm() {
-  loginData.email = ''
-  loginData.password = ''
-  loginError.value = ''
-}
-
-function resetRegisterForm() {
-  registerData.name = ''
-  registerData.email = ''
-  registerData.password = ''
-  registerError.value = ''
-}
 
 function switchToLogin() {
   isActive.value = false
@@ -135,43 +129,31 @@ function switchToRegister() {
   loginError.value = ''
 }
 
-async function handleLogin() {
+function handleLogin() {
   loginError.value = ''
-  isLoginLoading.value = true
-
-  try {
-    // Ajusta este método al que exponga tu store/API real de autenticación.
-    await authStore.login({
-      email: loginData.email,
-      password: loginData.password,
-    })
-    resetLoginForm()
-    router.push('/dashboard')
-  } catch (error) {
-    loginError.value = error?.response?.data?.message || 'Credenciales inválidas. Intenta de nuevo.'
-  } finally {
-    isLoginLoading.value = false
-  }
+  loginForm.post('/login', {
+    onError: () => {
+      // Inertia ya mapea errors a loginForm.errors; mensaje genérico opcional
+      if (!loginForm.errors.email && !loginForm.errors.password) {
+        loginError.value = 'Credenciales inválidas. Intenta de nuevo.'
+      }
+    },
+  })
 }
 
-async function handleRegister() {
+function handleRegister() {
   registerError.value = ''
-  isRegisterLoading.value = true
-
-  try {
-    // Ajusta este método al que exponga tu store/API real de registro.
-    await authStore.register({
-      name: registerData.name,
-      email: registerData.email,
-      password: registerData.password,
-    })
-    resetRegisterForm()
-    switchToLogin()
-  } catch (error) {
-    registerError.value = error?.response?.data?.message || 'No se pudo completar el registro.'
-  } finally {
-    isRegisterLoading.value = false
-  }
+  registerForm.post('/register', {
+    onSuccess: () => {
+      registerForm.reset('password')
+      switchToLogin()
+    },
+    onError: () => {
+      if (!registerForm.errors.email && !registerForm.errors.name && !registerForm.errors.password) {
+        registerError.value = 'No se pudo completar el registro.'
+      }
+    },
+  })
 }
 </script>
 
