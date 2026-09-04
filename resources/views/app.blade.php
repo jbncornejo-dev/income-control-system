@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Control de Ingresos</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @inertiaHead
 </head>
 <body>
-    <div id="app"></div>
+    @inertia
 </body>
 </html>
