@@ -3,6 +3,7 @@ import LoginView from '../views/LoginView.vue'
 import LayoutBase from '../layouts/LayoutBase.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AccessDeniedView from '../views/AccessDeniedView.vue'
+import StudentListView from '../views/StudentListView.vue'
 
 const routes = [
   {
@@ -23,6 +24,11 @@ const routes = [
         path: 'dashboard',
         name: 'dashboard',
         component: DashboardView
+      },
+      {
+        path: 'estudiantes',
+        name: 'estudiantes',
+        component: StudentListView
       }
     ]
   },
