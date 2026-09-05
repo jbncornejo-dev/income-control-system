@@ -16,10 +16,11 @@ class HabilitacionController extends Controller
         $habilitaciones = Habilitacion::query()
             ->with('estudiante')
             ->where('id_examen', $examen->id_examen)
+            ->orderBy('id_habilitacion')
             ->paginate(15);
 
+        // La vista de habilitaciones aún no existe; se devuelve el listado paginado para su integración con frontend.
         return response()->json($habilitaciones);
-       // La vista de habilitaciones aún no existe; se devuelve el listado paginado para su integración con frontend.
     }
 
     public function update(Request $request, Habilitacion $habilitacion)
