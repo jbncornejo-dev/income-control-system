@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -24,8 +25,12 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $rol = Rol::firstOrCreate(['nombre_rol' => 'administrador']);
+
         return [
+            'id_rol' => $rol->id_rol,
             'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
