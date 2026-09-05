@@ -6,6 +6,7 @@ use App\Models\Examen;
 use App\Models\Habilitacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class HabilitacionController extends Controller
 {
@@ -25,10 +26,29 @@ class HabilitacionController extends Controller
     {
         $datos = $request->validate([
             'estado_habilitado' => ['required', 'boolean'],
+            'motivo_inhabilitacion' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $estaHabilitado = filter_var(
+            $datos['estado_habilitado'],
+            FILTER_VALIDATE_BOOLEAN
+        );
+
+        if (
+            ! $estaHabilitado
+            && blank($datos['motivo_inhabilitacion'] ?? null)
+        ) {
+            throw ValidationException::withMessages([
+                'motivo_inhabilitacion'
+                    => 'El motivo de inhabilitación es obligatorio cuando el estudiante está inhabilitado.',
+            ]);
+        }
+
         $habilitacion->update([
-            'estado_habilitado' => $datos['estado_habilitado'],
+            'estado_habilitado' => $estaHabilitado,
+            'motivo_inhabilitacion' => $estaHabilitado
+                ? null
+                : trim($datos['motivo_inhabilitacion']),
         ]);
 
         return back()->with(
