@@ -2,7 +2,11 @@
   <AuthenticatedLayout>
     <div class="student-list-container">
       <h1 style="color: var(--color-primary);">Listado de Estudiantes</h1>
-      
+
+      <div v-if="pageProps.props.flash?.success" class="flash-success" role="status">
+        {{ pageProps.props.flash.success }}
+      </div>
+
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
         <button class="btn-primary" @click="mostrarModal = true">Añadir Estudiante</button>
@@ -33,7 +37,7 @@
 
       <Pagination :currentPage="page" :totalPages="5" @change-page="page = $event" />
       <Modal :open="mostrarModal" title="Registrar Estudiante" @close="mostrarModal = false">
-        <EstudianteForm ref="refFormulario" @guardar="guardarEstudiante" />
+        <EstudianteForm ref="refFormulario" @success="onEstudianteCreado" />
         
         <template #footer>
           <button @click="mostrarModal = false" style="margin-right: 15px; background: transparent; border: none; cursor: pointer;">Cancelar</button>
@@ -46,6 +50,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import SearchInput from '@/components/SearchInput.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
@@ -55,8 +60,8 @@ import EstudianteForm from '@/components/forms/EstudianteForm.vue';
 
 const props = defineProps({
   estudiantes: {
-    type: Array,
-    default: () => [],
+    type: Object,
+    default: () => ({ data: [] }),
   },
 })
 
@@ -64,22 +69,26 @@ const searchQuery = ref('');
 const page = ref(1);
 const mostrarModal = ref(false);
 const refFormulario = ref(null);
+const pageProps = usePage();
 
-// Mantiene diseño: si el backend ya envía estudiantes via Inertia props, se usan; si no, fallback a datos demo preservando vista
-const students = ref(props.estudiantes.length ? props.estudiantes : [
-  { id: 1, ci: '1234567', name: 'Ana Perez', career: 'Ing. Sistemas', status: 'active', statusText: 'Habilitada' },
-  { id: 2, ci: '7654321', name: 'Carlos Gomez', career: 'Ing. Civil', status: 'inactive', statusText: 'Inhabilitado' }
-]);
+// Soporta tanto paginator {data:[]} como array plano; fallback demo solo si no hay datos
+const students = computed(() => {
+  const raw = props.estudiantes?.data ?? props.estudiantes;
+  if (Array.isArray(raw) && raw.length) return raw;
+  return [
+    { id: 1, ci: '1234567', name: 'Ana Perez', career: 'Ing. Sistemas', status: 'active', statusText: 'Habilitada' },
+    { id: 2, ci: '7654321', name: 'Carlos Gomez', career: 'Ing. Civil', status: 'inactive', statusText: 'Inhabilitado' }
+  ];
+});
 
 const filteredStudents = computed(() => {
   if (!searchQuery.value) return students.value;
-  return students.value.filter(s => 
+  return students.value.filter(s =>
     s.ci.includes(searchQuery.value) || s.name.toLowerCase().includes(searchQuery.value.toLowerCase())
   );
 });
 
-const guardarEstudiante = (datos) => {
-  console.log('Datos recibidos del formulario:', datos);
+const onEstudianteCreado = () => {
   mostrarModal.value = false;
 };
 </script>
@@ -92,4 +101,5 @@ const guardarEstudiante = (datos) => {
 .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
 .data-table th { background-color: #f8f9fa; color: var(--color-text-main); font-weight: bold; }
 .btn-action { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; }
+.flash-success { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 </style>
