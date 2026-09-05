@@ -36,6 +36,12 @@ Route::middleware('auth')->group(function () {
         [HabilitacionController::class, 'store']
     )->name('habilitaciones.store');
 
+    // Listar estudiantes asociados a un examen
+    Route::get(
+        '/examenes/{examen}/habilitaciones',
+        [HabilitacionController::class, 'index']
+    )->name('habilitaciones.index');
+
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');

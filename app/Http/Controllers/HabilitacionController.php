@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class HabilitacionController extends Controller
 {
+
+    public function index(Examen $examen)
+    {
+        $habilitaciones = Habilitacion::query()
+            ->with('estudiante')
+            ->where('id_examen', $examen->id_examen)
+            ->paginate(15);
+
+        return response()->json($habilitaciones);
+       // La vista de habilitaciones aún no existe; se devuelve el listado paginado para su integración con frontend.
+    }
+
     public function store(Request $request, Examen $examen)
     {
         $datos = $request->validate([
