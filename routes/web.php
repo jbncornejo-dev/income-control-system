@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\HabilitacionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -28,6 +29,12 @@ Route::middleware('auth')->group(function () {
     })->name('dashboard');
 
     Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
+
+    // Asociar estudiantes a un examen
+    Route::post(
+        '/examenes/{examen}/habilitaciones',
+        [HabilitacionController::class, 'store']
+    )->name('habilitaciones.store');
 
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
