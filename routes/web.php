@@ -29,6 +29,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
     Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
+    Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
 
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
