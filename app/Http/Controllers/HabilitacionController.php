@@ -21,6 +21,22 @@ class HabilitacionController extends Controller
        // La vista de habilitaciones aún no existe; se devuelve el listado paginado para su integración con frontend.
     }
 
+    public function update(Request $request, Habilitacion $habilitacion)
+    {
+        $datos = $request->validate([
+            'estado_habilitado' => ['required', 'boolean'],
+        ]);
+
+        $habilitacion->update([
+            'estado_habilitado' => $datos['estado_habilitado'],
+        ]);
+
+        return back()->with(
+            'success',
+            'Estado de habilitación actualizado correctamente.'
+        );
+    }
+
     public function store(Request $request, Examen $examen)
     {
         $datos = $request->validate([

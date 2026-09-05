@@ -42,6 +42,12 @@ Route::middleware('auth')->group(function () {
         [HabilitacionController::class, 'index']
     )->name('habilitaciones.index');
 
+    // Cambiar estado de una habilitación
+    Route::patch(
+        '/habilitaciones/{habilitacion}',
+        [HabilitacionController::class, 'update']
+    )->name('habilitaciones.update');
+
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
