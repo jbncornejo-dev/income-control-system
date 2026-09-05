@@ -185,9 +185,19 @@ body {
   z-index: 2;
   opacity: 1;
 }
+
 .login-wrapper .container.active .sign-in {
   transform: translateX(100%);
   opacity: 0;
+}
+
+/* Errores de validación Inertia */
+.login-wrapper .form-error {
+  color: #b3261e;
+  font-size: 12px;
+  margin: 6px 0 0;
+  width: 100%;
+  text-align: left;
 }
 
 .login-wrapper .sign-up {
@@ -307,4 +317,42 @@ body {
   .login-wrapper .container button {
     padding: 10px 35px;
   }
+}
+
+/* Contenedor del input y botón */
+.password-input-container {
+  width: 100%;
+  position: relative;
+  margin: 8px 0;
+}
+
+/* Evitamos que el input sume márgenes extra dentro de su contenedor */
+.password-input-container input {
+  margin: 0;
+  padding-right: 40px; /* Espacio para que el texto no pise el icono */
+}
+
+/* Estilos específicos para anular el diseño del botón principal */
+.login-wrapper .container .password-input-container button.btn-eye {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #666;
+  width: auto;
+}
+
+.login-wrapper .container .password-input-container button.btn-eye:hover {
+  background: transparent;
+  color: #1a2b4c;
+}
+
+.login-wrapper .container .password-input-container button.btn-eye svg {
+  width: 20px;
+  height: 20px;
+  display: block;
 }
