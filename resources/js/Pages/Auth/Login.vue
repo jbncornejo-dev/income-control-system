@@ -96,13 +96,17 @@
       </div>
 
     </div>
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
+import { useToastStore } from '@/stores/useToastStore'
+import ToastContainer from '@/components/ui/ToastContainer.vue'
 
+const toastStore = useToastStore()
 const isActive = ref(false)
 
 const loginForm = useForm({
@@ -133,7 +137,7 @@ function handleLogin() {
   loginError.value = ''
   loginForm.post('/login', {
     onError: () => {
-      // Inertia ya mapea errors a loginForm.errors; mensaje genérico opcional
+      toastStore.error('Credenciales inválidas. Intenta de nuevo.')
       if (!loginForm.errors.email && !loginForm.errors.password) {
         loginError.value = 'Credenciales inválidas. Intenta de nuevo.'
       }
@@ -147,8 +151,10 @@ function handleRegister() {
     onSuccess: () => {
       registerForm.reset('password')
       switchToLogin()
+      toastStore.success('Cuenta creada correctamente.')
     },
     onError: () => {
+      toastStore.error('No se pudo completar el registro.')
       if (!registerForm.errors.email && !registerForm.errors.name && !registerForm.errors.password) {
         registerError.value = 'No se pudo completar el registro.'
       }
