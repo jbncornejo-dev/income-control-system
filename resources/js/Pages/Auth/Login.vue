@@ -24,14 +24,29 @@
             autocomplete="email"
           />
           <p v-if="registerForm.errors.email" class="form-error" role="alert">{{ registerForm.errors.email }}</p>
-          <input
-            type="password"
-            placeholder="Contraseña"
-            v-model="registerForm.password"
-            required
-            autocomplete="new-password"
-            minlength="8"
-          />
+          <div class="password-input-container">
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Contraseña"
+              v-model="registerForm.password"
+              required
+              autocomplete="new-password"
+              minlength="8"
+            />
+            
+            <button type="button" class="btn-eye" @click="showPassword = !showPassword" aria-label="Mostrar contraseña">
+              <!-- Icono de Ojo Abierto -->
+              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <!-- Icono de Ojo Cerrado -->
+              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
           <p v-if="registerForm.errors.password" class="form-error" role="alert">{{ registerForm.errors.password }}</p>
 
           <p v-if="registerError" class="form-error" role="alert">{{ registerError }}</p>
@@ -56,13 +71,28 @@
             autocomplete="email"
           />
           <p v-if="loginForm.errors.email" class="form-error" role="alert">{{ loginForm.errors.email }}</p>
-          <input
-            type="password"
-            placeholder="Contraseña"
-            v-model="loginForm.password"
-            required
-            autocomplete="current-password"
-          />
+          <div class="password-input-container">
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Contraseña"
+              v-model="loginForm.password"
+              required
+              autocomplete="current-password"
+            />
+            
+            <button type="button" class="btn-eye" @click="showPassword = !showPassword" aria-label="Mostrar contraseña">
+              <!-- Icono de Ojo Abierto -->
+              <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+              <!-- Icono de Ojo Cerrado -->
+              <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            </button>
+          </div>
           <p v-if="loginForm.errors.password" class="form-error" role="alert">{{ loginForm.errors.password }}</p>
           <a href="#" @click.prevent>¿Olvidaste tu contraseña?</a>
 
@@ -103,6 +133,7 @@
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 
+const showPassword = ref(false);
 const isActive = ref(false)
 
 const loginForm = useForm({
@@ -156,11 +187,3 @@ function handleRegister() {
   })
 }
 </script>
-
-<style scoped>
-.form-error {
-  color: #b3261e;
-  font-size: 12px;
-  margin: 6px 0 0;
-}
-</style>
