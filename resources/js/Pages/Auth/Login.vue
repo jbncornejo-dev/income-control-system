@@ -2,29 +2,15 @@
   <div class="login-wrapper">
     <div class="container" :class="{ active: isActive }">
 
-      <!-- ==================== REGISTRO ==================== -->
       <div class="form-container sign-up">
         <form @submit.prevent="handleRegister">
           <h1>Crear Cuenta</h1>
           <span>Usa tu correo institucional</span>
-
-          <input
-            type="text"
-            placeholder="Nombre Completo"
-            v-model.trim="registerForm.name"
-            required
-            autocomplete="name"
-          />
+          <input type="text" placeholder="Nombre Completo" v-model.trim="registerForm.name" required autocomplete="name" />
           <p v-if="registerForm.errors.name" class="form-error" role="alert">{{ registerForm.errors.name }}</p>
-          <input
-            type="email"
-            placeholder="Correo Electrónico"
-            v-model.trim="registerForm.email"
-            required
-            autocomplete="email"
-          />
+          <input type="email" placeholder="Correo Electrónico" v-model.trim="registerForm.email" required autocomplete="email" />
           <p v-if="registerForm.errors.email" class="form-error" role="alert">{{ registerForm.errors.email }}</p>
-          <div class="password-input-container">
+<div class="password-input-container">
             <input
               :type="showPassword ? 'text' : 'password'"
               placeholder="Contraseña"
@@ -48,30 +34,21 @@
             </button>
           </div>
           <p v-if="registerForm.errors.password" class="form-error" role="alert">{{ registerForm.errors.password }}</p>
-
           <p v-if="registerError" class="form-error" role="alert">{{ registerError }}</p>
-
           <button type="submit" :disabled="registerForm.processing">
-            {{ registerForm.processing ? 'Registrando...' : 'Registrarse' }}
+            <LoadingSpinner v-if="registerForm.processing" size="small" />
+            <span v-else>Registrarse</span>
           </button>
         </form>
       </div>
 
-      <!-- ==================== LOGIN ==================== -->
       <div class="form-container sign-in">
         <form @submit.prevent="handleLogin">
           <h1>Iniciar Sesión</h1>
           <span>Ingresa tus credenciales</span>
-
-          <input
-            type="email"
-            placeholder="Correo Electrónico"
-            v-model.trim="loginForm.email"
-            required
-            autocomplete="email"
-          />
+          <input type="email" placeholder="Correo Electrónico" v-model.trim="loginForm.email" required autocomplete="email" />
           <p v-if="loginForm.errors.email" class="form-error" role="alert">{{ loginForm.errors.email }}</p>
-          <div class="password-input-container">
+<div class="password-input-container">
             <input
               :type="showPassword ? 'text' : 'password'"
               placeholder="Contraseña"
@@ -95,33 +72,26 @@
           </div>
           <p v-if="loginForm.errors.password" class="form-error" role="alert">{{ loginForm.errors.password }}</p>
           <a href="#" @click.prevent>¿Olvidaste tu contraseña?</a>
-
           <p v-if="loginError" class="form-error" role="alert">{{ loginError }}</p>
-
           <button type="submit" :disabled="loginForm.processing">
-            {{ loginForm.processing ? 'Ingresando...' : 'Ingresar' }}
+            <LoadingSpinner v-if="loginForm.processing" size="small" />
+            <span v-else>Ingresar</span>
           </button>
         </form>
       </div>
 
-      <!-- ==================== PANEL DE TRANSICIÓN ==================== -->
       <div class="toggle-container">
         <div class="toggle">
-
-          <!-- Panel izquierdo -->
           <div class="toggle-panel toggle-left">
             <h1>¡Bienvenido!</h1>
             <p>Si ya tienes una cuenta, ingresa aquí para gestionar el control de ingresos.</p>
             <button type="button" class="hidden" @click="switchToLogin">Iniciar Sesión</button>
           </div>
-
-          <!-- Panel derecho -->
           <div class="toggle-panel toggle-right">
             <h1>Sistema de Ingresos</h1>
             <p>Registra tus datos para solicitar acceso a la plataforma.</p>
             <button type="button" class="hidden" @click="switchToRegister">Registrarse</button>
           </div>
-
         </div>
       </div>
 
@@ -135,34 +105,19 @@ import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { useToastStore } from '@/stores/useToastStore'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 
 const toastStore = useToastStore()
 const showPassword = ref(false);
 const isActive = ref(false)
 
-const loginForm = useForm({
-  email: '',
-  password: '',
-})
-
-const registerForm = useForm({
-  name: '',
-  email: '',
-  password: '',
-})
-
+const loginForm = useForm({ email: '', password: '' })
+const registerForm = useForm({ name: '', email: '', password: '' })
 const loginError = ref('')
 const registerError = ref('')
 
-function switchToLogin() {
-  isActive.value = false
-  registerError.value = ''
-}
-
-function switchToRegister() {
-  isActive.value = true
-  loginError.value = ''
-}
+function switchToLogin() { isActive.value = false; registerError.value = '' }
+function switchToRegister() { isActive.value = true; loginError.value = '' }
 
 function handleLogin() {
   loginError.value = ''
@@ -195,9 +150,5 @@ function handleRegister() {
 </script>
 
 <style scoped>
-.form-error {
-  color: #b3261e;
-  font-size: 12px;
-  margin: 6px 0 0;
-}
+.form-error { color: #b3261e; font-size: 12px; margin: 6px 0 0; }
 </style>
