@@ -14,6 +14,13 @@ class Habilitacion extends Model
     public $timestamps = false;
     protected $fillable = ['id_estudiante', 'id_examen', 'estado_habilitado', 'motivo_inhabilitacion', 'normas_particulares'];
 
+    protected function casts(): array
+    {
+        return [
+            'estado_habilitado' => 'boolean',
+        ];
+    }
+
     // Relación de muchos a uno (habilitacion-estudiante)
     public function estudiante()
     {
