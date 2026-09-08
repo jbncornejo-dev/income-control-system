@@ -11,11 +11,13 @@
     <main class="content">
       <slot />
     </main>
+    <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { Link, router } from '@inertiajs/vue3'
+import ToastContainer from '../components/ui/ToastContainer.vue'
 
 function logout() {
   router.post('/logout')
