@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
+        Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
