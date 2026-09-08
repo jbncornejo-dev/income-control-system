@@ -37,7 +37,8 @@ class AuthController extends Controller
             'password' => ['required', 'string', 'min:8'],
         ]);
 
-        $rol = Rol::firstOrCreate(['nombre_rol' => 'administrador']);
+        // Public registration must never grant administrator access.
+        $rol = Rol::firstOrCreate(['nombre_rol' => 'personal de control de ingreso']);
 
         $baseUsername = Str::slug(explode(' ', trim($request->name))[0].'_'.Str::before($request->email, '@'));
         $baseUsername = Str::limit($baseUsername, 45, '');
