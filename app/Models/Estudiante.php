@@ -31,4 +31,10 @@ class Estudiante extends Model
     {
         return $this->hasMany(Incidencia::class, 'id_estudiante', 'id_estudiante');
     }
+
+    // Relación de uno a muchos (estudiante - inscripcion)
+    public function inscripciones()
+    {
+        return $this->hasMany(Inscripcion::class, 'id_estudiante', 'id_estudiante');
+    }
 }
