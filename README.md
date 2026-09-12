@@ -88,15 +88,16 @@ cd app
    ```
    > Todos los comandos anteriores solo los ejecutas la primera vez que clonas el proyecto, para construir y dejar todo el entorno listo para desarrollo.
 
-Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).
-Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).
+Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).<br>
+Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).<br>
 Las credenciales para ver la base de datos:
 
-System: PostgreSQL
-Server: postgres
-Username: nath
-Password: secret
-Database: app
+- **System:** PostgreSQL
+- **Server:** postgres
+- **Username:** nath
+- **Password:** secret
+- **Database:** app
+
 > Listo ya tienes todo el entorno de desarrollo de la App.
 
 > Toda la explicacion que sigue a continuacion es netamente para desarrollo, asi que presta atencion.
@@ -166,13 +167,13 @@ docker compose exec workspace bash
 ```
 
 Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
-> No necesitas ejecutar estos comandos, solo son algunos ejemplos de que puedes hacer en el contenedor `workspace`.
 
 ```bash
-php artisan migrate
+php artisan migrate --seed
 composer install
 npm run build
 ...
 ```
+> Estos comandos son solo algunos ejemplos de que cosas puedes hacer en el contenedor `workspace`.
 
 Cuando termines ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
