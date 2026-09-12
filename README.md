@@ -45,68 +45,63 @@ cd app
    ```bash
    docker compose up -d
    ```
-
+   > Este proceso demorara la primera vez, por que construira todos los contenedores necesarios que requiere el entorno de desarrollo para la app, solo se paciente y espera a que termine el proceso de construccion.
 3. Ingresa al contenedor `workspace`:
 
    ```bash
    docker compose exec workspace bash
    ```
 
-4. Dentro del contenedor, instala las dependencias de Laravel:
-
+   > Dentro del contenedor configura el servidor(backend) y la interfaz(frontend) de la app:
+   
+   > Configura el servidor
    ```bash
+   # Instala las dependencias del servidor:
    composer install
-   ```
 
-5. Genera la clave de la aplicación:
+   # Genera la clave de la aplicación:
+   php artisan key:generate --seed
 
-   ```bash
-   php artisan key:generate
-   ```
-
-6. Ejecuta las migraciones:
-
-   ```bash
+   # Ejecuta las migraciones:
    php artisan migrate
    ```
+   > Compila la interfaz
 
-7. Sal del contenedor `workspace`:
+   ```bash
+   # Instala las dependencias de la interfaz
+     npm install
+   
+   # Compila los assets del frontend para el servidor apache
+     npm run build
+   ```
+5. Ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
 
    ```bash
    exit
    ```
 
-8. Recrea los contenedores `php-fpm` y `workspace` para que reconozcan la nueva
-   clave generada:
+6. Recrea los contenedores `php-fpm` y `workspace` para que reconozcan la nueva
+   clave generada junto con los nuevos valores para las variables de entorno:
 
    ```bash
    docker compose up -d --force-recreate php-fpm workspace
    ```
+   > Todos los comandos anteriores solo los ejecutas la primera vez que clonas el proyecto, para construir y dejar todo el entorno listo para desarrollo.
 
 Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).
+Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).
+Las credenciales para ver la base de datos:
 
-### Acceder al contenedor `workspace`
+System: PostgreSQL
+Server: postgres
+Username: nath
+Password: secret
+Database: app
+> Listo ya tienes todo el entorno de desarrollo de la App.
 
-El contenedor `workspace` incluye Composer, npm y las herramientas necesarias para el
-desarrollo. Cuando necesites ejecutar comandos de Artisan, Composer o npm,
-ingresa al contenedor con:
+> Toda la explicacion que sigue a continuacion es netamente para desarrollo, asi que presta atencion.
 
-```bash
-docker compose exec workspace bash
-```
-
-Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
-
-```bash
-php artisan migrate
-composer install
-npm run build
-...
-```
-
-Cuando termines ejecuta `exit` para volver a tu máquina host.
-
-### Actualizar frontend (interfaz)
+### Actualizar frontend (Interfaz)
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del frontend, o cuando modifiques archivos de la interfaz localmente, debes volver a
@@ -127,7 +122,7 @@ desactualizada del frontend.
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del backend o cuando modifiques archivos del servidor (backend) localmente que involucren
- migraciones, seeders o cualquier estructura relacionada con la base de datos, actualizala base de datos desde el contenedor `workspace`:
+ migraciones, seeders o cualquier estructura relacionada con la base de datos, actualiza la base de datos desde el contenedor `workspace`:
 
 ```bash
 docker compose exec workspace php artisan migrate --seed
@@ -160,3 +155,24 @@ Enciende los contenedores unicamente cuando trabajes en el proyecto.
 ```bash
 docker compose up -d
 ```
+### Acceder al contenedor `workspace`
+
+El contenedor `workspace` incluye Composer, npm, Artisan y las herramientas necesarias para el
+desarrollo. Cuando necesites ejecutar comandos de Artisan, Composer o npm,
+ingresa al contenedor con:
+
+```bash
+docker compose exec workspace bash
+```
+
+Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
+> No necesitas ejecutar estos comandos, solo son algunos ejemplos de que puedes hacer en el contenedor `workspace`.
+
+```bash
+php artisan migrate
+composer install
+npm run build
+...
+```
+
+Cuando termines ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
