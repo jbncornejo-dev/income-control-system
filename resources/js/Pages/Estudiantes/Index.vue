@@ -93,7 +93,6 @@ import StatusBadge from '@/components/StatusBadge.vue';
 import Pagination from '@/components/Pagination.vue';
 import Modal from '@/components/ui/Modal.vue';
 import EstudianteForm from '@/components/forms/EstudianteForm.vue';
-import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 
 const showModal = ref(false);
