@@ -8,10 +8,30 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    return auth()->check()
-        ? redirect()->route('dashboard')
-        : redirect()->route('login');
-});
+    if (!Auth::check()) {
+        return Inertia::render('Welcome'); 
+    }
+
+    $user = Auth::user();
+
+    $rutaDestino = match ($user->role) {
+        'admin'      => 'admin.dashboard',
+        'docente'    => 'docente.dashboard',
+        'control'    => 'control.dashboard',
+        'estudiante' => 'estudiante.dashboard',
+        default      => null, // Asignamos null si el rol no coincide con ninguno
+    };
+
+    if (!$rutaDestino) {
+        Auth::logout(); // Invalidamos la sesión por seguridad
+        // Redirigimos al login enviando un mensaje de error a la variable de sesión
+        return redirect()->route('login')->withErrors([
+            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.'
+        ]);
+    }
+
+    return redirect()->route($rutaDestino);
+})->name('home');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', function () {
