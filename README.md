@@ -1,29 +1,35 @@
 # Proyecto TIS
 
-Esta es proyecto es una aplicacion para un Sistema informatico para la gestion, validacion y control del ingreso de estudiantes durante la
-realizacion de examenes masivos.
+Este es un proyecto para un sistema informático de gestión, validación y control
+del ingreso de estudiantes durante la realización de exámenes masivos.
 
-## Tecnológias y versiones utlizidas 
+## Índice de contenidos
 
-* **Servidor web:** Apache HTTP Server 2.4.62
-* **Framework:** Laravel v11.56.1
-* **Lenguaje:** PHP 8.2
-* **Base de Datos:** PostgreSQL 15.10
-* **Entorno de Node:** Node.js v22.0.0
-* **Gestor de Paquetes JS:** NPM incluido en la imagen de Node.js
-* **Gestor de Dependencias PHP:** Composer incluido en los contenedores
+- [Guía de uso mediante contenedores](#guía-de-uso-mediante-contenedores)
+  - [Prerrequisitos](#prerrequisitos)
+  - [Clonar el repositorio](#clonar-el-repositorio)
+  - [Configuración del entorno de desarrollo](#configuración-del-entorno-de-desarrollo)
+  - [Actualizar el frontend (interfaz)](#actualizar-el-frontend-interfaz)
+  - [Actualizar la base de datos después de cambios en el backend](#actualizar-la-base-de-datos-después-de-cambios-en-el-backend)
+  - [Detener los contenedores](#detener-los-contenedores)
+  - [Levantar los contenedores](#levantar-los-contenedores)
+  - [Acceder al contenedor `workspace`](#acceder-al-contenedor-workspace)
 
-## Guía de uso de contenedores
+## Guía de uso mediante contenedores
+
 ### Prerrequisitos
 
-Asegúrate de tener Docker y Docker Compose instalados. Verifícalo ejecutando:
+Asegúrate de tener Podman y Podman Compose instalados. Verifícalo ejecutando:
 
 ```bash
-docker --version
-docker compose version
+podman --version
+podman compose version
 ```
 
-Si alguno de los comandos no devuelve una versión, instala Docker y de Docker Compose desde el gestor de paquetes de tu distribución Linux o consulta la documentación oficial de Docker: [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/)
+Si alguno de los comandos no devuelve una versión, instala Podman y Podman Compose
+desde el gestor de paquetes de tu distribución Linux o consulta la
+documentación oficial de [Podman](https://podman.io/docs/installation) y
+[Podman Compose](https://github.com/containers/podman-compose).
 
 ### Clonar el repositorio
 
@@ -40,39 +46,42 @@ cd app
    cp .env.example .env
    ```
 
-2. Inicia los contenedores con Docker Compose:
+2. Inicia los contenedores con Podman Compose:
 
    ```bash
-   docker compose up -d
+   podman compose up -d
    ```
-   > Este proceso demorara la primera vez, por que construira todos los contenedores necesarios que requiere el entorno de desarrollo para la app, solo se paciente y espera a que termine el proceso de construccion.
+   > Este proceso demorará la primera vez porque construirá todos los contenedores
+   > necesarios para el entorno de desarrollo de la aplicación. Sé paciente y
+   > espera a que termine el proceso de construcción.
 3. Ingresa al contenedor `workspace`:
 
    ```bash
-   docker compose exec workspace bash
+   podman compose exec workspace bash
    ```
 
-   > Dentro del contenedor configura el servidor(backend) y la interfaz(frontend) de la app:
+   > Dentro del contenedor, configura el servidor (backend) y la interfaz
+   > (frontend) de la aplicación:
    
-   > Configura el servidor
+   > Configura el servidor:
    ```bash
-   # Instala las dependencias del servidor:
+   # Instala las dependencias del servidor
    composer install
 
-   # Genera la clave de la aplicación:
+   # Genera la clave de la aplicación
    php artisan key:generate --seed
 
-   # Ejecuta las migraciones:
+   # Ejecuta las migraciones
    php artisan migrate
    ```
-   > Compila la interfaz
+   > Compila la interfaz:
 
    ```bash
    # Instala las dependencias de la interfaz
-     npm install
+   npm install
    
-   # Compila los assets del frontend para el servidor apache
-     npm run build
+   # Compila los recursos del frontend para el servidor Apache
+   npm run build
    ```
 5. Ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
 
@@ -84,13 +93,16 @@ cd app
    clave generada junto con los nuevos valores para las variables de entorno:
 
    ```bash
-   docker compose up -d --force-recreate php-fpm workspace
+   podman compose up -d --force-recreate php-fpm workspace
    ```
-   > Todos los comandos anteriores solo los ejecutas la primera vez que clonas el proyecto, para construir y dejar todo el entorno listo para desarrollo.
+   > Todos los comandos anteriores se ejecutan únicamente la primera vez que
+   > clonas el proyecto, para construir y dejar listo el entorno de desarrollo.
 
-Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).<br>
-Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).<br>
-Las credenciales para ver la base de datos:
+Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).
+
+Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).
+
+Las credenciales para acceder a la base de datos son:
 
 - **System:** PostgreSQL
 - **Server:** postgres
@@ -98,11 +110,12 @@ Las credenciales para ver la base de datos:
 - **Password:** secret
 - **Database:** app
 
-> Listo ya tienes todo el entorno de desarrollo de la App.
+> ¡Listo! Ya tienes todo el entorno de desarrollo de la aplicación.
 
-> Toda la explicacion que sigue a continuacion es netamente para desarrollo, asi que presta atencion.
+> Toda la explicación que sigue a continuación es exclusivamente para desarrollo,
+> así que presta atención.
 
-### Actualizar frontend (Interfaz)
+### Actualizar el frontend (interfaz)
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del frontend, o cuando modifiques archivos de la interfaz localmente, debes volver a
@@ -110,7 +123,7 @@ instalar las dependencias y compilar el frontend para que Apache sirva la versi�
 actualizada:
 
 ```bash
-docker compose exec workspace bash
+podman compose exec workspace bash
 npm install
 npm run build
 exit
@@ -119,14 +132,15 @@ exit
 Si no ejecutas `npm run build`, Apache puede continuar mostrando una versión
 desactualizada del frontend.
 
-### Actualizar la base de datos después de cambios del backend
+### Actualizar la base de datos después de cambios en el backend
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del backend o cuando modifiques archivos del servidor (backend) localmente que involucren
- migraciones, seeders o cualquier estructura relacionada con la base de datos, actualiza la base de datos desde el contenedor `workspace`:
+migraciones, seeders o cualquier estructura relacionada con la base de datos,
+actualiza la base de datos desde el contenedor `workspace`:
 
 ```bash
-docker compose exec workspace php artisan migrate --seed
+podman compose exec workspace php artisan migrate --seed
 ```
 
 Este comando ejecuta las migraciones pendientes, conserva los datos existentes y
@@ -136,7 +150,7 @@ Si necesitas reiniciar completamente la base de datos durante el desarrollo, pue
 utilizar:
 
 ```bash
-docker compose exec workspace php artisan migrate:fresh --seed
+podman compose exec workspace php artisan migrate:fresh --seed
 ```
 
 > **Advertencia:** `migrate:fresh --seed` elimina todas las tablas y los datos de la
@@ -144,26 +158,30 @@ docker compose exec workspace php artisan migrate:fresh --seed
 > reiniciar la base de datos de desarrollo.
 
 ### Detener los contenedores
-Apaga los contenedores cuando no estes trabajando en el proyecto, asi los contenedores desapareceran liberando recursos de tu computadora.
+
+Apaga los contenedores cuando no estés trabajando en el proyecto. Así, los
+contenedores desaparecerán y liberarán recursos de tu computadora.
 
 ```bash
-docker compose down
+podman compose down
 ```
 
 ### Levantar los contenedores
-Enciende los contenedores unicamente cuando trabajes en el proyecto.
+
+Enciende los contenedores únicamente cuando trabajes en el proyecto.
 
 ```bash
-docker compose up -d
+podman compose up -d
 ```
+
 ### Acceder al contenedor `workspace`
 
-El contenedor `workspace` incluye Composer, npm, Artisan y las herramientas necesarias para el
-desarrollo. Cuando necesites ejecutar comandos de Artisan, Composer o npm,
-ingresa al contenedor con:
+El contenedor `workspace` incluye Composer, npm, Artisan y las herramientas
+necesarias para el desarrollo. Cuando necesites ejecutar comandos de Artisan,
+Composer o npm, ingresa al contenedor con:
 
 ```bash
-docker compose exec workspace bash
+podman compose exec workspace bash
 ```
 
 Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
@@ -174,6 +192,7 @@ composer install
 npm run build
 ...
 ```
-> Estos comandos son solo algunos ejemplos de que cosas puedes hacer en el contenedor `workspace`.
+> Estos comandos son solo algunos ejemplos de las tareas que puedes realizar en el
+> contenedor `workspace`.
 
-Cuando termines ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
+Cuando termines, ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
