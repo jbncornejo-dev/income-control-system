@@ -12,6 +12,22 @@
         <button class="btn-primary" @click="mostrarModal = true">Añadir Estudiante</button>
       </div>
 
+      <div class="actions-container">
+      <form @submit.prevent="submitCsv" class="csv-upload-form">
+        <input 
+          type="file" 
+          accept=".csv" 
+          @change="handleFileChange" 
+          required 
+          class="file-input"
+        />
+        <button type="submit" :disabled="csvForm.processing" class="btn-upload">
+          Cargar CSV
+        </button>
+        <LoadingSpinner v-if="csvForm.processing" class="spinner-inline" />
+      </form>
+    </div>
+
       <div class="table-responsive">
         <table class="data-table">
           <thead>
@@ -46,17 +62,48 @@
       </Modal>
     </div>
   </AuthenticatedLayout>
+  <Modal :show="showModal" @close="showModal = false">
+    <div class="modal-content">
+      <h3>Reporte de Carga Masiva</h3>
+      <div class="summary-stats">
+        <p>✅ Registros creados: <strong>{{ uploadResults.creados }}</strong></p>
+        <p>❌ Registros rechazados: <strong>{{ uploadResults.rechazados }}</strong></p>
+      </div>
+
+      <div v-if="uploadResults.detalles_rechazos && uploadResults.detalles_rechazos.length > 0" class="error-container">
+        <h4>Motivos de rechazo:</h4>
+        <ul class="error-list">
+          <li v-for="(error, index) in uploadResults.detalles_rechazos" :key="index">
+            <strong>Fila {{ error.fila }}:</strong> {{ error.motivo }}
+          </li>
+        </ul>
+      </div>
+
+      <button @click="showModal = false" class="btn-close">Entendido</button>
+    </div>
+  </Modal>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
+import { usePage, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import SearchInput from '@/components/SearchInput.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import Pagination from '@/components/Pagination.vue';
 import Modal from '@/components/ui/Modal.vue';
 import EstudianteForm from '@/components/forms/EstudianteForm.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+
+const showModal = ref(false);
+const uploadResults = ref({ creados: 0, rechazados: 0, detalles_rechazos: [] });
+const csvForm = useForm({
+  archivo_csv: null,
+});
+
+const handleFileChange = (event) => {
+  csvForm.archivo_csv = event.target.files[0];
+};
 
 const props = defineProps({
   estudiantes: {
@@ -91,6 +138,21 @@ const filteredStudents = computed(() => {
 const onEstudianteCreado = () => {
   mostrarModal.value = false;
 };
+
+const submitCsv = () => {
+  csvForm.post(route('estudiantes.importar'), {
+    preserveScroll: true,
+    onSuccess: (page) => {
+      // Capturamos la respuesta del backend enviada mediante Inertia flash data
+      const results = page.props.flash.import_results;
+      if (results) {
+        uploadResults.value = results;
+        showModal.value = true;
+      }
+      csvForm.reset('archivo_csv');
+    },
+  });
+};
 </script>
 
 <style scoped>
@@ -102,4 +164,15 @@ const onEstudianteCreado = () => {
 .data-table th { background-color: #f8f9fa; color: var(--color-text-main); font-weight: bold; }
 .btn-action { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 .flash-success { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
+.actions-container { margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa; border-radius: 6px; }
+.csv-upload-form { display: flex; align-items: center; gap: 1rem; }
+.file-input { border: 1px solid #ddd; padding: 0.3rem; border-radius: 4px; background: white; }
+.btn-upload { padding: 0.5rem 1rem; background-color: #198754; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.btn-upload:disabled { opacity: 0.6; cursor: not-allowed; }
+.spinner-inline { width: 24px; height: 24px; }
+.modal-content { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+.summary-stats p { margin: 0.2rem 0; font-size: 1.1rem; }
+.error-container { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 4px; }
+.error-list { max-height: 200px; overflow-y: auto; padding-left: 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; }
+.btn-close { align-self: flex-end; padding: 0.5rem 1rem; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
 </style>

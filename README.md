@@ -1,19 +1,22 @@
 # Proyecto TIS
 
-Esta es proyecto es una aplicacion para un Sistema informatico para la gestion, validacion y control del ingreso de estudiantes durante la
-realizacion de examenes masivos.
+Este es un proyecto para un sistema informático de gestión, validación y control
+del ingreso de estudiantes durante la realización de exámenes masivos.
 
-## Tecnológias y versiones utlizidas 
+## Índice de contenidos
 
-* **Servidor web:** Apache HTTP Server 2.4.62
-* **Framework:** Laravel v11.56.1
-* **Lenguaje:** PHP 8.2
-* **Base de Datos:** PostgreSQL 15.10
-* **Entorno de Node:** Node.js v22.0.0
-* **Gestor de Paquetes JS:** NPM incluido en la imagen de Node.js
-* **Gestor de Dependencias PHP:** Composer incluido en los contenedores
+- [Guía de uso mediante contenedores](#guía-de-uso-mediante-contenedores)
+  - [Prerrequisitos](#prerrequisitos)
+  - [Clonar el repositorio](#clonar-el-repositorio)
+  - [Configuración del entorno de desarrollo](#configuración-del-entorno-de-desarrollo)
+  - [Actualizar el frontend (interfaz)](#actualizar-el-frontend-interfaz)
+  - [Actualizar la base de datos después de cambios en el backend](#actualizar-la-base-de-datos-después-de-cambios-en-el-backend)
+  - [Detener los contenedores](#detener-los-contenedores)
+  - [Levantar los contenedores](#levantar-los-contenedores)
+  - [Acceder al contenedor `workspace`](#acceder-al-contenedor-workspace)
 
-## Guía de uso de contenedores
+## Guía de uso mediante contenedores
+
 ### Prerrequisitos
 
 Asegúrate de tener Docker y Docker Compose instalados. Verifícalo ejecutando:
@@ -23,7 +26,10 @@ docker --version
 docker compose version
 ```
 
-Si alguno de los comandos no devuelve una versión, instala Docker y de Docker Compose desde el gestor de paquetes de tu distribución Linux o consulta la documentación oficial de Docker: [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/)
+Si alguno de los comandos no devuelve una versión, instala Docker y Docker Compose
+desde el gestor de paquetes de tu distribución Linux o consulta la documentación
+oficial de [Docker](https://docs.docker.com/get-docker/) y
+[Docker Compose](https://docs.docker.com/compose/install/).
 
 ### Clonar el repositorio
 
@@ -45,68 +51,71 @@ cd app
    ```bash
    docker compose up -d
    ```
-
+   > Este proceso demorará la primera vez porque construirá todos los contenedores
+   > necesarios para el entorno de desarrollo de la aplicación. Sé paciente y
+   > espera a que termine el proceso de construcción.
 3. Ingresa al contenedor `workspace`:
 
    ```bash
    docker compose exec workspace bash
    ```
 
-4. Dentro del contenedor, instala las dependencias de Laravel:
-
+   > Dentro del contenedor, configura el servidor (backend) y la interfaz
+   > (frontend) de la aplicación:
+   
+   > Configura el servidor:
    ```bash
+   # Instala las dependencias del servidor
    composer install
-   ```
 
-5. Genera la clave de la aplicación:
+   # Genera la clave de la aplicación
+   php artisan key:generate --seed
 
-   ```bash
-   php artisan key:generate
-   ```
-
-6. Ejecuta las migraciones:
-
-   ```bash
+   # Ejecuta las migraciones
    php artisan migrate
    ```
+   > Compila la interfaz:
 
-7. Sal del contenedor `workspace`:
+   ```bash
+   # Instala las dependencias de la interfaz
+   npm install
+   
+   # Compila los recursos del frontend para el servidor Apache
+   npm run build
+   ```
+5. Ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
 
    ```bash
    exit
    ```
 
-8. Recrea los contenedores `php-fpm` y `workspace` para que reconozcan la nueva
-   clave generada:
+6. Recrea los contenedores `php-fpm` y `workspace` para que reconozcan la nueva
+   clave generada junto con los nuevos valores para las variables de entorno:
 
    ```bash
    docker compose up -d --force-recreate php-fpm workspace
    ```
+   > Todos los comandos anteriores se ejecutan únicamente la primera vez que
+   > clonas el proyecto, para construir y dejar listo el entorno de desarrollo.
 
 Ahora puedes ver la aplicación en [http://localhost:8080](http://localhost:8080).
 
-### Acceder al contenedor `workspace`
+Puedes ver la base de datos en [http://localhost:8081](http://localhost:8081).
 
-El contenedor `workspace` incluye Composer, npm y las herramientas necesarias para el
-desarrollo. Cuando necesites ejecutar comandos de Artisan, Composer o npm,
-ingresa al contenedor con:
+Las credenciales para acceder a la base de datos son:
 
-```bash
-docker compose exec workspace bash
-```
+- **System:** PostgreSQL
+- **Server:** postgres
+- **Username:** nath
+- **Password:** secret
+- **Database:** app
 
-Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
+> ¡Listo! Ya tienes todo el entorno de desarrollo de la aplicación.
 
-```bash
-php artisan migrate
-composer install
-npm run build
-...
-```
+> Toda la explicación que sigue a continuación es exclusivamente para desarrollo,
+> así que presta atención.
 
-Cuando termines ejecuta `exit` para volver a tu máquina host.
-
-### Actualizar frontend (interfaz)
+### Actualizar el frontend (interfaz)
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del frontend, o cuando modifiques archivos de la interfaz localmente, debes volver a
@@ -123,11 +132,12 @@ exit
 Si no ejecutas `npm run build`, Apache puede continuar mostrando una versión
 desactualizada del frontend.
 
-### Actualizar la base de datos después de cambios del backend
+### Actualizar la base de datos después de cambios en el backend
 
 Cada vez que traigas cambios desde GitHub con `git pull` que incluyan modificaciones
 del backend o cuando modifiques archivos del servidor (backend) localmente que involucren
- migraciones, seeders o cualquier estructura relacionada con la base de datos, actualizala base de datos desde el contenedor `workspace`:
+migraciones, seeders o cualquier estructura relacionada con la base de datos,
+actualiza la base de datos desde el contenedor `workspace`:
 
 ```bash
 docker compose exec workspace php artisan migrate --seed
@@ -148,15 +158,41 @@ docker compose exec workspace php artisan migrate:fresh --seed
 > reiniciar la base de datos de desarrollo.
 
 ### Detener los contenedores
-Apaga los contenedores cuando no estes trabajando en el proyecto, asi los contenedores desapareceran liberando recursos de tu computadora.
+
+Apaga los contenedores cuando no estés trabajando en el proyecto. Así, los
+contenedores desaparecerán y liberarán recursos de tu computadora.
 
 ```bash
 docker compose down
 ```
 
 ### Levantar los contenedores
-Enciende los contenedores unicamente cuando trabajes en el proyecto.
+
+Enciende los contenedores únicamente cuando trabajes en el proyecto.
 
 ```bash
 docker compose up -d
 ```
+
+### Acceder al contenedor `workspace`
+
+El contenedor `workspace` incluye Composer, npm, Artisan y las herramientas
+necesarias para el desarrollo. Cuando necesites ejecutar comandos de Artisan,
+Composer o npm, ingresa al contenedor con:
+
+```bash
+docker compose exec workspace bash
+```
+
+Dentro del contenedor puedes ejecutar comandos, como por ejemplo:
+
+```bash
+php artisan migrate --seed
+composer install
+npm run build
+...
+```
+> Estos comandos son solo algunos ejemplos de las tareas que puedes realizar en el
+> contenedor `workspace`.
+
+Cuando termines, ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.

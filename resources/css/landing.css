@@ -1,0 +1,123 @@
+/* ==========================================================================
+   ESTILOS BÁSICOS - LANDING PAGE (HOME)
+   ========================================================================== */
+
+.landing-body {
+    margin: 0;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif; /* Tipografía limpia */
+    background-color: #ffffff; 
+    color: #1a1a2e;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.landing-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem 5%;
+    border-bottom: 1px solid #eaeaea; 
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.logo-box {
+    background-color: #1a1a2e;
+    color: white;
+    padding: 0.5rem;
+    font-weight: 700;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-title {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.logo-subtitle {
+    color: #888;
+    font-size: 0.8rem;
+}
+
+.btn-login {
+    background-color: #27273f;
+    color: white;
+    text-decoration: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.landing-main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem 5%;
+    margin-top: -5rem;
+}
+
+.overline {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #a0a0b0;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+}
+
+.landing-title {
+    font-size: 2.8rem;
+    line-height: 1.2;
+    margin: 0 0 1.5rem 0;
+    color: #1a1a2e;
+    max-width: 600px;
+}
+
+.landing-description {
+    font-size: 1.1rem;
+    color: #777;
+    max-width: 650px;
+    margin: 0 0 2.5rem 0;
+    line-height: 1.6;
+}
+
+.actions-container {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-primary {
+    background-color: #27273f;
+    color: white;
+    text-decoration: none;
+    padding: 0.8rem 1.8rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: #27273f;
+    text-decoration: none;
+    padding: 0.8rem 1.8rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+}
