@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\IndexAmbienteRequest;
 use App\Http\Requests\StoreAmbienteRequest;
+use App\Http\Requests\UpdateAmbienteRequest;
 use App\Models\Ambiente;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +29,23 @@ class AmbienteController extends Controller
 
         // Al integrar la vista, usar Inertia::render conservando la prop paginada 'ambientes'.
         return response()->json(['ambientes' => $ambientes]);
+    }
+
+    public function update(UpdateAmbienteRequest $request, Ambiente $ambiente)
+    {
+        try {
+            DB::transaction(fn () => $ambiente->update($request->safe()->only(['nombre_ambiente', 'capacidad'])));
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23505' && str_contains($e->getMessage(), 'ambiente_nombre_ambiente_unique')) {
+                return back()->withErrors([
+                    'nombre_ambiente' => 'Ya existe un ambiente con ese nombre',
+                ])->withInput();
+            }
+
+            throw $e;
+        }
+
+        return back()->with('success', 'Ambiente actualizado correctamente.');
     }
 
     public function store(StoreAmbienteRequest $request)
