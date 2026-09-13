@@ -15,19 +15,21 @@ Route::get('/', function () {
 
     $user = Auth::user();
 
-    $rutaDestino = match ($user->role) {
-        'admin'      => 'admin.dashboard',
-        'docente'    => 'docente.dashboard',
-        'control'    => 'control.dashboard',
-        'estudiante' => 'estudiante.dashboard',
-        default      => null, // Asignamos null si el rol no coincide con ninguno
+    $role = $user->rol?->nombre_rol;
+
+    $rutaDestino = match ($role) {
+        'administrador'                  => 'dashboard',
+        'docente'                        => 'dashboard',
+        'personal de control de ingreso' => 'dashboard',
+        'estudiante'                     => 'dashboard',
+        default                          => null,
     };
 
     if (!$rutaDestino) {
         Auth::logout(); // Invalidamos la sesión por seguridad
         // Redirigimos al login enviando un mensaje de error a la variable de sesión
         return redirect()->route('login')->withErrors([
-            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.'
+            'username' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.'
         ]);
     }
 

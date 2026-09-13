@@ -18,7 +18,7 @@ class EnsureUserHasRole
         $role = $request->user()?->rol?->nombre_rol;
 
         if ($role === null || ! in_array($role, $roles, true)) {
-            abort(403);
+            abort(403, 'Acceso Denegado');
         }
 
         return $next($request);
