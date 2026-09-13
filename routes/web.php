@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\AsignaturaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -57,6 +58,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
+        // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
+        // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.
+        Route::get('/asignaturas', [AsignaturaController::class, 'index'])->name('asignaturas.index');
+        // Frontend: editar solo nombre_asignatura mediante PATCH; el ID de la URL identifica el registro.
+        Route::patch('/asignaturas/{asignatura}', [AsignaturaController::class, 'update'])->name('asignaturas.update');
+        // Eliminar únicamente asignaturas sin exámenes relacionados.
+        Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
+        // Ruta para registrar asignaturas
+        Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
@@ -82,21 +93,4 @@ Route::middleware('auth')->group(function () {
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
-    // Rutas temporales HU7 - Asignaturas (frontend dev)
-Route::middleware('auth')->prefix('asignaturas')->group(function () {
-    Route::get('/', function () {
-        return Inertia::render('Asignaturas/Index', [
-            'asignaturas' => [
-                ['id_asignatura' => 1, 'nombre' => 'Cálculo I'],
-                ['id_asignatura' => 2, 'nombre' => 'Física II'],
-                ['id_asignatura' => 3, 'nombre' => 'Química Orgánica'],
-                ['id_asignatura' => 4, 'nombre' => 'Álgebra Lineal'],
-                ['id_asignatura' => 5, 'nombre' => 'Estadística'],
-            ]
-        ]);
-    })->name('asignaturas.index');
-    Route::post('/', fn() => back()->with('success', 'Creado'))->name('asignaturas.store');
-    Route::put('/{id}', fn() => back()->with('success', 'Actualizado'))->name('asignaturas.update');
-    Route::delete('/{id}', fn() => back()->with('success', 'Eliminado'))->name('asignaturas.destroy');
-});
 });

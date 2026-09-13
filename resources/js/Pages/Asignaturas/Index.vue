@@ -13,22 +13,24 @@
         </button>
       </div>
 
-      <!-- Buscador -->
-      <div class="toolbar">
-        <div class="search-wrapper">
-          <span class="search-icon">🔍</span>
-          <input
-            v-model="busqueda"
-            type="text"
-            placeholder="Buscar por nombre o ID..."
-            class="search-input"
-          />
-          <button v-if="busqueda" class="clear-btn" @click="busqueda = ''">✕</button>
+      <!-- HU7: filtros enviados al servidor; se conservan al paginar. -->
+      <form class="toolbar" @submit.prevent="buscar">
+        <div class="filter-field">
+          <label for="filtro-id">ID</label>
+          <input id="filtro-id" v-model="filtroId" type="number" min="1" step="1" class="form-input" placeholder="ID exacto" />
+          <p v-if="erroresBusqueda.id_asignatura" class="error-msg">{{ erroresBusqueda.id_asignatura }}</p>
         </div>
-        <span class="result-count">{{ filtradas.length }} asignatura(s)</span>
-      </div>
+        <div class="filter-field">
+          <label for="filtro-nombre">Nombre</label>
+          <input id="filtro-nombre" v-model="filtroNombre" type="text" maxlength="150" class="form-input" placeholder="Buscar por nombre" />
+          <p v-if="erroresBusqueda.nombre_asignatura" class="error-msg">{{ erroresBusqueda.nombre_asignatura }}</p>
+        </div>
+        <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
+        <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
+        <span class="result-count">{{ asignaturas.total }} asignatura(s)</span>
+      </form>
 
-      <!-- Tabla -->
+      <!-- HU7: filas y total procedentes del paginador de Laravel. -->
       <div class="table-card">
         <div v-if="cargando" class="loading-center">
           <LoadingSpinner size="large" />
@@ -43,9 +45,9 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="asignatura in paginadas" :key="asignatura.id_asignatura">
+            <tr v-for="asignatura in asignaturas.data" :key="asignatura.id_asignatura">
               <td class="id-cell">{{ asignatura.id_asignatura }}</td>
-              <td>{{ asignatura.nombre }}</td>
+              <td>{{ asignatura.nombre_asignatura }}</td>
               <td class="actions-cell">
                 <button class="btn-action btn-edit" @click="abrirModalEditar(asignatura)">
                   Editar
@@ -55,41 +57,45 @@
                 </button>
               </td>
             </tr>
-            <tr v-if="filtradas.length === 0">
+            <tr v-if="asignaturas.data.length === 0">
               <td colspan="3" class="empty-row">No se encontraron asignaturas.</td>
             </tr>
           </tbody>
         </table>
 
-        <!-- Paginación -->
-        <div class="pagination" v-if="totalPaginas > 1">
-          <button :disabled="paginaActual === 1" @click="paginaActual--" class="btn-page">
+        <!-- HU7: los enlaces del servidor mantienen los filtros aplicados. -->
+        <div class="pagination" v-if="asignaturas.last_page > 1">
+          <button :disabled="cargando || !asignaturas.prev_page_url" @click="visitar(asignaturas.prev_page_url)" class="btn-page">
             ← Anterior
           </button>
-          <span class="page-info">Página {{ paginaActual }} de {{ totalPaginas }}</span>
-          <button :disabled="paginaActual === totalPaginas" @click="paginaActual++" class="btn-page">
+          <span class="page-info">Página {{ asignaturas.current_page }} de {{ asignaturas.last_page }}</span>
+          <button :disabled="cargando || !asignaturas.next_page_url" @click="visitar(asignaturas.next_page_url)" class="btn-page">
             Siguiente →
           </button>
         </div>
       </div>
 
-      <!-- Modal Nueva / Editar -->
+      <!-- HU7: formulario real con nombre_asignatura y errores de Laravel. -->
       <Modal
         :open="modalAbierto"
         :title="modoEdicion ? 'Editar Asignatura' : 'Nueva Asignatura'"
         @close="cerrarModal"
       >
         <div class="form-group">
-          <label class="form-label">Nombre <span class="required">*</span></label>
+          <label for="nombre-asignatura" class="form-label">Nombre <span class="required">*</span></label>
           <input
-            v-model="form.nombre"
+            id="nombre-asignatura"
+            v-model="form.nombre_asignatura"
+            maxlength="150"
+            :disabled="form.processing"
+            @keydown.enter.prevent="guardar"
             type="text"
             class="form-input"
-            :class="{ 'input-error': errores.nombre }"
+            :class="{ 'input-error': form.errors.nombre_asignatura }"
             placeholder="Ej: Cálculo I"
-            @input="errores.nombre = ''"
+            @input="form.clearErrors('nombre_asignatura')"
           />
-          <p v-if="errores.nombre" class="error-msg">{{ errores.nombre }}</p>
+          <p v-if="form.errors.nombre_asignatura" class="error-msg">{{ form.errors.nombre_asignatura }}</p>
         </div>
 
         <div v-if="modoEdicion" class="form-group">
@@ -99,22 +105,23 @@
         </div>
 
         <template #footer>
-          <button @click="cerrarModal" class="btn-cancel">Cancelar</button>
-          <button @click="guardar" class="btn-primary" :disabled="guardando">
-            <LoadingSpinner v-if="guardando" size="small" />
+          <button @click="cerrarModal" :disabled="form.processing" class="btn-cancel">Cancelar</button>
+          <button @click="guardar" class="btn-primary" :disabled="form.processing">
+            <LoadingSpinner v-if="form.processing" size="small" />
             <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear asignatura' }}</span>
           </button>
         </template>
       </Modal>
 
-      <!-- Modal Confirmar Eliminar -->
-      <Modal :open="modalEliminar" title="Eliminar Asignatura" @close="modalEliminar = false">
+      <!-- HU7: el bloqueo por exámenes se muestra sin anunciar una eliminación. -->
+      <Modal :open="modalEliminar" title="Eliminar Asignatura" @close="cerrarEliminar">
         <p class="confirm-text">
-          ¿Estás seguro de eliminar <strong>{{ asignaturaAEliminar?.nombre }}</strong>?
+          ¿Estás seguro de eliminar <strong>{{ asignaturaAEliminar?.nombre_asignatura }}</strong>?
           Esta acción no se puede deshacer.
         </p>
+        <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
         <template #footer>
-          <button @click="modalEliminar = false" class="btn-cancel">Cancelar</button>
+          <button @click="cerrarEliminar" :disabled="eliminando" class="btn-cancel">Cancelar</button>
           <button @click="eliminar" class="btn-danger" :disabled="eliminando">
             <LoadingSpinner v-if="eliminando" size="small" />
             <span v-else>Sí, eliminar</span>
@@ -127,61 +134,67 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, watch } from 'vue'
+import { router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Modal from '@/components/ui/Modal.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import { useToastStore } from '@/stores/useToastStore'
 
+// HU7: sustituir el arreglo temporal por el paginador y filtros de Laravel.
 const props = defineProps({
-  asignaturas: {
-    type: Array,
-    default: () => [],
-  },
+  asignaturas: { type: Object, required: true },
+  filtros: { type: Object, default: () => ({}) },
 })
-
 const toast = useToastStore()
-
-// ── Estado ──────────────────────────────────────────────────────────────────
-const busqueda      = ref('')
-const paginaActual  = ref(1)
-const porPagina     = 10
-const cargando      = ref(false)
-const modalAbierto  = ref(false)
+const filtroId = ref(props.filtros.id_asignatura ?? '')
+const filtroNombre = ref(props.filtros.nombre_asignatura ?? '')
+const erroresBusqueda = ref({})
+const cargando = ref(false)
+const modalAbierto = ref(false)
 const modalEliminar = ref(false)
-const modoEdicion   = ref(false)
-const guardando     = ref(false)
-const eliminando    = ref(false)
-
-const asignaturaEditando  = ref(null)
+const modoEdicion = ref(false)
+const eliminando = ref(false)
+const errorEliminar = ref('')
+const asignaturaEditando = ref(null)
 const asignaturaAEliminar = ref(null)
+const form = useForm({ nombre_asignatura: '' })
 
-const form = ref({ nombre: '' })
-const errores = ref({ nombre: '' })
-
-// ── Computed ─────────────────────────────────────────────────────────────────
-const filtradas = computed(() => {
-  const q = busqueda.value.trim().toLowerCase()
-  if (!q) return props.asignaturas
-  return props.asignaturas.filter(a =>
-    a.nombre.toLowerCase().includes(q) ||
-    String(a.id_asignatura) === q
-  )
+// HU7: sincronizar filtros al navegar o volver con el historial del navegador.
+watch(() => props.filtros, (filtros) => {
+  filtroId.value = filtros.id_asignatura ?? ''
+  filtroNombre.value = filtros.nombre_asignatura ?? ''
 })
 
-const totalPaginas = computed(() => Math.max(1, Math.ceil(filtradas.value.length / porPagina)))
+function visitar(url, filtros = {}) {
+  if (!url || cargando.value) return
+  erroresBusqueda.value = {}
+  router.get(url, filtros, {
+    preserveState: true,
+    preserveScroll: true,
+    onStart: () => { cargando.value = true },
+    onError: (errores) => { erroresBusqueda.value = errores },
+    onFinish: () => { cargando.value = false },
+  })
+}
 
-const paginadas = computed(() => {
-  const inicio = (paginaActual.value - 1) * porPagina
-  return filtradas.value.slice(inicio, inicio + porPagina)
-})
+function buscar() {
+  visitar('/asignaturas', {
+    id_asignatura: filtroId.value || undefined,
+    nombre_asignatura: filtroNombre.value.trim() || undefined,
+  })
+}
 
-// ── Métodos ──────────────────────────────────────────────────────────────────
+function limpiar() {
+  filtroId.value = ''
+  filtroNombre.value = ''
+  visitar('/asignaturas')
+}
+
 function abrirModalNueva() {
   modoEdicion.value = false
-  form.value = { nombre: '' }
-  errores.value = { nombre: '' }
+  form.reset()
+  form.clearErrors()
   asignaturaEditando.value = null
   modalAbierto.value = true
 }
@@ -189,75 +202,61 @@ function abrirModalNueva() {
 function abrirModalEditar(asignatura) {
   modoEdicion.value = true
   asignaturaEditando.value = asignatura
-  form.value = { nombre: asignatura.nombre }
-  errores.value = { nombre: '' }
+  form.nombre_asignatura = asignatura.nombre_asignatura
+  form.clearErrors()
   modalAbierto.value = true
 }
 
 function cerrarModal() {
-  modalAbierto.value = false
+  if (!form.processing) modalAbierto.value = false
 }
 
-function validar() {
-  errores.value.nombre = ''
-  if (!form.value.nombre.trim()) {
-    errores.value.nombre = 'El nombre es obligatorio.'
-    return false
-  }
-  return true
-}
-
+// HU7: POST registra y PATCH edita; useForm conserva errores y estado de envío.
 function guardar() {
-  if (!validar()) return
-  guardando.value = true
-
+  if (form.processing) return
+  const opciones = {
+    preserveScroll: true,
+    onSuccess: (page) => {
+      if (page.props.flash?.success) toast.success(page.props.flash.success)
+      modalAbierto.value = false
+      form.reset()
+    },
+  }
   if (modoEdicion.value) {
-    router.put(`/asignaturas/${asignaturaEditando.value.id_asignatura}`, form.value, {
-      preserveState: true,
-      onSuccess: () => {
-        toast.success('Asignatura actualizada correctamente.')
-        cerrarModal()
-      },
-      onError: (e) => {
-        if (e.nombre) errores.value.nombre = e.nombre
-        else toast.error('Error al actualizar la asignatura.')
-      },
-      onFinish: () => { guardando.value = false },
-    })
+    form.patch(`/asignaturas/${asignaturaEditando.value.id_asignatura}`, opciones)
   } else {
-    router.post('/asignaturas', form.value, {
-      preserveState: true,
-      onSuccess: () => {
-        toast.success('Asignatura creada correctamente.')
-        cerrarModal()
-      },
-      onError: (e) => {
-        if (e.nombre) errores.value.nombre = e.nombre
-        else toast.error('Error al crear la asignatura.')
-      },
-      onFinish: () => { guardando.value = false },
-    })
+    form.post('/asignaturas', opciones)
   }
 }
 
 function confirmarEliminar(asignatura) {
   asignaturaAEliminar.value = asignatura
+  errorEliminar.value = ''
   modalEliminar.value = true
 }
 
+function cerrarEliminar() {
+  if (!eliminando.value) modalEliminar.value = false
+}
+
+// HU7: una redirección con flash.error indica que el borrado fue bloqueado.
 function eliminar() {
+  if (eliminando.value) return
   eliminando.value = true
+  errorEliminar.value = ''
   router.delete(`/asignaturas/${asignaturaAEliminar.value.id_asignatura}`, {
     preserveState: true,
-    onSuccess: () => {
-      toast.success('Asignatura eliminada correctamente.')
+    preserveScroll: true,
+    onSuccess: (page) => {
+      if (page.props.flash?.error) {
+        errorEliminar.value = page.props.flash.error
+        toast.error(page.props.flash.error)
+        return
+      }
+      if (page.props.flash?.success) toast.success(page.props.flash.success)
       modalEliminar.value = false
     },
-    onError: (e) => {
-      if (e.message) toast.error(e.message)
-      else toast.error('No se puede eliminar la asignatura porque tiene exámenes registrados.')
-      modalEliminar.value = false
-    },
+    onError: () => { errorEliminar.value = 'No se pudo eliminar la asignatura.' },
     onFinish: () => { eliminando.value = false },
   })
 }
@@ -281,11 +280,15 @@ function eliminar() {
 .page-subtitle { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
 
 .toolbar {
+  flex-wrap: wrap;
   display: flex;
   align-items: center;
   gap: 16px;
   margin-bottom: 16px;
 }
+.filter-field { flex: 1; min-width: 150px; }
+.filter-field label { display: block; margin-bottom: 4px; font-size: 13px; }
+
 .search-wrapper {
   display: flex;
   align-items: center;

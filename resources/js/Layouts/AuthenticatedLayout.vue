@@ -8,7 +8,8 @@ const page = usePage();
 
 // Guard: evita que la app truene si auth.user no llega (sesión expirada, etc.)
 const user = computed(() => page.props.auth?.user ?? null);
-const role = computed(() => user.value?.role ?? null);
+// HU7: traducir el rol enviado por Laravel a los nombres del menú existente.
+const role = computed(() => ({ administrador: 'admin', 'personal de control de ingreso': 'control' }[user.value?.rol] ?? user.value?.rol ?? null));
 
 // Definición centralizada de navegación por rol.
 // Agregar/quitar un link o un rol es cambiar este arreglo, no el template.
@@ -16,6 +17,8 @@ const navItems = [
   { label: 'Inicio', href: '/dashboard', roles: ['admin', 'docente', 'control', 'estudiante'] },
   { label: 'Usuarios', href: '/usuarios', roles: ['admin'] },
   { label: 'Estudiantes', href: '/estudiantes', roles: ['admin'] },
+  // HU7: acceso al catálogo real, exclusivo del administrador.
+  { label: 'Asignaturas', href: '/asignaturas', roles: ['admin'] },
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'] },
   { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'] },
   { label: 'Registrar Ingreso', href: '/ingreso/registrar', roles: ['control'], highlight: true },
@@ -58,7 +61,8 @@ function logout() {
       <header class="topbar">
         <div v-if="user" class="user-profile">
           <span class="user-name">{{ user.name }}</span>
-          <span class="role-badge">{{ user.role }}</span>
+          <!-- HU7: mostrar el rol compartido por Laravel. -->
+          <span class="role-badge">{{ user.rol }}</span>
         </div>
 
         <button class="btn-logout" @click="logout">

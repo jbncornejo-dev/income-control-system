@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\Habilitacion;
 use Illuminate\Http\Request;
@@ -45,19 +46,43 @@ class HabilitacionController extends Controller
             ]);
         }
 
-        $habilitacion->update([
-            'estado_habilitado' => $estaHabilitado,
-            'motivo_inhabilitacion' => $estaHabilitado
-                ? null
-                : trim($datos['motivo_inhabilitacion']),
-        ]);
+        $nuevoMotivo = $estaHabilitado
+            ? null
+            : trim($datos['motivo_inhabilitacion']);
+
+        DB::transaction(function () use (
+            $request,
+            $habilitacion,
+            $estaHabilitado,
+            $nuevoMotivo
+        ) {
+            $habilitacion->fill([
+                'estado_habilitado' => $estaHabilitado,
+                'motivo_inhabilitacion' => $nuevoMotivo,
+            ]);
+
+            if (! $habilitacion->isDirty([
+                'estado_habilitado',
+                'motivo_inhabilitacion',
+            ])) {
+                return;
+            }
+
+            $habilitacion->save();
+
+            AuditoriaLog::create([
+                'id_usuario' => $request->user()->id,
+                'tabla_afectada' => 'habilitacion',
+                'id_registro_afectado' => $habilitacion->id_habilitacion,
+                'accion' => 'UPDATE',
+            ]);
+        });
 
         return back()->with(
             'success',
             'Estado de habilitación actualizado correctamente.'
         );
     }
-
     public function store(Request $request, Examen $examen)
     {
         $datos = $request->validate([
