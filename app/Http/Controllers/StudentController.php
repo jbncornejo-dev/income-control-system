@@ -83,7 +83,8 @@ class StudentController extends Controller
         ]);
 
         $handle = fopen($request->file('file')->getRealPath(), 'r');
-        $encabezadosEsperados = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr'];
+        $encabezadosSinQr = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos'];
+        $encabezadosConQr = [...$encabezadosSinQr, 'codigo_qr'];
         $existentes = $this->indicesExistentes();
         $vistos = [
             'codigo_universitario' => [],
@@ -107,12 +108,15 @@ class StudentController extends Controller
             if (! $encabezadoProcesado) {
                 $encabezados = array_map(fn ($campo) => $this->normalizar($campo), $fila);
 
-                if ($encabezados !== $encabezadosEsperados) {
+                $tieneQr = $encabezados === $encabezadosConQr;
+                $sinQr = $encabezados === $encabezadosSinQr;
+
+                if (! $tieneQr && ! $sinQr) {
                     fclose($handle);
 
                     return response()->json([
                         'mensaje' => 'El encabezado del CSV no coincide con el formato esperado.',
-                        'esperado' => $encabezadosEsperados,
+                        'esperado' => [$encabezadosConQr, $encabezadosSinQr],
                         'recibido' => $encabezados,
                     ], 422);
                 }
@@ -123,7 +127,7 @@ class StudentController extends Controller
             }
 
             $totalFilas++;
-            $datos = $this->parsearFila($fila);
+            $datos = $this->parsearFila($fila, $tieneQr);
             $motivosRechazo = $this->motivosRechazo($datos, $existentes, $vistos);
 
             if ($motivosRechazo !== null) {
@@ -163,15 +167,17 @@ class StudentController extends Controller
         ]);
     }
 
-    private function parsearFila(array $fila): array
+    private function parsearFila(array $fila, bool $tieneQr): array
     {
-        return [
+        $datos = [
             'codigo_universitario' => $this->normalizar($fila[0] ?? ''),
             'documento_identidad' => $this->normalizar($fila[1] ?? ''),
             'nombres' => $this->normalizar($fila[2] ?? ''),
             'apellidos' => $this->normalizar($fila[3] ?? ''),
-            'codigo_qr' => $this->normalizar($fila[4] ?? '') ?: null,
+            'codigo_qr' => $tieneQr ? $this->normalizar($fila[4] ?? '') ?: null : null,
         ];
+
+        return $datos;
     }
 
     private function esFilaVacia(array $fila): bool

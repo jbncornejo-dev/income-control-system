@@ -93,6 +93,29 @@ class EstudianteImportarTest extends TestCase
         $this->assertDatabaseCount('estudiante', 3);
     }
 
+    public function test_imports_valid_students_from_csv_with_four_columns(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        $csv = "codigo_universitario,documento_identidad,nombres,apellidos\n"
+            ."2020-00001,1111111,Ana,Perez\n"
+            ."2020-00002,2222222,Juan,Gomez\n";
+
+        $response = $this->actingAs($user)->post('/estudiantes/importar', [
+            'file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('exitosos', 2);
+        $response->assertJsonPath('total_filas', 2);
+        $response->assertJsonCount(0, 'rechazados');
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '2020-00001',
+            'codigo_qr' => null,
+        ]);
+        $this->assertDatabaseCount('estudiante', 2);
+    }
+
     public function test_rejects_invalid_header(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
