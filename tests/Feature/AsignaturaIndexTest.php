@@ -6,6 +6,7 @@ use App\Models\Asignatura;
 use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -13,19 +14,26 @@ class AsignaturaIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    // Integración frontend: al migrar a Inertia, adaptar las aserciones JSON a
-    // assertInertia, conservando las comprobaciones de la prop 'asignaturas'.
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // El resolvedor Vue usa Pages con mayúscula; ajustar solo el entorno de pruebas.
+        config(['inertia.pages.paths' => [resource_path('js/Pages')]]);
+    }
+
     public function test_administrador_can_list_an_empty_catalog(): void
     {
         $response = $this->actingAs(User::factory()->create())
             ->get(route('asignaturas.index'));
 
         $response->assertOk()
-            ->assertJsonPath('asignaturas.data', [])
-            ->assertJsonPath('asignaturas.total', 0)
-            ->assertJsonPath('asignaturas.current_page', 1)
-            ->assertJsonPath('asignaturas.per_page', 15)
-            ->assertJsonPath('asignaturas.next_page_url', null);
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->where('asignaturas.data', [])
+                ->where('asignaturas.total', 0)
+                ->where('asignaturas.current_page', 1)
+                ->where('asignaturas.per_page', 15)
+                ->where('asignaturas.next_page_url', null)
+                ->where('filtros.id_asignatura', null)
+                ->where('filtros.nombre_asignatura', null));
     }
 
     public function test_lists_only_id_and_name_in_id_order(): void
@@ -39,11 +47,11 @@ class AsignaturaIndexTest extends TestCase
         $response = $this->actingAs(User::factory()->create())
             ->get(route('asignaturas.index'));
 
-        $response->assertOk()->assertJsonPath('asignaturas.data', [
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->where('asignaturas.data', [
             ['id_asignatura' => 10, 'nombre_asignatura' => 'Física'],
             ['id_asignatura' => 20, 'nombre_asignatura' => 'Cálculo I'],
             ['id_asignatura' => 30, 'nombre_asignatura' => 'Álgebra'],
-        ]);
+        ]));
     }
 
     public function test_paginates_without_repeating_or_omitting_subjects(): void
@@ -57,24 +65,24 @@ class AsignaturaIndexTest extends TestCase
         $first = $this->get(route('asignaturas.index'));
 
         $first->assertOk()
-            ->assertJsonCount(15, 'asignaturas.data')
-            ->assertJsonPath('asignaturas.total', 17)
-            ->assertJsonPath('asignaturas.last_page', 2)
-            ->assertJsonPath('asignaturas.current_page', 1)
-            ->assertJsonPath('asignaturas.prev_page_url', null)
-            ->assertJsonPath('asignaturas.next_page_url', route('asignaturas.index', ['page' => 2]));
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->has('asignaturas.data', 15)
+                ->where('asignaturas.total', 17)
+                ->where('asignaturas.last_page', 2)
+                ->where('asignaturas.current_page', 1)
+                ->where('asignaturas.prev_page_url', null)
+                ->where('asignaturas.next_page_url', route('asignaturas.index', ['page' => 2])));
 
-        $second = $this->get($first->json('asignaturas.next_page_url'));
+        $second = $this->get($first->inertiaProps('asignaturas.next_page_url'));
         $second->assertOk()
-            ->assertJsonCount(2, 'asignaturas.data')
-            ->assertJsonPath('asignaturas.total', 17)
-            ->assertJsonPath('asignaturas.current_page', 2)
-            ->assertJsonPath('asignaturas.next_page_url', null)
-            ->assertJsonPath('asignaturas.prev_page_url', route('asignaturas.index', ['page' => 1]));
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->has('asignaturas.data', 2)
+                ->where('asignaturas.total', 17)
+                ->where('asignaturas.current_page', 2)
+                ->where('asignaturas.next_page_url', null)
+                ->where('asignaturas.prev_page_url', route('asignaturas.index', ['page' => 1])));
 
         $listedIds = array_column([
-            ...$first->json('asignaturas.data'),
-            ...$second->json('asignaturas.data'),
+            ...$first->inertiaProps('asignaturas.data'),
+            ...$second->inertiaProps('asignaturas.data'),
         ], 'id_asignatura');
         $this->assertSame($ids, $listedIds);
     }
@@ -86,11 +94,11 @@ class AsignaturaIndexTest extends TestCase
         $this->actingAs(User::factory()->create())
             ->get(route('asignaturas.index', ['page' => 2]))
             ->assertOk()
-            ->assertJsonPath('asignaturas.data', [])
-            ->assertJsonPath('asignaturas.total', 1)
-            ->assertJsonPath('asignaturas.current_page', 2)
-            ->assertJsonPath('asignaturas.last_page', 1)
-            ->assertJsonPath('asignaturas.next_page_url', null);
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->where('asignaturas.data', [])
+                ->where('asignaturas.total', 1)
+                ->where('asignaturas.current_page', 2)
+                ->where('asignaturas.last_page', 1)
+                ->where('asignaturas.next_page_url', null));
     }
 
     public function test_guest_is_redirected_to_login(): void

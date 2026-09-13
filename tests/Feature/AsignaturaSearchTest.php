@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Asignatura;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -15,6 +16,9 @@ class AsignaturaSearchTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // El resolvedor Vue usa Pages con mayúscula; ajustar solo el entorno de pruebas.
+        config(['inertia.pages.paths' => [resource_path('js/Pages')]]);
+
         $this->actingAs(User::factory()->create());
         Asignatura::insert([
             ['id_asignatura' => 1, 'nombre_asignatura' => 'Cálculo I'],
@@ -23,15 +27,13 @@ class AsignaturaSearchTest extends TestCase
         ]);
     }
 
-    // Al integrar Inertia, adaptar las aserciones JSON a assertInertia
-    // conservando las comprobaciones de la prop 'asignaturas'.
     #[DataProvider('searches')]
     public function test_filters_subjects(array $filters, array $expectedIds): void
     {
-        $response = $this->getJson(route('asignaturas.index', $filters));
+        $response = $this->get(route('asignaturas.index', $filters));
 
-        $response->assertOk()->assertJsonPath('asignaturas.total', count($expectedIds));
-        $this->assertSame($expectedIds, array_column($response->json('asignaturas.data'), 'id_asignatura'));
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->where('asignaturas.total', count($expectedIds)));
+        $this->assertSame($expectedIds, array_column($response->inertiaProps('asignaturas.data'), 'id_asignatura'));
     }
 
     public static function searches(): array
@@ -56,10 +58,10 @@ class AsignaturaSearchTest extends TestCase
     {
         Asignatura::insert(['id_asignatura' => 40, 'nombre_asignatura' => $name]);
 
-        $this->getJson(route('asignaturas.index', ['nombre_asignatura' => $filter]))
+        $this->get(route('asignaturas.index', ['nombre_asignatura' => $filter]))
             ->assertOk()
-            ->assertJsonPath('asignaturas.total', 1)
-            ->assertJsonPath('asignaturas.data.0.id_asignatura', 40);
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->where('asignaturas.total', 1)
+                ->where('asignaturas.data.0.id_asignatura', 40));
     }
 
     public static function literalNames(): array
@@ -99,17 +101,19 @@ class AsignaturaSearchTest extends TestCase
             $ids[] = $i;
         }
 
-        $first = $this->getJson(route('asignaturas.index', ['nombre_asignatura' => 'álgebra']));
-        $first->assertOk()->assertJsonCount(15, 'asignaturas.data')->assertJsonPath('asignaturas.total', 17);
-        parse_str(parse_url($first->json('asignaturas.next_page_url'), PHP_URL_QUERY), $query);
+        $first = $this->get(route('asignaturas.index', ['nombre_asignatura' => 'álgebra']));
+        $first->assertOk()->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->has('asignaturas.data', 15)
+            ->where('asignaturas.total', 17));
+        parse_str(parse_url($first->inertiaProps('asignaturas.next_page_url'), PHP_URL_QUERY), $query);
         $this->assertSame('álgebra', $query['nombre_asignatura']);
         $this->assertSame('2', $query['page']);
 
-        $second = $this->getJson($first->json('asignaturas.next_page_url'));
-        $second->assertOk()->assertJsonCount(2, 'asignaturas.data')->assertJsonPath('asignaturas.total', 17);
+        $second = $this->get($first->inertiaProps('asignaturas.next_page_url'));
+        $second->assertOk()->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')->has('asignaturas.data', 2)
+            ->where('asignaturas.total', 17));
         $this->assertSame($ids, array_column([
-            ...$first->json('asignaturas.data'),
-            ...$second->json('asignaturas.data'),
+            ...$first->inertiaProps('asignaturas.data'),
+            ...$second->inertiaProps('asignaturas.data'),
         ], 'id_asignatura'));
     }
 }

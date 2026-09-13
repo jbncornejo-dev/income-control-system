@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateAsignaturaRequest;
 use App\Models\Asignatura;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class AsignaturaController extends Controller
 {
@@ -31,9 +32,13 @@ class AsignaturaController extends Controller
             ->paginate(15)
             ->appends($filtros);
 
-        // Integración frontend: cuando exista la página Vue, sustituir esta respuesta
-        // por Inertia::render con la página acordada y conservar la prop 'asignaturas'.
-        return response()->json(['asignaturas' => $asignaturas]);
+        return Inertia::render('Asignaturas/Index', [
+            'asignaturas' => $asignaturas,
+            'filtros' => [
+                'id_asignatura' => $filtros['id_asignatura'] ?? null,
+                'nombre_asignatura' => $filtros['nombre_asignatura'] ?? null,
+            ],
+        ]);
     }
 
     public function update(UpdateAsignaturaRequest $request, Asignatura $asignatura)
