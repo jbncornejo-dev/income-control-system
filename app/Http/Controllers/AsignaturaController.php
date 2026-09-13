@@ -2,18 +2,32 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexAsignaturaRequest;
 use App\Http\Requests\StoreAsignaturaRequest;
 use App\Models\Asignatura;
 use Illuminate\Database\QueryException;
 
 class AsignaturaController extends Controller
 {
-    public function index()
+    public function index(IndexAsignaturaRequest $request)
     {
-        $asignaturas = Asignatura::query()
-            ->select(['id_asignatura', 'nombre_asignatura'])
+        $filtros = $request->validated();
+        $query = Asignatura::query()->select(['id_asignatura', 'nombre_asignatura']);
+
+        if (isset($filtros['id_asignatura'])) {
+            $query->where('id_asignatura', $filtros['id_asignatura']);
+        }
+
+        if (isset($filtros['nombre_asignatura'])) {
+            // Escapar los comodines de LIKE para buscar el texto literal del usuario.
+            $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['nombre_asignatura']);
+            $query->where('nombre_asignatura', 'ilike', '%'.$nombre.'%');
+        }
+
+        $asignaturas = $query
             ->orderBy('id_asignatura')
-            ->paginate(15);
+            ->paginate(15)
+            ->appends($filtros);
 
         // Integración frontend: cuando exista la página Vue, sustituir esta respuesta
         // por Inertia::render con la página acordada y conservar la prop 'asignaturas'.
