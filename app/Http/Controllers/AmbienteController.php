@@ -9,6 +9,17 @@ use Illuminate\Support\Facades\DB;
 
 class AmbienteController extends Controller
 {
+    public function index()
+    {
+        $ambientes = Ambiente::query()
+            ->select(['id_ambiente', 'nombre_ambiente', 'capacidad'])
+            ->orderBy('id_ambiente')
+            ->paginate(15);
+
+        // Al integrar la vista, usar Inertia::render conservando la prop paginada 'ambientes'.
+        return response()->json(['ambientes' => $ambientes]);
+    }
+
     public function store(StoreAmbienteRequest $request)
     {
         try {
