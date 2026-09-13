@@ -58,6 +58,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
+        // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
+        // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.
         Route::get('/asignaturas', [AsignaturaController::class, 'index'])->name('asignaturas.index');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
