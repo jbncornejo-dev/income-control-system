@@ -60,6 +60,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
         Route::patch('/ambientes/{ambiente}', [AmbienteController::class, 'update'])->name('ambientes.update');
+        // Eliminar únicamente ambientes sin exámenes relacionados.
+        Route::delete('/ambientes/{ambiente}', [AmbienteController::class, 'destroy'])->name('ambientes.destroy');
         // Registrar ambientes con nombre único y capacidad positiva.
         Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');

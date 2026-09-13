@@ -48,6 +48,29 @@ class AmbienteController extends Controller
         return back()->with('success', 'Ambiente actualizado correctamente.');
     }
 
+    public function destroy(Ambiente $ambiente)
+    {
+        $mensaje = 'No se puede eliminar el ambiente porque tiene exámenes registrados';
+
+        if ($ambiente->examenesAmbientes()->exists()) {
+            return back()->with('error', $mensaje);
+        }
+
+        try {
+            DB::transaction(fn () => $ambiente->delete());
+        } catch (QueryException $e) {
+            // La clave foránea protege si se asocia un examen durante el borrado.
+            if ($e->getCode() === '23503') {
+                return back()->with('error', $mensaje);
+            }
+
+            throw $e;
+        }
+
+        return redirect()->route('ambientes.index')
+            ->with('success', 'Ambiente eliminado correctamente.');
+    }
+
     public function store(StoreAmbienteRequest $request)
     {
         try {
