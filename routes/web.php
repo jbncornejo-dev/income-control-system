@@ -58,6 +58,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        Route::get('/asignaturas', [AsignaturaController::class, 'index'])->name('asignaturas.index');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
     });
