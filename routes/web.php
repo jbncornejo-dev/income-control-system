@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
@@ -55,6 +56,14 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador')->group(function () {
+        // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
+        Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
+        // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
+        Route::patch('/ambientes/{ambiente}', [AmbienteController::class, 'update'])->name('ambientes.update');
+        // Eliminar únicamente ambientes sin exámenes relacionados.
+        Route::delete('/ambientes/{ambiente}', [AmbienteController::class, 'destroy'])->name('ambientes.destroy');
+        // Registrar ambientes con nombre único y capacidad positiva.
+        Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
