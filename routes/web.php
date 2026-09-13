@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
@@ -55,6 +56,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador')->group(function () {
+        // Registrar ambientes con nombre único y capacidad positiva.
+        Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
