@@ -82,4 +82,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
+    // Rutas temporales HU7 - Asignaturas (frontend dev)
+Route::middleware('auth')->prefix('asignaturas')->group(function () {
+    Route::get('/', function () {
+        return Inertia::render('Asignaturas/Index', [
+            'asignaturas' => [
+                ['id_asignatura' => 1, 'nombre' => 'Cálculo I'],
+                ['id_asignatura' => 2, 'nombre' => 'Física II'],
+                ['id_asignatura' => 3, 'nombre' => 'Química Orgánica'],
+                ['id_asignatura' => 4, 'nombre' => 'Álgebra Lineal'],
+                ['id_asignatura' => 5, 'nombre' => 'Estadística'],
+            ]
+        ]);
+    })->name('asignaturas.index');
+    Route::post('/', fn() => back()->with('success', 'Creado'))->name('asignaturas.store');
+    Route::put('/{id}', fn() => back()->with('success', 'Actualizado'))->name('asignaturas.update');
+    Route::delete('/{id}', fn() => back()->with('success', 'Eliminado'))->name('asignaturas.destroy');
+});
 });
