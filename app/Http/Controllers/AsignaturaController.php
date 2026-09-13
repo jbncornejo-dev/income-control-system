@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\IndexAsignaturaRequest;
 use App\Http\Requests\StoreAsignaturaRequest;
+use App\Http\Requests\UpdateAsignaturaRequest;
 use App\Models\Asignatura;
 use Illuminate\Database\QueryException;
 
@@ -32,6 +33,15 @@ class AsignaturaController extends Controller
         // Integración frontend: cuando exista la página Vue, sustituir esta respuesta
         // por Inertia::render con la página acordada y conservar la prop 'asignaturas'.
         return response()->json(['asignaturas' => $asignaturas]);
+    }
+
+    public function update(UpdateAsignaturaRequest $request, Asignatura $asignatura)
+    {
+        $asignatura->update($request->safe()->only('nombre_asignatura'));
+
+        // Integración frontend: el formulario Inertia puede enviar PATCH a esta ruta;
+        // la redirección conserva el flujo y comparte el mensaje mediante flash.success.
+        return back()->with('success', 'Asignatura actualizada correctamente.');
     }
 
     public function store(StoreAsignaturaRequest $request)

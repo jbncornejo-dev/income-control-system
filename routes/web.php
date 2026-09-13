@@ -62,6 +62,8 @@ Route::middleware('auth')->group(function () {
         // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
         // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.
         Route::get('/asignaturas', [AsignaturaController::class, 'index'])->name('asignaturas.index');
+        // Frontend: editar solo nombre_asignatura mediante PATCH; el ID de la URL identifica el registro.
+        Route::patch('/asignaturas/{asignatura}', [AsignaturaController::class, 'update'])->name('asignaturas.update');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
     });
