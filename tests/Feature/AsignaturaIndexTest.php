@@ -79,6 +79,20 @@ class AsignaturaIndexTest extends TestCase
         $this->assertSame($ids, $listedIds);
     }
 
+    public function test_page_beyond_last_returns_empty_data_and_preserves_total(): void
+    {
+        Asignatura::create(['nombre_asignatura' => 'Cálculo I']);
+
+        $this->actingAs(User::factory()->create())
+            ->get(route('asignaturas.index', ['page' => 2]))
+            ->assertOk()
+            ->assertJsonPath('asignaturas.data', [])
+            ->assertJsonPath('asignaturas.total', 1)
+            ->assertJsonPath('asignaturas.current_page', 2)
+            ->assertJsonPath('asignaturas.last_page', 1)
+            ->assertJsonPath('asignaturas.next_page_url', null);
+    }
+
     public function test_guest_is_redirected_to_login(): void
     {
         $this->get(route('asignaturas.index'))->assertRedirect(route('login'));

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Asignatura;
+use App\Models\Examen;
 use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -37,6 +38,26 @@ class AsignaturaUpdateTest extends TestCase
         $this->assertDatabaseHas('asignatura', ['id_asignatura' => $id, 'nombre_asignatura' => 'Cálculo II']);
         $this->assertSame('Física', $otra->fresh()->nombre_asignatura);
         $this->assertDatabaseCount('asignatura', 2);
+    }
+
+    public function test_renaming_subject_preserves_its_related_exam(): void
+    {
+        $examen = Examen::create([
+            'id_asignatura' => $this->asignatura->id_asignatura,
+            'fecha' => now()->addDay()->toDateString(),
+            'hora_inicio' => '10:00',
+            'duracion_minutos' => 60,
+        ]);
+        $datosExamen = $examen->fresh()->getAttributes();
+
+        $this->actingAs(User::factory()->create())
+            ->patch(route('asignaturas.update', $this->asignatura), ['nombre_asignatura' => 'Cálculo II'])
+            ->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $this->assertSame($datosExamen, $examen->fresh()->getAttributes());
+        $this->assertSame('Cálculo II', $examen->fresh()->asignatura->nombre_asignatura);
+        $this->assertDatabaseCount('asignatura', 1);
+        $this->assertDatabaseCount('examen', 1);
     }
 
     public function test_accepts_unchanged_name(): void
