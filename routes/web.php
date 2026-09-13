@@ -64,6 +64,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/asignaturas', [AsignaturaController::class, 'index'])->name('asignaturas.index');
         // Frontend: editar solo nombre_asignatura mediante PATCH; el ID de la URL identifica el registro.
         Route::patch('/asignaturas/{asignatura}', [AsignaturaController::class, 'update'])->name('asignaturas.update');
+        // Eliminar únicamente asignaturas sin exámenes relacionados.
+        Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
     });

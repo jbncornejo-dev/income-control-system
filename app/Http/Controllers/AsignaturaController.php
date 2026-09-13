@@ -7,6 +7,7 @@ use App\Http\Requests\StoreAsignaturaRequest;
 use App\Http\Requests\UpdateAsignaturaRequest;
 use App\Models\Asignatura;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
 
 class AsignaturaController extends Controller
 {
@@ -42,6 +43,29 @@ class AsignaturaController extends Controller
         // Integración frontend: el formulario Inertia puede enviar PATCH a esta ruta;
         // la redirección conserva el flujo y comparte el mensaje mediante flash.success.
         return back()->with('success', 'Asignatura actualizada correctamente.');
+    }
+
+    public function destroy(Asignatura $asignatura)
+    {
+        $mensaje = 'No se puede eliminar la asignatura porque tiene exámenes registrados';
+
+        if ($asignatura->examenes()->exists()) {
+            return back()->with('error', $mensaje);
+        }
+
+        try {
+            DB::transaction(fn () => $asignatura->delete());
+        } catch (QueryException $e) {
+            // La clave foránea también protege si se registra un examen durante el borrado.
+            if ($e->getCode() === '23503') {
+                return back()->with('error', $mensaje);
+            }
+
+            throw $e;
+        }
+
+        return redirect()->route('asignaturas.index')
+            ->with('success', 'Asignatura eliminada correctamente.');
     }
 
     public function store(StoreAsignaturaRequest $request)
