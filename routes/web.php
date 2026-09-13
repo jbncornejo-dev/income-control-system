@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\AsignaturaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -57,6 +58,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // Ruta para registrar asignaturas
+        Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
