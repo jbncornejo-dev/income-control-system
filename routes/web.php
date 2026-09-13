@@ -56,7 +56,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador')->group(function () {
-        // Listar ambientes con paginación de 15 registros.
+        // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Registrar ambientes con nombre único y capacidad positiva.
         Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexAmbienteRequest;
 use App\Http\Requests\StoreAmbienteRequest;
 use App\Models\Ambiente;
 use Illuminate\Database\QueryException;
@@ -9,12 +10,21 @@ use Illuminate\Support\Facades\DB;
 
 class AmbienteController extends Controller
 {
-    public function index()
+    public function index(IndexAmbienteRequest $request)
     {
-        $ambientes = Ambiente::query()
-            ->select(['id_ambiente', 'nombre_ambiente', 'capacidad'])
+        $filtros = $request->validated();
+        $query = Ambiente::query()->select(['id_ambiente', 'nombre_ambiente', 'capacidad']);
+
+        if (isset($filtros['nombre_ambiente'])) {
+            // Buscar literalmente los comodines escritos por el usuario.
+            $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['nombre_ambiente']);
+            $query->where('nombre_ambiente', 'ilike', '%'.$nombre.'%');
+        }
+
+        $ambientes = $query
             ->orderBy('id_ambiente')
-            ->paginate(15);
+            ->paginate(15)
+            ->appends($filtros);
 
         // Al integrar la vista, usar Inertia::render conservando la prop paginada 'ambientes'.
         return response()->json(['ambientes' => $ambientes]);
