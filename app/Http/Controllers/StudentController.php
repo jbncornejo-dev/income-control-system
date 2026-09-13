@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreEstudianteRequest;
+use App\Http\Requests\UpdateEstudianteRequest;
 use App\Models\Estudiante;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
@@ -34,6 +35,12 @@ class StudentController extends Controller
                 'career' => $s->codigo_universitario,
                 'status' => 'active',
                 'statusText' => 'Habilitada',
+                // Campos editables: el front los usa para precargar el formulario de edición.
+                'nombres' => $s->nombres,
+                'apellidos' => $s->apellidos,
+                'codigo_universitario' => $s->codigo_universitario,
+                'documento_identidad' => $s->documento_identidad,
+                'codigo_qr' => $s->codigo_qr,
             ];
         });
 
@@ -70,6 +77,23 @@ class StudentController extends Controller
         }
 
         return redirect()->route('estudiantes.index')->with('success', 'Estudiante registrado correctamente.');
+    }
+
+    public function update(UpdateEstudianteRequest $request, Estudiante $estudiante)
+    {
+        // codigo_universitario y documento_identidad NO son editables;
+        // solo se actualizan los campos definidos en el Form Request.
+        try {
+            $estudiante->update($request->safe()->only(['nombres', 'apellidos', 'codigo_qr']));
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23505') {
+                return back()->withErrors(['codigo_qr' => 'El código QR ya está registrado.'])->withInput();
+            }
+
+            throw $e;
+        }
+
+        return back()->with('success', 'Estudiante actualizado correctamente.');
     }
 
     public function importar(Request $request)

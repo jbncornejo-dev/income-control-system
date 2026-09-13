@@ -56,6 +56,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:administrador')->group(function () {
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
+        Route::put('/estudiantes/{estudiante}', [StudentController::class, 'update'])->name('estudiantes.update');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
