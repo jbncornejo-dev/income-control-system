@@ -3,9 +3,9 @@ services:
     image: docker.io/library/httpd:2.4.62 # Fully qualified image name for Podman/Docker short-name resolution.
     volumes:
       # Mount the application code for live updates
-      - ./:/var/www
+      - ./:/var/www:z
       # Mount the Apache configuration file
-      - ./docker/development/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ./docker/development/apache/httpd.conf:/usr/local/apache2/conf/httpd.conf:Z,ro
     ports:
       # Map port 80 inside the container to the port specified by 'HTTPD_PORT' on the host machine.
       # The default is >1024 so rootless Podman can bind it without a privileged-port sysctl.
@@ -38,7 +38,7 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     volumes:
       # Mount the application code for live updates
-      - ./:/var/www
+      - ./:/var/www:z
     networks:
       - nath-development
     depends_on:
@@ -65,7 +65,7 @@ services:
     env_file:
       - .env
     volumes:
-      - ./:/var/www
+      - ./:/var/www:z
     networks:
       - nath-development
 
@@ -78,7 +78,7 @@ services:
       - POSTGRES_USER=nath
       - POSTGRES_PASSWORD=secret
     volumes:
-      - postgres-data-development:/var/lib/postgresql/data
+      - postgres-data-development:/var/lib/postgresql/data:Z
     networks:
       - nath-development
 
