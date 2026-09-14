@@ -1,34 +1,35 @@
 <?php
 
 use App\Http\Controllers\AmbienteController;
+use App\Http\Controllers\AsignaturaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
-use App\Http\Controllers\AsignaturaController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    if (!Auth::check()) {
-        return Inertia::render('Welcome'); 
+    if (! Auth::check()) {
+        return Inertia::render('Welcome');
     }
 
     $user = Auth::user();
 
     $rutaDestino = match ($user->role) {
-        'admin'      => 'admin.dashboard',
-        'docente'    => 'docente.dashboard',
-        'control'    => 'control.dashboard',
+        'admin' => 'admin.dashboard',
+        'docente' => 'docente.dashboard',
+        'control' => 'control.dashboard',
         'estudiante' => 'estudiante.dashboard',
-        default      => null, // Asignamos null si el rol no coincide con ninguno
+        default => null, // Asignamos null si el rol no coincide con ninguno
     };
 
-    if (!$rutaDestino) {
+    if (! $rutaDestino) {
         Auth::logout(); // Invalidamos la sesión por seguridad
+
         // Redirigimos al login enviando un mensaje de error a la variable de sesión
         return redirect()->route('login')->withErrors([
-            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.'
+            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
         ]);
     }
 
@@ -66,6 +67,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::put('/estudiantes/{estudiante}', [StudentController::class, 'update'])->name('estudiantes.update');
+        // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
+        Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
@@ -77,7 +80,7 @@ Route::middleware('auth')->group(function () {
         // Eliminar únicamente asignaturas sin exámenes relacionados.
         Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
-        Route::post('/asignaturas',[AsignaturaController::class, 'store'])->name('asignaturas.store');
+        Route::post('/asignaturas', [AsignaturaController::class, 'store'])->name('asignaturas.store');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {

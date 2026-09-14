@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateEstudianteRequest;
 use App\Models\Estudiante;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class StudentController extends Controller
@@ -94,6 +95,33 @@ class StudentController extends Controller
         }
 
         return back()->with('success', 'Estudiante actualizado correctamente.');
+    }
+
+    public function destroy(Estudiante $estudiante)
+    {
+        $mensaje = 'No se puede eliminar el estudiante porque tiene registros asociados en el sistema';
+
+        if (
+            $estudiante->habilitaciones()->exists()
+            || $estudiante->registrosIngreso()->exists()
+            || $estudiante->incidencias()->exists()
+        ) {
+            return back()->with('error', $mensaje);
+        }
+
+        try {
+            DB::transaction(fn () => $estudiante->delete());
+        } catch (QueryException $e) {
+            // La clave foránea protege si se asocia un registro durante el borrado.
+            if ($e->getCode() === '23503') {
+                return back()->with('error', $mensaje);
+            }
+
+            throw $e;
+        }
+
+        return redirect()->route('estudiantes.index')
+            ->with('success', 'Estudiante eliminado correctamente.');
     }
 
     public function importar(Request $request)
