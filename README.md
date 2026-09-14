@@ -73,10 +73,10 @@ cd app
    composer install
 
    # Genera la clave de la aplicación
-   php artisan key:generate --seed
+   php artisan key:generate
 
    # Ejecuta las migraciones
-   php artisan migrate
+   php artisan migrate --seed
    ```
    > Compila la interfaz:
 
