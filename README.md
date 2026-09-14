@@ -34,7 +34,11 @@ oficial de [Docker](https://docs.docker.com/get-docker/) y
 ### Clonar el repositorio
 
 ```bash
+# Via HTTPS
+git clone https://github.com/jbncornejo-dev/income-control-system.git app
+# Via SSH
 git clone git@github.com:jbncornejo-dev/income-control-system.git app
+# Entrar al proyecto
 cd app
 ```
 
