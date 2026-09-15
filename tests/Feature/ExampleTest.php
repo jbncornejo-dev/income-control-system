@@ -14,6 +14,6 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
-    }
+        // Inertia: '/' redirige a /login si guest (redirectGuestsTo)
+        $response->assertStatus(200);    }
 }
