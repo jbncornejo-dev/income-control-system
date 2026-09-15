@@ -64,6 +64,12 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $this->call(EstudianteSeeder::class);
+        $this->call([
+            AmbienteSeeder::class,
+            AsignaturaSeeder::class,
+            EstudianteSeeder::class,
+            ExamenSeeder::class,
+            HabilitacionSeeder::class,
+        ]);
     }
 }
