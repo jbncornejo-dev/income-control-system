@@ -51,7 +51,7 @@
         </table>
       </div>
 
-      <Pagination :currentPage="page" :totalPages="5" @change-page="page = $event" />
+      <Pagination :currentPage="currentPage" :totalPages="totalPages" @change-page="changePage" />
       <Modal :open="mostrarModal" title="Registrar Estudiante" @close="mostrarModal = false">
         <EstudianteForm ref="refFormulario" @success="onEstudianteCreado" />
         
@@ -86,7 +86,7 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { usePage, useForm } from '@inertiajs/vue3';
+import { router, usePage, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import SearchInput from '@/components/SearchInput.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
@@ -110,13 +110,28 @@ const props = defineProps({
     type: Object,
     default: () => ({ data: [] }),
   },
+  filtros: {
+    type: Object,
+    default: () => ({}),
+  },
 })
 
-const searchQuery = ref('');
-const page = ref(1);
+const searchQuery = ref(props.filtros?.search ?? '');
 const mostrarModal = ref(false);
 const refFormulario = ref(null);
 const pageProps = usePage();
+
+const currentPage = computed(() => props.estudiantes?.current_page ?? 1);
+const totalPages = computed(() => props.estudiantes?.last_page ?? 1);
+
+const changePage = (newPage) => {
+  if (newPage < 1 || newPage > totalPages.value || newPage === currentPage.value) return;
+  const url = newPage > currentPage.value
+    ? props.estudiantes.next_page_url
+    : props.estudiantes.prev_page_url;
+  if (!url) return;
+  router.visit(url, { preserveState: true, preserveScroll: true });
+};
 
 // Soporta tanto paginator {data:[]} como array plano; fallback demo solo si no hay datos
 const students = computed(() => {
@@ -140,7 +155,7 @@ const onEstudianteCreado = () => {
 };
 
 const submitCsv = () => {
-  csvForm.post(route('estudiantes.importar'), {
+  csvForm.post('/estudiantes/importar', {
     preserveScroll: true,
     onSuccess: (page) => {
       // Capturamos la respuesta del backend enviada mediante Inertia flash data
