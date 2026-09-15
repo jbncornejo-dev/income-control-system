@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
 use App\Models\Ambiente;
 use App\Models\Examen;
@@ -11,6 +12,49 @@ use Illuminate\Validation\ValidationException;
 
 class ExamenController extends Controller
 {
+    public function index(IndexExamenRequest $request)
+    {
+        $filtros = $request->validated();
+        $query = Examen::query()
+            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'])
+            ->with([
+                'asignatura:id_asignatura,nombre_asignatura',
+                'examenesAmbientes.ambiente:id_ambiente,nombre_ambiente',
+            ]);
+
+        if (isset($filtros['asignatura'])) {
+            // Buscar literalmente los comodines escritos por el usuario.
+            $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['asignatura']);
+            $query->whereHas('asignatura', function ($subquery) use ($nombre) {
+                $subquery->where('nombre_asignatura', 'ilike', '%'.$nombre.'%');
+            });
+        }
+
+        if (isset($filtros['fecha'])) {
+            $query->where('fecha', $filtros['fecha']);
+        }
+
+        if (isset($filtros['hora_inicio'])) {
+            $query->where('hora_inicio', $filtros['hora_inicio']);
+        }
+
+        $examenes = $query
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->orderBy('id_examen')
+            ->paginate(15)
+            ->appends($filtros);
+
+        return response()->json([
+            'examenes' => $examenes,
+            'filtros' => [
+                'asignatura' => $filtros['asignatura'] ?? null,
+                'fecha' => $filtros['fecha'] ?? null,
+                'hora_inicio' => $filtros['hora_inicio'] ?? null,
+            ],
+        ]);
+    }
+
     public function store(StoreExamenRequest $request)
     {
         $datos = $request->validated();
