@@ -70,6 +70,8 @@ Route::middleware('auth')->group(function () {
         // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
+        // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
+        Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
         // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
