@@ -8,32 +8,19 @@ use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Models\Estudiante;
+use App\Models\Examen;
+use App\Models\Asignatura;
+use App\Models\Ambiente;
+use App\Models\User;
 
 Route::get('/', function () {
     if (! Auth::check()) {
         return Inertia::render('Welcome');
     }
-
-    $user = Auth::user();
-
-    $rutaDestino = match ($user->role) {
-        'admin' => 'admin.dashboard',
-        'docente' => 'docente.dashboard',
-        'control' => 'control.dashboard',
-        'estudiante' => 'estudiante.dashboard',
-        default => null, // Asignamos null si el rol no coincide con ninguno
-    };
-
-    if (! $rutaDestino) {
-        Auth::logout(); // Invalidamos la sesión por seguridad
-
-        // Redirigimos al login enviando un mensaje de error a la variable de sesión
-        return redirect()->route('login')->withErrors([
-            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
-        ]);
-    }
-
-    return redirect()->route($rutaDestino);
+    
+    // Si está autenticado, que el controlador de tráfico del dashboard se encargue
+    return redirect()->route('dashboard');
 })->name('home');
 
 Route::middleware('guest')->group(function () {
@@ -49,8 +36,42 @@ Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
     Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    $user = auth()->user();
+
+    // 1. Verificación de seguridad inicial
+    if (!$user->rol) {
+        abort(403, 'No tienes un rol asignado en la base de datos.');
+    }
+
+    // 2. LÓGICA PARA EL ADMINISTRADOR
+    // Evaluamos el ID del rol a través de la relación
+    if ($user->rol->id_rol === 1) { 
+        return Inertia::render('Admin/Dashboard', [
+            'stats' => [
+                'estudiantes' => Estudiante::count(),
+                'examenes'    => Examen::count(),
+                'asignaturas' => Asignatura::count(),
+                'ambientes'   => Ambiente::count(),
+                'usuarios'    => User::count(),
+            ],
+            'proximosExamenes' => Examen::with(['asignatura', 'ambientes'])
+                ->orderBy('fecha', 'asc')
+                ->take(4)
+                ->get()
+        ]);
+    }
+
+    // 3. LÓGICA PARA EL ESTUDIANTE
+    if ($user->rol->id_rol === 2) { 
+        return Inertia::render('Estudiantes/Dashboard', [
+            // Aquí enviarás los datos específicos del estudiante
+        ]);
+    }
+
+    // Si el id_rol no es 1 ni 2 (por ejemplo, docente), cae aquí
+    abort(403, 'Tu rol no tiene un panel principal configurado.');
+
+})->middleware(['verified'])->name('dashboard');
 
     Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
