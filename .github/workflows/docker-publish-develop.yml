@@ -1,4 +1,3 @@
-# .github/workflows/docker-publish-develop.yml
 name: Build and Push to Docker Hub (develop)
 
 on:
@@ -21,19 +20,10 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push php-fpm image
+      - name: Build and push combined image for Render
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./docker/common/php-fpm/Dockerfile
-          target: production
+          file: ./docker/production/Dockerfile-render
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/income-control-system-php-fpm:develop
-
-      - name: Build and push web (apache) image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ./docker/production/apache/Dockerfile
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/income-control-system-web:develop
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/income-control-system:develop
