@@ -133,8 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
-        Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
-        Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
         // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
         // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.
@@ -148,6 +147,8 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
+        Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
+        Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Asociar estudiantes a un examen
         Route::post(
             '/examenes/{examen}/habilitaciones',

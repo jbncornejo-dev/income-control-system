@@ -8,7 +8,7 @@ class IndexExamenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->rol?->nombre_rol === 'administrador';
+        return in_array($this->user()?->rol?->nombre_rol, ['administrador', 'docente']);
     }
 
     protected function prepareForValidation(): void
