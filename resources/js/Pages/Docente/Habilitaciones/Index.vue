@@ -1,6 +1,9 @@
 <script setup>
+import { ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
+import Modal from '@/components/ui/Modal.vue';
+import EstudianteForm from '@/components/forms/EstudianteForm.vue';
 
 const props = defineProps({
     examen: Object,
@@ -12,6 +15,18 @@ const props = defineProps({
 const getNombreCompleto = (estudiante) => {
     if (!estudiante) return 'N/D';
     return `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+const showModal = ref(false);
+const selectedStudent = ref(null);
+
+// Abre el modal. Si recibe un estudiante, entra en "modo edición". Si no, "modo creación".
+const openModal = (estudiante = null) => {
+    selectedStudent.value = estudiante;
+    showModal.value = true;
+};
+
+const closeModal = () => {
+    showModal.value = false;
+    selectedStudent.value = null;
 };
 </script>
 
@@ -68,12 +83,16 @@ const getNombreCompleto = (estudiante) => {
 
             <!-- Barra de Búsqueda y Filtros -->
             <div class="action-bar">
-                <input type="text" placeholder="Buscar estudiante..." class="search-input">
-                <div class="filter-group">
-                    <button class="filter-btn active">Todos</button>
-                    <button class="filter-btn">Habilitados</button>
-                    <button class="filter-btn">Inhabilitados</button>
+                <div style="display: flex; gap: 1rem; flex: 1;">
+                    <input type="text" placeholder="Buscar estudiante..." class="search-input">
+                    <div class="filter-group">
+                        <button class="filter-btn active">Todos</button>
+                        <button class="filter-btn">Habilitados</button>
+                        <button class="filter-btn">Inhabilitados</button>
+                    </div>
                 </div>
+                <!-- NUEVO BOTÓN PARA ABRIR MODAL -->
+                <button @click="openModal()" class="btn-primary">+ Añadir Estudiante</button>
             </div>
 
             <!-- Tabla de Estudiantes -->
@@ -130,6 +149,23 @@ const getNombreCompleto = (estudiante) => {
                 </table>
             </div>
         </div>
+        <!-- MODAL DE ESTUDIANTE -->
+            <Modal :show="showModal" @close="closeModal">
+                <div class="modal-container">
+                    <div class="modal-header">
+                        <h2>{{ selectedStudent ? 'Editar Estudiante' : 'Añadir Estudiante al Examen' }}</h2>
+                        <button @click="closeModal" class="btn-close">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- El componente de Iomara recibe el estudiante (si existe) para rellenar los campos -->
+                        <EstudianteForm 
+                            :estudiante="selectedStudent" 
+                            @submitted="closeModal" 
+                            @canceled="closeModal"
+                        />
+                    </div>
+                </div>
+            </Modal>
     </AuthenticatedLayout>
 </template>
 
@@ -351,5 +387,57 @@ const getNombreCompleto = (estudiante) => {
     text-align: center;
     color: #6b7280;
     padding: 2rem !important;
+}
+
+/* Estilos para el nuevo botón */
+.btn-primary {
+    background-color: #1e1b4b; /* Azul oscuro corporativo */
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border: none;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #312e81;
+}
+
+/* Estilos internos del Modal */
+.modal-container {
+    padding: 1.5rem;
+    background-color: #ffffff;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.btn-close:hover {
+    color: #4b5563;
 }
 </style>
