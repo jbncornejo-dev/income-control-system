@@ -35,6 +35,12 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
+    Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
+    Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
+    Route::get('/control/dashboard', function () { return Inertia::render('Dashboard'); })->name('control.dashboard');
+    Route::get('/estudiante/dashboard', function () { return Inertia::render('Dashboard'); })->name('estudiante.dashboard');
+
+    // Keep generic dashboard route to prevent breaking hardcoded links
     Route::get('/dashboard', function () {
     $user = auth()->user();
 
