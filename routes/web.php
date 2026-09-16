@@ -16,12 +16,14 @@ Route::get('/', function () {
 
     $user = Auth::user();
 
-    $rutaDestino = match ($user->role) {
-        'admin' => 'admin.dashboard',
-        'docente' => 'docente.dashboard',
-        'control' => 'control.dashboard',
-        'estudiante' => 'estudiante.dashboard',
-        default => null, // Asignamos null si el rol no coincide con ninguno
+    $role = $user->rol?->nombre_rol;
+
+    $rutaDestino = match ($role) {
+        'administrador' => '/admin/dashboard',
+        'docente' => '/docente/dashboard',
+        'personal de control de ingreso' => '/control/dashboard',
+        'estudiante' => '/estudiante/dashboard',
+        default => null,
     };
 
     if (! $rutaDestino) {
@@ -29,11 +31,11 @@ Route::get('/', function () {
 
         // Redirigimos al login enviando un mensaje de error a la variable de sesión
         return redirect()->route('login')->withErrors([
-            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
+            'email' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
         ]);
     }
 
-    return redirect()->route($rutaDestino);
+    return redirect($rutaDestino);
 })->name('home');
 
 Route::middleware('guest')->group(function () {
@@ -48,6 +50,12 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
+    Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
+    Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
+    Route::get('/control/dashboard', function () { return Inertia::render('Dashboard'); })->name('control.dashboard');
+    Route::get('/estudiante/dashboard', function () { return Inertia::render('Dashboard'); })->name('estudiante.dashboard');
+
+    // Keep generic dashboard route to prevent breaking hardcoded links
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
