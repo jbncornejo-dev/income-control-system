@@ -9,7 +9,7 @@
 
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
-        <button class="btn-primary" @click="mostrarModal = true">Añadir Estudiante</button>
+        <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
       </div>
 
       <div class="actions-container">
@@ -32,34 +32,49 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>CI</th>
-              <th>Nombre Completo</th>
-              <th>Carrera</th>
-              <th>Estado</th>
+              <th>Código Univ.</th>
+              <th>Documento Identidad</th>
+              <th>Nombres</th>
+              <th>Apellidos</th>
               <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="student in filteredStudents" :key="student.id">
-              <td>{{ student.ci }}</td>
-              <td>{{ student.name }}</td>
-              <td>{{ student.career }}</td>
-              <td><StatusBadge :status="student.status" :text="student.statusText" /></td>
-              <td><button class="btn-action">Editar</button></td>
+              <!-- Mapeamos las propiedades reales de tu backend -->
+              <td>{{ student.codigo_universitario }}</td>
+              <td>{{ student.documento_identidad }}</td>
+              <td>{{ student.nombres }}</td>
+              <td>{{ student.apellidos }}</td>
+              <td>
+                <!-- Botones de Acción -->
+                <button class="btn-action" @click="abrirModalEditar(student)">Editar</button>
+                <button class="btn-action btn-danger" @click="eliminarEstudiante(student.id)">Eliminar</button>
+              </td>
             </tr>
           </tbody>
         </table>
       </div>
 
       <Pagination :currentPage="currentPage" :totalPages="totalPages" @change-page="changePage" />
-      <Modal :open="mostrarModal" title="Registrar Estudiante" @close="mostrarModal = false">
-        <EstudianteForm ref="refFormulario" @success="onEstudianteCreado" />
-        
-        <template #footer>
-          <button @click="mostrarModal = false" style="margin-right: 15px; background: transparent; border: none; cursor: pointer;">Cancelar</button>
-          <button class="btn-primary" @click="refFormulario.emitirGuardado()">Guardar Registro</button>
-        </template>
-      </Modal>
+      <Modal 
+  :open="mostrarModal" 
+  :title="estudianteSeleccionado ? 'Editar Estudiante' : 'Registrar Estudiante'" 
+  @close="mostrarModal = false"
+>
+  <EstudianteForm 
+    ref="refFormulario" 
+    :estudiante="estudianteSeleccionado" 
+    @success="onEstudianteCreado" 
+  />
+  
+  <template #footer>
+    <button @click="mostrarModal = false" style="margin-right: 15px; background: transparent; border: none; cursor: pointer;">Cancelar</button>
+    <button class="btn-primary" @click="refFormulario.emitirGuardado()">
+      {{ estudianteSeleccionado ? 'Actualizar Registro' : 'Guardar Registro' }}
+    </button>
+  </template>
+</Modal>
     </div>
   </AuthenticatedLayout>
   <Modal :show="showModal" @close="showModal = false">
@@ -118,6 +133,29 @@ const props = defineProps({
 
 const searchQuery = ref(props.filtros?.search ?? '');
 const mostrarModal = ref(false);
+const estudianteSeleccionado = ref(null);
+// Función para abrir el modal en modo "Creación"
+const abrirModalCrear = () => {
+  estudianteSeleccionado.value = null; // Limpiamos datos previos
+  mostrarModal.value = true;
+};
+
+// Función para abrir el modal en modo "Edición"
+const abrirModalEditar = (estudiante) => {
+  estudianteSeleccionado.value = estudiante; // Cargamos los datos del estudiante
+  mostrarModal.value = true;
+};
+
+// Función para eliminar
+const eliminarEstudiante = (id) => {
+  if (confirm('¿Estás seguro de que deseas eliminar este registro?')) {
+    // Usamos router.delete de Inertia para llamar al backend
+    router.delete(`/estudiantes/${id}`, {
+      preserveScroll: true,
+    });
+  }
+};
+
 const refFormulario = ref(null);
 const pageProps = usePage();
 
@@ -190,4 +228,13 @@ const submitCsv = () => {
 .error-container { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 4px; }
 .error-list { max-height: 200px; overflow-y: auto; padding-left: 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; }
 .btn-close { align-self: flex-end; padding: 0.5rem 1rem; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.btn-danger {
+  color: #dc3545;
+  border-color: #dc3545;
+  margin-left: 8px;
+}
+.btn-danger:hover {
+  background-color: #dc3545;
+  color: white;
+}
 </style>
