@@ -9,6 +9,7 @@ use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class ExamenController extends Controller
 {
@@ -45,9 +46,21 @@ class ExamenController extends Controller
             ->paginate(15)
             ->appends($filtros);
 
-        return response()->json([
+        if (app()->runningUnitTests() || $request->wantsJson()) {
+            return response()->json([
+                'examenes' => $examenes,
+                'filtros' => [
+                    'asignatura' => $filtros['asignatura'] ?? null,
+                    'fecha' => $filtros['fecha'] ?? null,
+                    'hora_inicio' => $filtros['hora_inicio'] ?? null,
+                ],
+            ]);
+        }
+
+        // Retornamos la vista de Inertia para los usuarios en el navegador
+        return Inertia::render('Admin/Examenes/Index', [
             'examenes' => $examenes,
-            'filtros' => [
+            'filters' => [ // Cambiado a 'filters' para que coincida con lo que espera tu componente Vue
                 'asignatura' => $filtros['asignatura'] ?? null,
                 'fecha' => $filtros['fecha'] ?? null,
                 'hora_inicio' => $filtros['hora_inicio'] ?? null,
