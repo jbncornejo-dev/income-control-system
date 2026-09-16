@@ -26,23 +26,9 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
-        $role = $request->user()->rol?->nombre_rol;
-        $url = match($role) {
-            'administrador' => '/admin/dashboard',
-            'docente' => '/docente/dashboard',
-            'personal de control de ingreso' => '/control/dashboard',
-            'estudiante' => '/estudiante/dashboard',
-            default => null,
-        };
-
-        if ($url) {
-            return redirect()->intended($url);
-        }
-
-        Auth::logout();
-        return redirect()->route('login')->withErrors([
-            'email' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
-        ]);
+        // Todos los usuarios van a /dashboard. 
+        // El archivo web.php decidirá qué vista renderizar según su rol.
+        return redirect()->intended(route('dashboard'));
     }
 
     public function register(Request $request)

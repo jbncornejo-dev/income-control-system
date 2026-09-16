@@ -57,10 +57,15 @@ class ExamenController extends Controller
             ]);
         }
 
-        // Retornamos la vista de Inertia para los usuarios en el navegador
-        return Inertia::render('Admin/Examenes/Index', [
+        // Determinamos la vista según el rol del usuario autenticado
+        $vista = auth()->user()->rol->nombre_rol === 'docente' 
+            ? 'Docente/Examenes/Index' 
+            : 'Admin/Examenes/Index';
+
+        // Retornamos la vista de Inertia correspondiente
+        return Inertia::render($vista, [
             'examenes' => $examenes,
-            'filters' => [ // Cambiado a 'filters' para que coincida con lo que espera tu componente Vue
+            'filters' => [
                 'asignatura' => $filtros['asignatura'] ?? null,
                 'fecha' => $filtros['fecha'] ?? null,
                 'hora_inicio' => $filtros['hora_inicio'] ?? null,
