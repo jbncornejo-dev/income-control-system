@@ -35,49 +35,83 @@ Route::middleware('guest')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
-    Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
+    /*Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
     Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
     Route::get('/control/dashboard', function () { return Inertia::render('Dashboard'); })->name('control.dashboard');
     Route::get('/estudiante/dashboard', function () { return Inertia::render('Dashboard'); })->name('estudiante.dashboard');
-
+    */
     // Keep generic dashboard route to prevent breaking hardcoded links
     Route::get('/dashboard', function () {
-    $user = auth()->user();
+        $user = auth()->user();
 
-    // 1. Verificación de seguridad inicial
-    if (!$user->rol) {
-        abort(403, 'No tienes un rol asignado en la base de datos.');
-    }
+        // 1. Verificación de seguridad inicial
+        if (!$user->rol) {
+            abort(403, 'No tienes un rol asignado en la base de datos.');
+        }
 
-    // 2. LÓGICA PARA EL ADMINISTRADOR
-    // Evaluamos el ID del rol a través de la relación
-    if ($user->rol->id_rol === 1) { 
-        return Inertia::render('Admin/Dashboard', [
-            'stats' => [
-                'estudiantes' => Estudiante::count(),
-                'examenes'    => Examen::count(),
-                'asignaturas' => Asignatura::count(),
-                'ambientes'   => Ambiente::count(),
-                'usuarios'    => User::count(),
-            ],
-            'proximosExamenes' => Examen::with(['asignatura', 'ambientes'])
+        $nombreRol = $user->rol->nombre_rol;
+
+        // 2. LÓGICA PARA EL ADMINISTRADOR
+        if ($nombreRol === 'administrador') { 
+            return Inertia::render('Admin/Dashboard', [
+                'stats' => [
+                    'estudiantes' => Estudiante::count(),
+                    'examenes'    => Examen::count(),
+                    'asignaturas' => Asignatura::count(),
+                    'ambientes'   => Ambiente::count(),
+                    'usuarios'    => User::count(),
+                ],
+                // Corregida la relación de ambientes para coincidir con tu controlador
+                'proximosExamenes' => Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+                    ->orderBy('fecha', 'asc')
+                    ->take(4)
+                    ->get()
+            ]);
+        }
+
+        // 3. LÓGICA PARA EL DOCENTE
+        if ($nombreRol === 'docente') { 
+            // Omitimos el filtro de id_usuario porque no existe en la BD aún.
+            $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+                ->withCount([
+                    'habilitaciones as hab_count' => function ($query) {
+                        $query->where('estado_habilitado', true);
+                    },
+                    'habilitaciones as inhab_count' => function ($query) {
+                        $query->where('estado_habilitado', false);
+                    }
+                ])
+                ->where('fecha', '>=', now()->toDateString())
                 ->orderBy('fecha', 'asc')
-                ->take(4)
-                ->get()
-        ]);
-    }
+                ->orderBy('hora_inicio', 'asc')
+                ->take(3)
+                ->get();
 
-    // 3. LÓGICA PARA EL ESTUDIANTE
-    if ($user->rol->id_rol === 2) { 
-        return Inertia::render('Estudiantes/Dashboard', [
-            // Aquí enviarás los datos específicos del estudiante
-        ]);
-    }
+            return Inertia::render('Docente/Dashboard', [
+                'stats' => [
+                    'examenes'      => $proximosExamenes->count(),
+                    'habilitados'   => (int) $proximosExamenes->sum('hab_count'),
+                    'inhabilitados' => (int) $proximosExamenes->sum('inhab_count'),
+                ],
+                'proximosExamenes' => $proximosExamenes
+            ]);
+        }
 
-    // Si el id_rol no es 1 ni 2 (por ejemplo, docente), cae aquí
-    abort(403, 'Tu rol no tiene un panel principal configurado.');
+        // 4. LÓGICA PARA EL ESTUDIANTE
+        if ($nombreRol === 'estudiante') { 
+            return Inertia::render('Estudiantes/Dashboard', [
+                // Datos específicos del estudiante
+            ]);
+        }
+        
+        // 5. LÓGICA PARA CONTROL DE INGRESO
+        if ($nombreRol === 'personal de control de ingreso') { 
+            return Inertia::render('Control/Dashboard', []); 
+        }
 
-})->middleware(['verified'])->name('dashboard');
+        abort(403, 'Tu rol no tiene un panel principal configurado.');
+
+    })->middleware(['verified'])->name('dashboard');
 
     Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
