@@ -26,6 +26,8 @@ class AuthController extends Controller
 
         $request->session()->regenerate();
 
+        // Todos los usuarios van a /dashboard. 
+        // El archivo web.php decidirá qué vista renderizar según su rol.
         return redirect()->intended(route('dashboard'));
     }
 

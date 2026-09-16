@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\IndexEstudianteRequest;
 use App\Http\Requests\StoreEstudianteRequest;
 use App\Http\Requests\UpdateEstudianteRequest;
 use App\Models\Estudiante;
@@ -12,15 +13,20 @@ use Inertia\Inertia;
 
 class StudentController extends Controller
 {
-    public function index(Request $request)
+    public function index(IndexEstudianteRequest $request)
     {
+        $filtros = $request->validated();
+
         $students = Estudiante::query()
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('codigo_universitario', 'like', "%{$search}%")
-                        ->orWhere('documento_identidad', 'like', "%{$search}%")
-                        ->orWhere('nombres', 'ilike', "%{$search}%")
-                        ->orWhere('apellidos', 'ilike', "%{$search}%");
+            ->when(isset($filtros['search']), function ($query) use ($filtros) {
+                // Buscar literalmente el texto escrito, sin tratar los comodines de LIKE.
+                $termino = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['search']);
+
+                $query->where(function ($q) use ($termino) {
+                    $q->where('codigo_universitario', 'ilike', "%{$termino}%")
+                        ->orWhere('documento_identidad', 'ilike', "%{$termino}%")
+                        ->orWhere('nombres', 'ilike', "%{$termino}%")
+                        ->orWhere('apellidos', 'ilike', "%{$termino}%");
                 });
             })
             ->orderBy('apellidos')
@@ -47,6 +53,9 @@ class StudentController extends Controller
 
         return Inertia::render('Estudiantes/Index', [
             'estudiantes' => $mapped,
+            'filtros' => [
+                'search' => $filtros['search'] ?? null,
+            ],
         ]);
     }
 

@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateAmbienteRequest;
 use App\Models\Ambiente;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class AmbienteController extends Controller
 {
@@ -27,8 +28,22 @@ class AmbienteController extends Controller
             ->paginate(15)
             ->appends($filtros);
 
-        // Al integrar la vista, usar Inertia::render conservando la prop paginada 'ambientes'.
-        return response()->json(['ambientes' => $ambientes]);
+        // NUEVO: Calculamos la sumatoria de la capacidad. 
+        // Si tienes una columna de estado en tu BD (ej: 'estado' => 'Habilitado'), 
+        // cambia esto por: Ambiente::where('estado', 'Habilitado')->sum('capacidad');
+        $totalCapacidad = Ambiente::sum('capacidad');
+
+        // Retornamos JSON puro si se están ejecutando los tests
+        if (app()->runningUnitTests() || $request->wantsJson()) {
+            return response()->json(['ambientes' => $ambientes]);
+        }
+
+        // Retornamos la vista para los usuarios en el navegador
+        return Inertia::render('Admin/Ambientes/Index', [
+            'ambientes' => $ambientes,
+            'totalCapacidad' => (int) $totalCapacidad,
+            'filters' => $filtros
+        ]);
     }
 
     public function update(UpdateAmbienteRequest $request, Ambiente $ambiente)

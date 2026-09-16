@@ -63,5 +63,13 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        $this->call([
+            AmbienteSeeder::class,
+            AsignaturaSeeder::class,
+            EstudianteSeeder::class,
+            ExamenSeeder::class,
+            HabilitacionSeeder::class,
+        ]);
     }
 }
