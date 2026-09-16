@@ -27,3 +27,7 @@ jobs:
           file: ./docker/production/Dockerfile-render
           push: true
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/income-control-system:develop
+          
+      - name: Trigger Render Deploy Hook
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_DEVELOP }}
