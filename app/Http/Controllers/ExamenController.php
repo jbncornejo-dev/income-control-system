@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
+use App\Http\Requests\UpdateExamenRequest;
 use App\Models\Ambiente;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -58,8 +60,8 @@ class ExamenController extends Controller
         }
 
         // Determinamos la vista según el rol del usuario autenticado
-        $vista = auth()->user()->rol->nombre_rol === 'docente' 
-            ? 'Docente/Examenes/Index' 
+        $vista = auth()->user()->rol->nombre_rol === 'docente'
+            ? 'Docente/Examenes/Index'
             : 'Admin/Examenes/Index';
 
         // Retornamos la vista de Inertia correspondiente
@@ -114,9 +116,79 @@ class ExamenController extends Controller
      *
      * @param  array<string, mixed>  $datos
      */
-    private function hayConflictoDeAmbiente(array $datos): bool
+    public function update(UpdateExamenRequest $request, Examen $examen)
+    {
+        $datos = $request->validated();
+
+        try {
+            DB::transaction(function () use ($examen, $datos) {
+                // Horario efectivo: fusiona lo enviado con lo ya existente.
+                $efectivo = [
+                    'id_asignatura' => $datos['id_asignatura'] ?? $examen->id_asignatura,
+                    'fecha' => $datos['fecha'] ?? $examen->fecha,
+                    'hora_inicio' => $datos['hora_inicio'] ?? $examen->hora_inicio,
+                    'duracion_minutos' => $datos['duracion_minutos'] ?? $examen->duracion_minutos,
+                    'normas_generales' => array_key_exists('normas_generales', $datos)
+                        ? $datos['normas_generales']
+                        : $examen->normas_generales,
+                ];
+
+                $idAmbientes = array_key_exists('id_ambientes', $datos)
+                    ? $datos['id_ambientes']
+                    : $examen->examenesAmbientes()->pluck('id_ambiente')->all();
+
+                // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
+                Ambiente::query()
+                    ->whereIn('id_ambiente', $idAmbientes)
+                    ->lockForUpdate()
+                    ->get();
+
+                // No se permite cambiar ambientes si ya hay ingresos registrados.
+                if (array_key_exists('id_ambientes', $datos)
+                    && $examen->examenesAmbientes()->whereHas('registrosIngreso')->exists()
+                ) {
+                    throw ValidationException::withMessages([
+                        'id_ambientes' => 'No se pueden modificar los ambientes porque el examen ya tiene ingresos registrados.',
+                    ]);
+                }
+
+                if ($this->hayConflictoDeAmbiente($efectivo, $examen->id_examen)) {
+                    throw ValidationException::withMessages([
+                        'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+                    ]);
+                }
+
+                $examen->update($efectivo);
+
+                if (array_key_exists('id_ambientes', $datos)) {
+                    // Reemplazo total del pivot: borra las actuales y crea las nuevas.
+                    $examen->examenesAmbientes()->delete();
+                    foreach ($datos['id_ambientes'] as $idAmbiente) {
+                        ExamenAmbiente::create([
+                            'id_examen' => $examen->id_examen,
+                            'id_ambiente' => $idAmbiente,
+                        ]);
+                    }
+                }
+            });
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23503') {
+                return back()->withErrors([
+                    'id_ambientes' => 'No se pueden modificar los ambientes porque el examen ya tiene ingresos registrados.',
+                ])->withInput();
+            }
+            throw $e;
+        }
+
+        return back()->with('success', 'Examen actualizado correctamente.');
+    }
+
+    private function hayConflictoDeAmbiente(array $datos, ?int $idExamenIgnorar = null): bool
     {
         return Examen::query()
+            ->when($idExamenIgnorar !== null, function ($query) use ($idExamenIgnorar) {
+                $query->where('id_examen', '!=', $idExamenIgnorar);
+            })
             ->where('fecha', $datos['fecha'])
             ->whereHas('examenesAmbientes', function ($query) use ($datos) {
                 $query->whereIn('id_ambiente', $datos['id_ambientes']);
