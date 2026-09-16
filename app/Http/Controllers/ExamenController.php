@@ -9,6 +9,7 @@ use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class ExamenController extends Controller
 {
@@ -45,7 +46,7 @@ class ExamenController extends Controller
             ->paginate(15)
             ->appends($filtros);
 
-        return response()->json([
+        return Inertia::render('Admin/Examenes/Index', [
             'examenes' => $examenes,
             'filtros' => [
                 'asignatura' => $filtros['asignatura'] ?? null,
