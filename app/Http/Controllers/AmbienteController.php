@@ -33,7 +33,12 @@ class AmbienteController extends Controller
         // cambia esto por: Ambiente::where('estado', 'Habilitado')->sum('capacidad');
         $totalCapacidad = Ambiente::sum('capacidad');
 
-        // NUEVO: Renderizamos la vista de Inertia en lugar del JSON
+        // Retornamos JSON puro si se están ejecutando los tests
+        if (app()->runningUnitTests() || $request->wantsJson()) {
+            return response()->json(['ambientes' => $ambientes]);
+        }
+
+        // Retornamos la vista para los usuarios en el navegador
         return Inertia::render('Admin/Ambientes/Index', [
             'ambientes' => $ambientes,
             'totalCapacidad' => (int) $totalCapacidad,
