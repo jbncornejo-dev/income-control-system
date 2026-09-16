@@ -106,7 +106,21 @@ Route::middleware('auth')->group(function () {
         
         // 5. LÓGICA PARA CONTROL DE INGRESO
         if ($nombreRol === 'personal de control de ingreso') { 
-            return Inertia::render('Control/Dashboard', []); 
+            // Obtenemos solo los exámenes de hoy
+            $examenesHoy = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+                ->where('fecha', now()->toDateString())
+                ->orderBy('hora_inicio', 'asc')
+                ->get();
+
+            return Inertia::render('Control/Dashboard', [
+                'stats' => [
+                    'hoy'      => $examenesHoy->count(),
+                    // Los siguientes valores requerirán lógica de tiempo real y de la tabla registro_ingreso
+                    'en_curso' => 0, 
+                    'ingresos' => 0, 
+                ],
+                'examenes' => $examenesHoy
+            ]);
         }
 
         abort(403, 'Tu rol no tiene un panel principal configurado.');
