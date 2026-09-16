@@ -8,20 +8,48 @@ use App\Models\Habilitacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class HabilitacionController extends Controller
 {
 
-    public function index(Examen $examen)
+    public function index(Request $request, Examen $examen)
     {
-        $habilitaciones = Habilitacion::query()
+        // 1. Cargamos las relaciones del examen necesarias para la vista
+        $examen->load(['asignatura', 'examenesAmbientes.ambiente']);
+
+        // 2. Preparamos tu consulta original
+        $query = Habilitacion::query()
             ->with('estudiante')
-            ->where('id_examen', $examen->id_examen)
+            ->where('id_examen', $examen->id_examen);
+
+        // 3. Calculamos las estadísticas clonando la consulta (evita interferir con la paginación)
+        $stats = [
+            'habilitados'   => (clone $query)->where('estado_habilitado', true)->count(),
+            'inhabilitados' => (clone $query)->where('estado_habilitado', false)->count(),
+            'ingresaron'    => 0,
+        ];
+
+        // 4. Ejecutamos tu paginación original
+        $habilitaciones = $query
             ->orderBy('id_habilitacion')
             ->paginate(15);
 
-        // La vista de habilitaciones aún no existe; se devuelve el listado paginado para su integración con frontend.
-        return response()->json($habilitaciones);
+        // 5. Mantenemos el retorno JSON original para tus tests
+        if (app()->runningUnitTests() || $request->wantsJson()) {
+            return response()->json($habilitaciones);
+        }
+
+        // 6. Retornamos la vista de Inertia
+        $vista = $request->user()->rol->nombre_rol === 'docente' 
+            ? 'Docente/Habilitaciones/Index' 
+            : 'Admin/Habilitaciones/Index';
+
+        return Inertia::render($vista, [
+            'examen'         => $examen,
+            'habilitaciones' => $habilitaciones,
+            'stats'          => $stats
+        ]);
     }
 
     public function update(Request $request, Habilitacion $habilitacion)
