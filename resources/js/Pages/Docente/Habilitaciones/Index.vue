@@ -15,6 +15,7 @@ const props = defineProps({
 const getNombreCompleto = (estudiante) => {
     if (!estudiante) return 'N/D';
     return `${estudiante.nombres || ''} ${estudiante.apellidos || ''}`.trim();
+};
 const showModal = ref(false);
 const selectedStudent = ref(null);
 
