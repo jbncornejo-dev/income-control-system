@@ -1,247 +1,248 @@
 <script setup>
+import { ref, computed } from 'vue';
+import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
+import Modal from '@/components/ui/Modal.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
-    ambientes: Object, // Objeto paginado
-    totalCapacidad: Number
+    ambientes: Object,
+    totalCapacidad: Number,
+    filters: Object
 });
+
+const toast = useToastStore();
+
+const busqueda        = ref(props.filters?.nombre_ambiente ?? '');
+const modalAbierto    = ref(false);
+const modalEliminar   = ref(false);
+const modoEdicion     = ref(false);
+const guardando       = ref(false);
+const eliminando      = ref(false);
+const ambienteEditando  = ref(null);
+const ambienteAEliminar = ref(null);
+
+const form   = ref({ nombre_ambiente: '', capacidad: '' });
+const errores = ref({ nombre_ambiente: '', capacidad: '' });
+
+function buscar() {
+    router.get('/ambientes', { nombre_ambiente: busqueda.value }, { preserveState: true });
+}
+
+function abrirModalNuevo() {
+    modoEdicion.value = false;
+    form.value = { nombre_ambiente: '', capacidad: '' };
+    errores.value = { nombre_ambiente: '', capacidad: '' };
+    ambienteEditando.value = null;
+    modalAbierto.value = true;
+}
+
+function abrirModalEditar(ambiente) {
+    modoEdicion.value = true;
+    ambienteEditando.value = ambiente;
+    form.value = { nombre_ambiente: ambiente.nombre_ambiente, capacidad: ambiente.capacidad };
+    errores.value = { nombre_ambiente: '', capacidad: '' };
+    modalAbierto.value = true;
+}
+
+function cerrarModal() { modalAbierto.value = false; }
+
+function validar() {
+    let ok = true;
+    errores.value = { nombre_ambiente: '', capacidad: '' };
+    if (!form.value.nombre_ambiente.trim()) {
+        errores.value.nombre_ambiente = 'El nombre es obligatorio.';
+        ok = false;
+    }
+    if (!form.value.capacidad || form.value.capacidad <= 0) {
+        errores.value.capacidad = 'La capacidad debe ser mayor a 0.';
+        ok = false;
+    }
+    return ok;
+}
+
+function guardar() {
+    if (!validar()) return;
+    guardando.value = true;
+    if (modoEdicion.value) {
+        router.patch(`/ambientes/${ambienteEditando.value.id_ambiente}`, form.value, {
+            preserveState: true,
+            onSuccess: () => { toast.success('Ambiente actualizado correctamente.'); cerrarModal(); },
+            onError: (e) => {
+                if (e.nombre_ambiente) errores.value.nombre_ambiente = e.nombre_ambiente;
+                else toast.error('Error al actualizar el ambiente.');
+            },
+            onFinish: () => { guardando.value = false; }
+        });
+    } else {
+        router.post('/ambientes', form.value, {
+            preserveState: true,
+            onSuccess: () => { toast.success('Ambiente creado correctamente.'); cerrarModal(); },
+            onError: (e) => {
+                if (e.nombre_ambiente) errores.value.nombre_ambiente = e.nombre_ambiente;
+                else toast.error('Error al crear el ambiente.');
+            },
+            onFinish: () => { guardando.value = false; }
+        });
+    }
+}
+
+function confirmarEliminar(ambiente) {
+    ambienteAEliminar.value = ambiente;
+    modalEliminar.value = true;
+}
+
+function eliminar() {
+    eliminando.value = true;
+    router.delete(`/ambientes/${ambienteAEliminar.value.id_ambiente}`, {
+        onSuccess: () => { toast.success('Ambiente eliminado correctamente.'); modalEliminar.value = false; },
+        onError: () => { toast.error('No se puede eliminar el ambiente porque tiene exámenes registrados.'); modalEliminar.value = false; },
+        onFinish: () => { eliminando.value = false; }
+    });
+}
 </script>
 
 <template>
     <Head title="Ambientes" />
-
     <AuthenticatedLayout>
         <div class="panel-container">
-            
-            <!-- Encabezado de la página -->
+
             <div class="header-section">
                 <div>
                     <h1 class="panel-title">AMBIENTES</h1>
-                    <p class="subtitle">Capacidad total habilitada: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
+                    <p class="subtitle">Capacidad total: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
                 </div>
-                <button class="btn-primary">+ Nuevo ambiente</button>
+                <button class="btn-primary" @click="abrirModalNuevo">+ Nuevo Ambiente</button>
             </div>
 
-            <!-- Barra de Búsqueda -->
             <div class="search-section">
-                <input 
-                    type="text" 
-                    placeholder="Buscar por código, nombre o edificio..." 
+                <input
+                    v-model="busqueda"
+                    type="text"
+                    placeholder="Buscar por nombre..."
                     class="search-input"
-                >
+                    @keyup.enter="buscar"
+                />
+                <button class="btn-search" @click="buscar">Buscar</button>
             </div>
 
-            <!-- Cuadrícula de Tarjetas (Cards Grid) -->
-            <div class="cards-grid">
-                <div class="card" v-for="ambiente in ambientes.data" :key="ambiente.id">
-                    
-                    <!-- Parte Superior de la Tarjeta -->
-                    <div class="card-header">
-                        <span class="room-code">{{ ambiente.codigo }}</span>
-                        <!-- Asumo que tu base de datos tiene un campo que determina si está habilitado -->
-                        <span :class="['badge', ambiente.estado === 'Habilitado' ? 'badge-hab' : 'badge-inhab']">
-                            {{ ambiente.estado === 'Habilitado' ? 'Hab.' : 'Inhab.' }}
-                        </span>
-                    </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>Capacidad</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="ambiente in ambientes.data" :key="ambiente.id_ambiente">
+                            <td class="col-id">{{ ambiente.id_ambiente }}</td>
+                            <td>{{ ambiente.nombre_ambiente }}</td>
+                            <td><span class="capacity-badge">{{ ambiente.capacidad }} personas</span></td>
+                            <td class="col-actions">
+                                <button class="btn-action btn-edit" @click="abrirModalEditar(ambiente)">Editar</button>
+                                <button class="btn-action btn-delete" @click="confirmarEliminar(ambiente)">Eliminar</button>
+                            </td>
+                        </tr>
+                        <tr v-if="!ambientes.data || ambientes.data.length === 0">
+                            <td colspan="4" class="empty-state">No se encontraron ambientes.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-                    <!-- Información Central -->
-                    <div class="card-body">
-                        <h3 class="room-name">{{ ambiente.nombre }}</h3>
-                        <p class="room-block">{{ ambiente.edificio || 'Sin bloque asignado' }}</p>
-                        <p class="room-capacity">Capacidad: <strong>{{ ambiente.capacidad }}</strong></p>
-                    </div>
-
-                    <!-- Botones de Acción -->
-                    <div class="card-actions">
-                        <button class="btn-action btn-toggle">
-                            {{ ambiente.estado === 'Habilitado' ? 'Deshabilitar' : 'Habilitar' }}
-                        </button>
-                        <button class="btn-action btn-edit">Editar</button>
-                        <button class="btn-action btn-delete">×</button>
-                    </div>
-
-                </div>
+            <!-- Paginación -->
+            <div class="pagination" v-if="ambientes.last_page > 1">
+                <button :disabled="ambientes.current_page === 1" @click="router.get(`/ambientes?page=${ambientes.current_page - 1}`)" class="btn-page">← Anterior</button>
+                <span class="page-info">Página {{ ambientes.current_page }} de {{ ambientes.last_page }}</span>
+                <button :disabled="ambientes.current_page === ambientes.last_page" @click="router.get(`/ambientes?page=${ambientes.current_page + 1}`)" class="btn-page">Siguiente →</button>
             </div>
 
         </div>
+
+        <!-- Modal Nuevo / Editar -->
+        <Modal :open="modalAbierto" :title="modoEdicion ? 'Editar Ambiente' : 'Nuevo Ambiente'" @close="cerrarModal">
+            <div class="form-group">
+                <label class="form-label">Nombre <span class="required">*</span></label>
+                <input v-model="form.nombre_ambiente" type="text" class="form-input" :class="{ 'input-error': errores.nombre_ambiente }" placeholder="Ej: Aula A-3" @input="errores.nombre_ambiente = ''" />
+                <p v-if="errores.nombre_ambiente" class="error-msg">{{ errores.nombre_ambiente }}</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Capacidad <span class="required">*</span></label>
+                <input v-model.number="form.capacidad" type="number" min="1" class="form-input" :class="{ 'input-error': errores.capacidad }" placeholder="Ej: 80" @input="errores.capacidad = ''" />
+                <p v-if="errores.capacidad" class="error-msg">{{ errores.capacidad }}</p>
+                <p class="help-text">Debe ser un número entero mayor a 0.</p>
+            </div>
+            <div v-if="modoEdicion" class="form-group">
+                <label class="form-label">ID</label>
+                <input :value="ambienteEditando?.id_ambiente" type="text" class="form-input input-readonly" readonly />
+                <p class="help-text">El ID no es editable.</p>
+            </div>
+            <template #footer>
+                <button @click="cerrarModal" class="btn-cancel">Cancelar</button>
+                <button @click="guardar" class="btn-primary" :disabled="guardando">
+                    <LoadingSpinner v-if="guardando" size="small" />
+                    <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear ambiente' }}</span>
+                </button>
+            </template>
+        </Modal>
+
+        <!-- Modal Confirmar Eliminar -->
+        <Modal :open="modalEliminar" title="Eliminar Ambiente" @close="modalEliminar = false">
+            <p class="confirm-text">¿Estás seguro de eliminar <strong>{{ ambienteAEliminar?.nombre_ambiente }}</strong>? Esta acción no se puede deshacer.</p>
+            <template #footer>
+                <button @click="modalEliminar = false" class="btn-cancel">Cancelar</button>
+                <button @click="eliminar" class="btn-danger" :disabled="eliminando">
+                    <LoadingSpinner v-if="eliminando" size="small" />
+                    <span v-else>Sí, eliminar</span>
+                </button>
+            </template>
+        </Modal>
+
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-/* Contenedor principal */
-.panel-container {
-    padding: 2rem;
-    background-color: #f3f4f6;
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-}
-
-/* Encabezado */
-.header-section {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1.5rem;
-}
-
-.panel-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #1f2937;
-    margin: 0 0 0.25rem 0;
-    letter-spacing: 0.05em;
-}
-
-.subtitle {
-    color: #6b7280;
-    font-size: 0.875rem;
-    margin: 0;
-}
-
-.highlight-number {
-    font-weight: 700;
-    color: #1f2937;
-}
-
-.btn-primary {
-    background-color: #1e1b4b; /* Azul muy oscuro del mockup */
-    color: white;
-    padding: 0.6rem 1.5rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-/* Búsqueda */
-.search-section {
-    margin-bottom: 2rem;
-}
-
-.search-input {
-    width: 100%;
-    max-width: 400px;
-    padding: 0.6rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-}
-
-/* Cuadrícula (Grid) */
-.cards-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr); /* Fuerza 3 columnas exactas */
-    gap: 1.5rem;
-}
-
-/* Estructura de la Tarjeta */
-.card {
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-top: 4px solid #1e1b4b; /* Borde superior característico del mockup */
-    border-radius: 0.5rem;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 0.5rem;
-}
-
-.room-code {
-    font-weight: 800;
-    font-size: 0.875rem;
-    color: #1e1b4b;
-    text-transform: uppercase;
-}
-
-/* Badges (Etiquetas) */
-.badge {
-    padding: 0.15rem 0.6rem;
-    border-radius: 9999px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-
-.badge-hab {
-    background-color: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-
-.badge-inhab {
-    background-color: #f3f4f6;
-    color: #6b7280;
-    border: 1px solid #d1d5db;
-}
-
-/* Cuerpo de la Tarjeta */
-.card-body {
-    flex-grow: 1; /* Empuja los botones hacia abajo */
-    margin-bottom: 1.5rem;
-}
-
-.room-name {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #374151;
-    margin: 0 0 0.5rem 0;
-}
-
-.room-block {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin: 0 0 0.25rem 0;
-}
-
-.room-capacity {
-    font-size: 0.8rem;
-    color: #6b7280;
-    margin: 0;
-}
-
-/* Acciones (Botones inferiores) */
-.card-actions {
-    display: grid;
-    grid-template-columns: 1fr auto auto; /* El primer botón ocupa el espacio restante */
-    gap: 0.5rem;
-}
-
-.btn-action {
-    background: transparent;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    padding: 0.4rem 0;
-    font-size: 0.75rem;
-    color: #374151;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 0.2s;
-}
-
-.btn-action:hover {
-    background-color: #f9fafb;
-}
-
-.btn-edit {
-    padding: 0.4rem 1rem;
-}
-
-.btn-delete {
-    padding: 0.4rem 0.75rem;
-    color: #ef4444;
-    border-color: #fca5a5;
-    font-weight: 600;
-}
-
-.btn-delete:hover {
-    background-color: #fef2f2;
-}
+.panel-container { padding: 2rem 3rem; background-color: var(--bg-main); min-height: 100vh; font-family: var(--font-family); }
+.header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
+.panel-title { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin: 0 0 4px; letter-spacing: 0.05em; }
+.subtitle { font-size: 0.875rem; color: #6b7280; }
+.highlight-number { font-weight: 700; color: var(--color-primary); }
+.search-section { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
+.search-input { flex: 1; max-width: 400px; padding: 0.5rem 1rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.875rem; }
+.btn-search { background: var(--color-primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.875rem; }
+.table-container { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; width: 100%; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.data-table th { background-color: var(--color-primary); color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }
+.data-table td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #f9fafb; }
+.col-id { color: #6b7280; font-size: 0.8rem; width: 60px; }
+.col-actions { display: flex; gap: 8px; }
+.capacity-badge { background: #eff6ff; color: var(--color-primary); padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
+.btn-action { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+.btn-edit { background: #eff6ff; color: var(--color-primary); border: 1px solid var(--color-primary); }
+.btn-delete { background: #fdecea; color: #d32f2f; border: 1px solid #d32f2f; }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px; }
+.btn-page { background: var(--color-primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
+.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+.page-info { font-size: 13px; color: #6b7280; }
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.required { color: #d32f2f; }
+.form-input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #f9fafb; color: #374151; box-sizing: border-box; }
+.form-input:focus { outline: none; border-color: var(--color-primary); }
+.input-error { border-color: #d32f2f !important; }
+.input-readonly { opacity: 0.6; cursor: not-allowed; }
+.error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
+.help-text { color: #6b7280; font-size: 12px; margin-top: 4px; }
+.btn-primary { background: var(--color-primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.btn-cancel { background: transparent; border: none; color: #6b7280; cursor: pointer; font-size: 14px; padding: 10px 16px; }
+.btn-danger { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.confirm-text { font-size: 14px; color: #374151; line-height: 1.6; }
 </style>
