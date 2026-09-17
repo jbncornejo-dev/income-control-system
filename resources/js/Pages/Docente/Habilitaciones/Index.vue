@@ -259,12 +259,12 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
 <style scoped>
 .panel-container {
     padding: 2rem;
-    background-color: #f3f4f6;
+    background-color: var(--bg-main);
     min-height: 100vh;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 .back-link-container { margin-bottom: 1rem; }
-.back-link { color: #4f46e5; text-decoration: none; font-size: 0.875rem; font-weight: 500; }
+.back-link { color: var(--color-primary); text-decoration: none; font-size: 0.875rem; font-weight: 500; }
 .exam-header-card {
     background: #ffffff;
     border-radius: 0.5rem;
@@ -287,7 +287,7 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
 .text-blue { color: #1e3a8a; }
 .text-red { color: #b91c1c; }
 .text-gray { color: #4b5563; }
-.text-purple { color: #4f46e5; }
+.text-purple { color: var(--color-primary); }
 .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
 .search-input { flex: 1; max-width: 500px; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem; }
 .filter-group { display: flex; border: 1px solid #d1d5db; border-radius: 0.25rem; overflow: hidden; }
@@ -296,7 +296,7 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
 .filter-btn.active { background: #1d3653; color: white; }
 .table-container { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.data-table th { background-color: #1d3653; color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
+.data-table th { background-color: var(--color-primary); color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
 .data-table td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
 .col-mono { font-family: monospace; font-size: 0.8rem; }
 .student-name { font-weight: 500; color: #1f2937; }
