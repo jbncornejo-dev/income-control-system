@@ -7,16 +7,17 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import ToastContainer from './components/ui/ToastContainer.vue'
 
 createInertiaApp({
-    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
-    setup({ el, App, props, plugin }) {
-        const app = createApp({ render: () => h(App, props) })
-        const pinia = createPinia()
-        app.use(pinia)
-        app.use(plugin)
-        app.component('ToastContainer', ToastContainer)
-        app.mount(el)
-    },
-    progress: {
-        color: '#1E3A5F',
-    },
+  resolve: (name) =>
+    resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+  setup({ el, App, props, plugin }) {
+    const app = createApp({ render: () => h(App, props) })
+    const pinia = createPinia()
+    app.use(pinia)
+    app.use(plugin)
+    app.component('ToastContainer', ToastContainer)
+    app.mount(el)
+  },
+  progress: {
+    color: '#1E3A5F'
+  }
 })
