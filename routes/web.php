@@ -6,19 +6,20 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\UserController;
+use App\Models\Ambiente;
+use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
-use App\Models\Asignatura;
-use App\Models\Ambiente;
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
     if (! Auth::check()) {
         return Inertia::render('Welcome');
     }
-    
+
     // Si está autenticado, que el controlador de tráfico del dashboard se encargue
     return redirect()->route('dashboard');
 })->name('home');
@@ -45,32 +46,32 @@ Route::middleware('auth')->group(function () {
         $user = auth()->user();
 
         // 1. Verificación de seguridad inicial
-        if (!$user->rol) {
+        if (! $user->rol) {
             abort(403, 'No tienes un rol asignado en la base de datos.');
         }
 
         $nombreRol = $user->rol->nombre_rol;
 
         // 2. LÓGICA PARA EL ADMINISTRADOR
-        if ($nombreRol === 'administrador') { 
+        if ($nombreRol === 'administrador') {
             return Inertia::render('Admin/Dashboard', [
                 'stats' => [
                     'estudiantes' => Estudiante::count(),
-                    'examenes'    => Examen::count(),
+                    'examenes' => Examen::count(),
                     'asignaturas' => Asignatura::count(),
-                    'ambientes'   => Ambiente::count(),
-                    'usuarios'    => User::count(),
+                    'ambientes' => Ambiente::count(),
+                    'usuarios' => User::count(),
                 ],
                 // Corregida la relación de ambientes para coincidir con tu controlador
                 'proximosExamenes' => Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
                     ->orderBy('fecha', 'asc')
                     ->take(4)
-                    ->get()
+                    ->get(),
             ]);
         }
 
         // 3. LÓGICA PARA EL DOCENTE
-        if ($nombreRol === 'docente') { 
+        if ($nombreRol === 'docente') {
             // Omitimos el filtro de id_usuario porque no existe en la BD aún.
             $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
                 ->withCount([
@@ -79,7 +80,7 @@ Route::middleware('auth')->group(function () {
                     },
                     'habilitaciones as inhab_count' => function ($query) {
                         $query->where('estado_habilitado', false);
-                    }
+                    },
                 ])
                 ->where('fecha', '>=', now()->toDateString())
                 ->orderBy('fecha', 'asc')
@@ -89,23 +90,23 @@ Route::middleware('auth')->group(function () {
 
             return Inertia::render('Docente/Dashboard', [
                 'stats' => [
-                    'examenes'      => $proximosExamenes->count(),
-                    'habilitados'   => (int) $proximosExamenes->sum('hab_count'),
+                    'examenes' => $proximosExamenes->count(),
+                    'habilitados' => (int) $proximosExamenes->sum('hab_count'),
                     'inhabilitados' => (int) $proximosExamenes->sum('inhab_count'),
                 ],
-                'proximosExamenes' => $proximosExamenes
+                'proximosExamenes' => $proximosExamenes,
             ]);
         }
 
         // 4. LÓGICA PARA EL ESTUDIANTE
-        if ($nombreRol === 'estudiante') { 
+        if ($nombreRol === 'estudiante') {
             return Inertia::render('Estudiantes/Dashboard', [
                 // Datos específicos del estudiante
             ]);
         }
-        
+
         // 5. LÓGICA PARA CONTROL DE INGRESO
-        if ($nombreRol === 'personal de control de ingreso') { 
+        if ($nombreRol === 'personal de control de ingreso') {
             // Obtenemos solo los exámenes de hoy
             $examenesHoy = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
                 ->where('fecha', now()->toDateString())
@@ -114,12 +115,12 @@ Route::middleware('auth')->group(function () {
 
             return Inertia::render('Control/Dashboard', [
                 'stats' => [
-                    'hoy'      => $examenesHoy->count(),
+                    'hoy' => $examenesHoy->count(),
                     // Los siguientes valores requerirán lógica de tiempo real y de la tabla registro_ingreso
-                    'en_curso' => 0, 
-                    'ingresos' => 0, 
+                    'en_curso' => 0,
+                    'ingresos' => 0,
                 ],
-                'examenes' => $examenesHoy
+                'examenes' => $examenesHoy,
             ]);
         }
 
@@ -132,7 +133,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador')->group(function () {
-        Route::get('/usuarios', [App\Http\Controllers\UserController::class, 'index'])->name('usuarios.index');
+        Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
@@ -147,7 +148,9 @@ Route::middleware('auth')->group(function () {
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
-        
+        // Eliminar únicamente exámenes sin inscripciones ni registros de ingreso; además borra sus ambientes asociados.
+        Route::delete('/examenes/{examen}', [ExamenController::class, 'destroy'])->name('examenes.destroy');
+
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
         // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
         // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.

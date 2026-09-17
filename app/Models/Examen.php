@@ -10,8 +10,11 @@ class Examen extends Model
     use HasFactory;
 
     protected $table = 'examen';
+
     protected $primaryKey = 'id_examen';
+
     public $timestamps = false;
+
     protected $fillable = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'];
 
     // Relación de muchos a uno (examen-asignatura)
@@ -36,5 +39,18 @@ class Examen extends Model
     public function incidencias()
     {
         return $this->hasMany(Incidencia::class, 'id_examen', 'id_examen');
+    }
+
+    // Relación de uno a muchos a través de examen_ambiente (examen-registro_ingreso)
+    public function registrosIngreso()
+    {
+        return $this->hasManyThrough(
+            RegistroIngreso::class,
+            ExamenAmbiente::class,
+            'id_examen',
+            'id_examen_ambiente',
+            'id_examen',
+            'id_examen_ambiente'
+        );
     }
 }
