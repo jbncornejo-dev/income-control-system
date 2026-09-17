@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 
 const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
@@ -80,7 +80,7 @@ const getStatusClass = (estado) => {
                             </td>
                             
                             <td class="actions-cell">
-                                <button class="btn-action">Ver</button>
+                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
                                 <button class="btn-action btn-delete">Eliminar</button>
                             </td>
                         </tr>
