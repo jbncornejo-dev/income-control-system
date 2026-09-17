@@ -6,6 +6,9 @@
     <title>Control de Ingresos</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @inertiaHead
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Playfair+Display:wght@600;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     @inertia

@@ -1,0 +1,30 @@
+/* resources/css/tokens.css */
+:root {
+    /* Paleta Principal (Administración, Docentes, Estudiantes) */
+    --bg-main: #f4f4f4;
+    --bg-sidebar: #1d3653;
+    --color-primary: #1d3653;
+    --color-primary-hover: #152a42;
+    --color-active: #a12b33;
+    
+    /* Paleta Institucional UMSS (para landing/público) */
+    --color-umss-dark: #002143;
+    --color-umss-accent: #E30613;
+    --color-umss-taupe: #4D77A3;
+    
+    --color-cream: #FFFFFF;
+    --color-sand: #D6DFE8;
+    
+    /* Textos */
+    --text-white: #ffffff;
+    --text-muted: #7b93ab;
+    --text-dark: #333333;
+    
+    /* Bordes */
+    --border-color: #1d3653;
+    --border-light: #d1d5db;
+    
+    /* Tipografía */
+    --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-display: 'Rajdhani', sans-serif;
+}
