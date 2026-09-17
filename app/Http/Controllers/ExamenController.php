@@ -86,7 +86,7 @@ class ExamenController extends Controller
                 ->lockForUpdate()
                 ->get();
 
-            if ($this->hayConflictoDeAmbiente($datos)) {
+            if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
                 throw ValidationException::withMessages([
                     'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
                 ]);
@@ -152,7 +152,7 @@ class ExamenController extends Controller
                     ]);
                 }
 
-                if ($this->hayConflictoDeAmbiente($efectivo, $examen->id_examen)) {
+                if ($this->hayConflictoDeAmbiente($efectivo, $idAmbientes, $examen->id_examen)) {
                     throw ValidationException::withMessages([
                         'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
                     ]);
@@ -183,15 +183,21 @@ class ExamenController extends Controller
         return back()->with('success', 'Examen actualizado correctamente.');
     }
 
-    private function hayConflictoDeAmbiente(array $datos, ?int $idExamenIgnorar = null): bool
+    /**
+     * An exam conflicts when its time interval overlaps an existing exam in at least one room.
+     *
+     * @param  array<string, mixed>  $datos
+     * @param  array<int, int>  $idAmbientes
+     */
+    private function hayConflictoDeAmbiente(array $datos, array $idAmbientes, ?int $idExamenIgnorar = null): bool
     {
         return Examen::query()
             ->when($idExamenIgnorar !== null, function ($query) use ($idExamenIgnorar) {
                 $query->where('id_examen', '!=', $idExamenIgnorar);
             })
             ->where('fecha', $datos['fecha'])
-            ->whereHas('examenesAmbientes', function ($query) use ($datos) {
-                $query->whereIn('id_ambiente', $datos['id_ambientes']);
+            ->whereHas('examenesAmbientes', function ($query) use ($idAmbientes) {
+                $query->whereIn('id_ambiente', $idAmbientes);
             })
             ->whereRaw(
                 "hora_inicio < (CAST(? AS time) + (? * interval '1 minute'))",

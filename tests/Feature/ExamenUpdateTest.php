@@ -10,7 +10,6 @@ use App\Models\ExamenAmbiente;
 use App\Models\RegistroIngreso;
 use App\Models\Rol;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -142,7 +141,7 @@ class ExamenUpdateTest extends TestCase
         $creado = $this->crearExamenConAmbiente();
         $examen = $creado['examen'];
         $otro = $this->crearExamenConAmbiente([
-            'hora_inicio' => '11:30',
+            'hora_inicio' => '10:30',
             'duracion_minutos' => 60,
         ]);
 
@@ -175,10 +174,12 @@ class ExamenUpdateTest extends TestCase
             'codigo_qr' => 'qr-2024-0001',
         ]);
 
+        $admin = $this->administrador();
+
         RegistroIngreso::create([
             'id_estudiante' => $estudiante->id_estudiante,
             'id_examen_ambiente' => $pivot->id_examen_ambiente,
-            'id_usuario' => $this->administrador()->id,
+            'id_usuario' => $admin->id,
             'fecha_hora_ingreso' => now(),
         ]);
 
@@ -187,7 +188,7 @@ class ExamenUpdateTest extends TestCase
             'capacidad' => 45,
         ]);
 
-        $response = $this->actingAs($this->administrador())->patch(
+        $response = $this->actingAs($admin)->patch(
             "/examenes/{$examen->id_examen}",
             ['id_ambientes' => [$otroAmbiente->id_ambiente]]
         );
