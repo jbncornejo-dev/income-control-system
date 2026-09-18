@@ -3,10 +3,6 @@
     <div class="student-list-container">
       <h1 style="color: var(--color-primary);">Listado de Estudiantes</h1>
 
-      <div v-if="pageProps.props.flash?.success" class="flash-success" role="status">
-        {{ pageProps.props.flash.success }}
-      </div>
-
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
         <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
@@ -81,8 +77,8 @@
     <div class="modal-content">
       <h3>Reporte de Carga Masiva</h3>
       <div class="summary-stats">
-        <p>✅ Registros creados: <strong>{{ uploadResults.creados }}</strong></p>
-        <p>❌ Registros rechazados: <strong>{{ uploadResults.rechazados }}</strong></p>
+        <p>Registros creados: <strong>{{ uploadResults.creados }}</strong></p>
+        <p>Registros rechazados: <strong>{{ uploadResults.rechazados }}</strong></p>
       </div>
 
       <div v-if="uploadResults.detalles_rechazos && uploadResults.detalles_rechazos.length > 0" class="error-container">
