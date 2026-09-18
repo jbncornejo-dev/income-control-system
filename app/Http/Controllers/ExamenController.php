@@ -183,6 +183,36 @@ class ExamenController extends Controller
         return back()->with('success', 'Examen actualizado correctamente.');
     }
 
+    public function destroy(Examen $examen)
+    {
+        $mensaje = 'No se puede eliminar el examen porque tiene inscripciones de estudiantes o registros de ingreso asociados';
+
+        // Se bloquea la eliminación si el examen tiene inscripciones (habilitaciones)
+        // o registros de ingreso, ya que representan operaciones históricas del examen.
+        if (
+            $examen->habilitaciones()->exists()
+            || $examen->registrosIngreso()->exists()
+        ) {
+            return back()->with('error', $mensaje);
+        }
+
+        try {
+            // Al eliminar el examen se borran en cascada sus ambientes asociados
+            // (examen_ambiente); los ambientes en sí se conservan porque son compartidos.
+            DB::transaction(fn () => $examen->delete());
+        } catch (QueryException $e) {
+            // La clave foránea protege si se registra un ingreso durante el borrado.
+            if ($e->getCode() === '23503') {
+                return back()->with('error', $mensaje);
+            }
+
+            throw $e;
+        }
+
+        return redirect()->route('examenes.index')
+            ->with('success', 'Examen eliminado correctamente.');
+    }
+
     /**
      * An exam conflicts when its time interval overlaps an existing exam in at least one room.
      *
