@@ -15,6 +15,10 @@ class UserAdminTest extends TestCase
     {
         parent::setUp();
 
+        // Deshabilitar la verificación de existencia de componentes Vue
+        // para que las pruebas de backend no fallen si el frontend aún no los crea.
+        config(['inertia.testing.ensure_pages_exist' => false]);
+
         // Create roles
         Rol::create(['nombre_rol' => 'administrador']);
         Rol::create(['nombre_rol' => 'docente']);
@@ -117,5 +121,73 @@ class UserAdminTest extends TestCase
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('users', ['id' => $targetUser->id, 'name' => 'Updated Name']);
+    }
+
+    public function test_index_lists_users_with_roles()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+        User::factory()->create(['id_rol' => $docenteRol->id_rol, 'email' => 'docente1@example.com']);
+
+        $response = $this->actingAs($admin)->get('/usuarios');
+
+        $response->assertStatus(200);
+        // Inertia assert to check if usuarios is passed and contains the loaded role
+        $response->assertInertia(fn (\Inertia\Testing\AssertableInertia $page) => $page
+            ->component('Admin/Usuarios/Index')
+            ->has('usuarios.data')
+            ->has('roles')
+        );
+    }
+
+    public function test_index_filters_by_role()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+        User::factory()->create(['id_rol' => $docenteRol->id_rol, 'email' => 'docente_filter@example.com']);
+        $estudianteRol = Rol::where('nombre_rol', 'estudiante')->first();
+        User::factory()->create(['id_rol' => $estudianteRol->id_rol, 'email' => 'estudiante_filter@example.com']);
+
+        // Test with id_rol filter
+        $response = $this->actingAs($admin)->get('/usuarios?id_rol=' . $docenteRol->id_rol);
+        
+        $response->assertStatus(200);
+        $response->assertSee('docente_filter@example.com');
+        $response->assertDontSee('estudiante_filter@example.com');
+    }
+
+    public function test_index_filters_by_email_search()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        User::factory()->create(['id_rol' => $adminRol->id_rol, 'email' => 'findme@example.com']);
+        User::factory()->create(['id_rol' => $adminRol->id_rol, 'email' => 'hidden@example.com']);
+
+        $response = $this->actingAs($admin)->get('/usuarios?search=findme');
+
+        $response->assertStatus(200);
+        $response->assertSee('findme@example.com');
+        $response->assertDontSee('hidden@example.com');
+    }
+
+    public function test_index_combines_filters()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+        User::factory()->create(['id_rol' => $docenteRol->id_rol, 'email' => 'unique_docente@example.com']);
+        User::factory()->create(['id_rol' => $adminRol->id_rol, 'email' => 'unique_admin@example.com']);
+
+        $response = $this->actingAs($admin)->get('/usuarios?id_rol=' . $docenteRol->id_rol . '&search=unique');
+
+        $response->assertStatus(200);
+        $response->assertSee('unique_docente@example.com');
+        $response->assertDontSee('unique_admin@example.com'); // Mismo query text pero distinto rol
     }
 }
