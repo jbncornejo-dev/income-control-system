@@ -1,6 +1,12 @@
 <script setup>
+import Modal from '@/components/ui/Modal.vue';
+import UsuarioForm from '@/components/forms/UsuarioForm.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import Button from '@/components/ui/Button.vue';
 import { Head, Link } from '@inertiajs/vue3';
+import { ref } from 'vue';
+
+const showCreateModal = ref(false);
 
 const props = defineProps({
     usuarios: Object, // Paginador de Laravel
@@ -34,7 +40,7 @@ const getInitial = (name) => {
                             {{ rol.nombre }}
                         </option>
                     </select>
-                    <button class="btn-primary">+ Nuevo usuario</button>
+                    <Button @click="showCreateModal = true" variant="primary">+ Nuevo usuario</Button>
                 </div>
             </div>
 
@@ -96,6 +102,16 @@ const getInitial = (name) => {
                     <span>{{ usuarios.to || 0 }} de {{ usuarios.total || 0 }} usuarios</span>
                 </div>
             </div>
+            <Modal :open="showCreateModal" @close="showCreateModal = false">
+            <div class="p-6">
+        <h2 class="text-lg font-medium text-gray-900 mb-4">Crear Nuevo Usuario</h2>
+                    <UsuarioForm 
+                        :roles="roles" 
+                        @success="showCreateModal = false" 
+                        @cancel="showCreateModal = false" 
+                    />
+                </div>
+            </Modal>
         </div>
     </AuthenticatedLayout>
 </template>
@@ -146,16 +162,6 @@ const getInitial = (name) => {
     border-radius: 0.25rem;
     font-size: 0.875rem;
     background-color: white;
-}
-
-.btn-primary {
-    background-color: #1e1b4b; /* Color oscuro similar al mockup */
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    cursor: pointer;
 }
 
 /* Tabla de Datos */

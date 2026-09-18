@@ -3,6 +3,7 @@
         :type="type" 
         :class="['btn-base', variantClass]"
         :disabled="disabled"
+        @click="$emit('click', $event)"
     >
         <slot />
     </button>
@@ -16,6 +17,8 @@ const props = defineProps({
     variant: { type: String, default: 'primary' }, // primary, action, delete, outline
     disabled: { type: Boolean, default: false }
 });
+
+defineEmits(['click']);
 
 const variantClass = computed(() => {
     const variants = {
