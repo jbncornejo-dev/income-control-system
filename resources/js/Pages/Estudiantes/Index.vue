@@ -12,24 +12,10 @@
 
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, nombres o apellidos..." />
-        <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
-      </div>
-
-      <div class="actions-container">
-        <form @submit.prevent="submitCsv" class="csv-upload-form">
-          <input
-            type="file"
-            accept=".csv"
-            @change="handleFileChange"
-            required
-            class="file-input"
-          />
-          <button type="submit" :disabled="csvSubiendo" class="btn-upload">
-            Cargar CSV
-          </button>
-          <LoadingSpinner v-if="csvSubiendo" class="spinner-inline" />
-        </form>
-        <p v-if="csvError" class="csv-error" role="alert">{{ csvError }}</p>
+        <div class="toolbar-actions">
+          <button class="btn-import" @click="abrirModalCsv">Importar CSV</button>
+          <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -68,6 +54,7 @@
 
       <Pagination :currentPage="currentPage" :totalPages="totalPages" @change-page="changePage" />
 
+      <!-- Modal: registrar / editar estudiante -->
       <Modal
         :open="mostrarModal"
         :title="estudianteSeleccionado ? 'Editar Estudiante' : 'Registrar Estudiante'"
@@ -87,25 +74,161 @@
         </template>
       </Modal>
 
-      <Modal :open="showModal" @close="cerrarModalImportacion">
-        <div class="modal-content">
-          <h3>Reporte de Carga Masiva</h3>
-          <div class="summary-stats">
-            <p>✅ Registros creados: <strong>{{ uploadResults.creados }}</strong></p>
-            <p>❌ Registros rechazados: <strong>{{ uploadResults.rechazados }}</strong></p>
+      <!-- Modal: importación CSV -->
+      <Modal :open="csvModal" :title="tituloModalCsv" :wide="true" @close="solicitarCerrarCsv">
+        <!-- Paso 1: seleccionar archivo -->
+        <div v-if="csvStep === 'upload'" class="csv-upload">
+          <p class="help-text">
+            El archivo debe llevar la cabecera
+            <code>codigo_universitario,documento_identidad,nombres,apellidos</code>.
+            Todos los campos son obligatorios (código y documento máx. 20 caracteres; nombres y apellidos máx. 100).
+          </p>
+          <div class="csv-file-row">
+            <input
+              type="file"
+              accept=".csv"
+              @change="handleFileChange"
+              class="file-input"
+            />
+            <button
+              class="btn-upload"
+              :disabled="csvSubiendo || !csvFile"
+              @click="submitCsv"
+            >
+              {{ csvSubiendo ? 'Importando...' : 'Importar archivo' }}
+            </button>
           </div>
-
-          <div v-if="uploadResults.detalles_rechazos.length > 0" class="error-container">
-            <h4>Motivos de rechazo:</h4>
-            <ul class="error-list">
-              <li v-for="(error, index) in uploadResults.detalles_rechazos" :key="index">
-                <strong>Fila {{ error.fila }}:</strong> {{ error.motivo }}
-              </li>
-            </ul>
-          </div>
-
-          <button @click="cerrarModalImportacion" class="btn-close">Entendido</button>
+          <p v-if="csvError" class="error-msg" role="alert">{{ csvError }}</p>
         </div>
+
+        <!-- Paso 2: reporte y corrección -->
+        <div v-else class="csv-results">
+          <div class="summary-stats">
+            <div class="stats-fila stats-totales">
+              <div class="stat-card stat-total">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ filasTotales }}</strong>
+                  <span class="stat-label">Filas procesadas</span>
+                </div>
+              </div>
+              <div class="stat-card stat-ok">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ totalCreados }}</strong>
+                  <span class="stat-label">Registrados</span>
+                </div>
+              </div>
+              <div class="stat-card stat-sin-registrar">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ sinRegistrar }}</strong>
+                  <span class="stat-label">Sin registrar</span>
+                </div>
+              </div>
+            </div>
+            <div class="stats-fila stats-detalle" :class="{ 'stats-detalle--cuatro': conteos.inesperado > 0 }">
+              <div class="stat-card stat-formato">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ conteos.formato }}</strong>
+                  <span class="stat-label">Errores de formato</span>
+                </div>
+              </div>
+              <div class="stat-card stat-duplicado">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ conteos.duplicado_archivo }}</strong>
+                  <span class="stat-label">Duplicados en archivo</span>
+                </div>
+              </div>
+              <div class="stat-card stat-existente">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ conteos.ya_registrado }}</strong>
+                  <span class="stat-label">Ya registrados</span>
+                </div>
+              </div>
+              <div v-if="conteos.inesperado > 0" class="stat-card stat-inesperado">
+                <div class="stat-info">
+                  <strong class="stat-number">{{ conteos.inesperado }}</strong>
+                  <span class="stat-label">Errores inesperados</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-if="filasRechazadas.length === 0" class="success-box">
+            <p><strong>¡Importación completada con éxito!</strong></p>
+            <p class="help-text">Se registraron {{ totalCreados }} estudiantes correctamente.</p>
+          </div>
+
+          <div v-else>
+            <div class="rejected-list">
+              <div v-for="(fila, index) in filasRechazadas" :key="index" class="rejected-row">
+                <div class="rejected-head">
+                  <span class="rejected-fila">Fila original: {{ fila.fila }}</span>
+                  <button class="btn-remove" :disabled="csvSubiendo" @click="descartarFila(index)" title="Descartar fila" aria-label="Descartar fila">
+                    <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <path d="M1 1l12 12M13 1L1 13" />
+                    </svg>
+                  </button>
+                </div>
+                <ul class="motivos">
+                  <li
+                    v-for="(motivo, i) in fila.motivos"
+                    :key="i"
+                    :class="`motivo--${motivo.tipo}`"
+                  >
+                    {{ motivo.texto }}
+                  </li>
+                </ul>
+                <div class="rejected-grid">
+                  <div class="form-group">
+                    <label class="form-label">Código Univ. <span class="required">*</span></label>
+                    <input v-model="fila.codigo_universitario" class="form-input" maxlength="20" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Documento <span class="required">*</span></label>
+                    <input v-model="fila.documento_identidad" class="form-input" maxlength="20" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Nombres <span class="required">*</span></label>
+                    <input v-model="fila.nombres" class="form-input" maxlength="100" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Apellidos <span class="required">*</span></label>
+                    <input v-model="fila.apellidos" class="form-input" maxlength="100" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <p v-if="csvError" class="error-msg" role="alert">{{ csvError }}</p>
+
+            <div class="results-actions">
+              <button class="btn-primary" :disabled="csvSubiendo" @click="corregirYReintentar">
+                {{ csvSubiendo ? 'Reintentando...' : 'Reintentar corregidos' }}
+              </button>
+              <button class="btn-cancelar" @click="volverSubir">Subir otro archivo</button>
+            </div>
+          </div>
+
+          <div v-if="filasRechazadas.length === 0" class="results-actions">
+            <button class="btn-primary" @click="solicitarCerrarCsv">Cerrar</button>
+          </div>
+        </div>
+      </Modal>
+
+      <!-- Modal: confirmar cierre con rechazados pendientes -->
+      <Modal
+        :open="confirmarCierre"
+        title="¿Cancelar la importación?"
+        @close="confirmarCierre = false"
+      >
+        <p class="confirm-text">
+          Aún hay <strong>{{ filasRechazadas.length }}</strong> fila(s) rechazada(s) sin corregir.
+          Si cierras ahora, las correcciones se perderán. ¿Deseas cancelar?
+        </p>
+
+        <template #footer>
+          <button class="btn-cancelar" @click="confirmarCierre = false">Seguir corrigiendo</button>
+          <button class="btn-primary btn-peligro" @click="cerrarCsvDefinitivamente">Sí, cancelar</button>
+        </template>
       </Modal>
     </div>
   </AuthenticatedLayout>
@@ -119,7 +242,6 @@ import SearchInput from '@/components/SearchInput.vue';
 import Pagination from '@/components/Pagination.vue';
 import Modal from '@/components/ui/Modal.vue';
 import EstudianteForm from '@/components/forms/EstudianteForm.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 
 const props = defineProps({
   estudiantes: {
@@ -186,26 +308,96 @@ const eliminarEstudiante = (id) => {
 };
 
 // --- Importación CSV ---
-const showModal = ref(false);
-const uploadResults = ref({ creados: 0, rechazados: 0, detalles_rechazos: [] });
+const csvModal = ref(false);
+const csvStep = ref('upload'); // 'upload' | 'results'
 const csvFile = ref(null);
 const csvSubiendo = ref(false);
 const csvError = ref('');
+const totalCreados = ref(0);
+const filasTotales = ref(0);
+const filasRechazadas = ref([]);
+
+// Clasifica un motivo de rechazo del backend en una categoría.
+function categorizarMotivo(motivo) {
+  const texto = String(motivo ?? '').toLowerCase();
+  if (texto.includes('duplicado dentro del archivo')) return 'duplicado_archivo';
+  if (texto.includes('ya está registrado')) return 'ya_registrado';
+  if (texto.includes('error inesperado')) return 'inesperado';
+  return 'formato'; // campos obligatorios / exceden la longitud máxima
+}
+
+// Conteo de filas por categoría (una fila puede contar en varias).
+const conteos = computed(() => {
+  const conteo = { formato: 0, duplicado_archivo: 0, ya_registrado: 0, inesperado: 0 };
+  filasRechazadas.value.forEach((fila) => {
+    const presentes = new Set(fila.motivos.map((motivo) => motivo.tipo));
+    presentes.forEach((tipo) => {
+      if (tipo in conteo) conteo[tipo]++;
+    });
+  });
+  return conteo;
+});
+
+// Total de filas del archivo que aún no se registraron (incluye pendientes y descartadas).
+const sinRegistrar = computed(() => Math.max(0, filasTotales.value - totalCreados.value));
+
+// Título del modal según el paso: consistente al mostrar resultados.
+const tituloModalCsv = computed(() =>
+  csvStep.value === 'results' ? 'Resultado de la importación' : 'Importar Estudiantes (CSV)'
+);
+
+// Confirmación antes de cerrar si quedan filas rechazadas pendientes.
+const confirmarCierre = ref(false);
+
+const solicitarCerrarCsv = () => {
+  if (csvStep.value === 'results' && filasRechazadas.value.length > 0) {
+    confirmarCierre.value = true;
+  } else {
+    csvModal.value = false;
+  }
+};
+
+const cerrarCsvDefinitivamente = () => {
+  confirmarCierre.value = false;
+  csvModal.value = false;
+};
+
+const abrirModalCsv = () => {
+  csvModal.value = true;
+  csvStep.value = 'upload';
+  csvFile.value = null;
+  csvError.value = '';
+  csvSubiendo.value = false;
+  totalCreados.value = 0;
+  filasTotales.value = 0;
+  filasRechazadas.value = [];
+};
+
+const volverSubir = () => {
+  csvStep.value = 'upload';
+  csvError.value = '';
+};
 
 const handleFileChange = (event) => {
   csvFile.value = event.target.files[0] ?? null;
   csvError.value = '';
 };
 
-const submitCsv = async () => {
-  if (!csvFile.value) return;
+const submitCsv = () => {
+  if (csvFile.value) {
+    ejecutarImportacion(csvFile.value);
+  }
+};
+
+const ejecutarImportacion = async (archivo, esReintento = false) => {
+  if (!archivo) return;
 
   csvSubiendo.value = true;
   csvError.value = '';
 
   const formData = new FormData();
   // El backend valida el campo `file` (mimes:csv,txt, max:10240).
-  formData.append('file', csvFile.value);
+  formData.append('file', archivo);
 
   try {
     const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
@@ -225,16 +417,26 @@ const submitCsv = async () => {
       return;
     }
 
-    uploadResults.value = {
-      creados: data?.exitosos ?? 0,
-      rechazados: (data?.rechazados ?? []).length,
-      detalles_rechazos: (data?.rechazados ?? []).flatMap((rechazo) =>
-        (rechazo.motivos ?? []).map((motivo) => ({ fila: rechazo.fila, motivo }))
-      ),
-    };
+    if (esReintento) {
+      totalCreados.value += data?.exitosos ?? 0;
+    } else {
+      // Archivo nuevo: las estadísticas se calculan sobre las filas de este archivo.
+      filasTotales.value = data?.total_filas ?? 0;
+      totalCreados.value = data?.exitosos ?? 0;
+    }
+    filasRechazadas.value = (data?.rechazados ?? []).map((rechazo) => ({
+      fila: rechazo.fila,
+      codigo_universitario: rechazo.datos?.codigo_universitario ?? '',
+      documento_identidad: rechazo.datos?.documento_identidad ?? '',
+      nombres: rechazo.datos?.nombres ?? '',
+      apellidos: rechazo.datos?.apellidos ?? '',
+      motivos: (rechazo.motivos ?? []).map((motivo) => ({
+        texto: motivo,
+        tipo: categorizarMotivo(motivo),
+      })),
+    }));
 
-    showModal.value = true;
-    csvFile.value = null;
+    csvStep.value = 'results';
     // Refresca el listado para que los estudiantes importados aparezcan.
     router.reload({ only: ['estudiantes', 'filtros'] });
   } catch (error) {
@@ -244,16 +446,66 @@ const submitCsv = async () => {
   }
 };
 
-const cerrarModalImportacion = () => {
-  showModal.value = false;
-  uploadResults.value = { creados: 0, rechazados: 0, detalles_rechazos: [] };
+const descartarFila = (index) => {
+  filasRechazadas.value.splice(index, 1);
+};
+
+const corregirYReintentar = async () => {
+  csvError.value = '';
+
+  const invalidas = filasRechazadas.value.some(
+    (f) =>
+      !(f.codigo_universitario ?? '').trim() ||
+      !(f.documento_identidad ?? '').trim() ||
+      !(f.nombres ?? '').trim() ||
+      !(f.apellidos ?? '').trim()
+  );
+
+  if (invalidas) {
+    csvError.value = 'Completa los campos obligatorios de todas las filas antes de reintentar.';
+    return;
+  }
+
+  const archivoCorregido = new File(
+    [construirCsv(filasRechazadas.value)],
+    'estudiantes-corregidos.csv',
+    { type: 'text/csv' }
+  );
+
+  await ejecutarImportacion(archivoCorregido, true);
+};
+
+const escaparCsv = (valor) => `"${String(valor ?? '').replace(/"/g, '""')}"`;
+
+const construirCsv = (filas) => {
+  const encabezado = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos'];
+  const lineas = [encabezado.join(',')];
+
+  filas.forEach((f) => {
+    lineas.push([
+      f.codigo_universitario,
+      f.documento_identidad,
+      f.nombres,
+      f.apellidos,
+    ].map(escaparCsv).join(','));
+  });
+
+  return lineas.join('\n');
 };
 </script>
 
 <style scoped>
-.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease; }
-.btn-primary:hover { background-color: var(--color-primary-hover); }
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.btn-primary:hover:not(:disabled) { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); transform: translateY(-1px); }
+.btn-primary:hover:not(:disabled):not(.btn-peligro) { background-color: var(--color-primary-hover); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.btn-peligro { background-color: #dc3545; }
+.btn-peligro:hover:not(:disabled) { background-color: #b02a37; }
+.confirm-text { color: var(--color-text-main); font-size: 14px; line-height: 1.6; margin: 0; }
+.btn-import { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, color 0.15s ease; }
+.btn-import:hover { background-color: var(--color-primary); color: var(--color-white); }
 .table-responsive { background: var(--color-white); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-family: var(--font-main); }
 .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
@@ -262,19 +514,117 @@ const cerrarModalImportacion = () => {
 .btn-action { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 .flash-success { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 .flash-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c2b9; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
-.actions-container { margin-bottom: 1.5rem; padding: 1rem; background-color: #f8f9fa; border-radius: 6px; }
-.csv-upload-form { display: flex; align-items: center; gap: 1rem; }
-.file-input { border: 1px solid #ddd; padding: 0.3rem; border-radius: 4px; background: white; }
-.btn-upload { padding: 0.5rem 1rem; background-color: #198754; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.btn-cancelar {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font-main);
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-cancelar:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+/* ---- Modal CSV ---- */
+.csv-upload { display: flex; flex-direction: column; gap: 14px; }
+.csv-file-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.file-input { border: 1px solid var(--color-white-soft); padding: 0.5rem; border-radius: 6px; background: var(--color-bg-input); width: 100%; max-width: 320px; }
+.btn-upload { padding: 10px 20px; background-color: #198754; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: var(--font-main); }
 .btn-upload:disabled { opacity: 0.6; cursor: not-allowed; }
-.spinner-inline { width: 24px; height: 24px; }
-.csv-error { color: #b3261e; margin-top: 0.5rem; font-size: 0.9rem; }
-.btn-cancelar { margin-right: 15px; background: transparent; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; padding: 10px 16px; }
-.modal-content { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
-.summary-stats p { margin: 0.2rem 0; font-size: 1.1rem; }
-.error-container { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 4px; }
-.error-list { max-height: 200px; overflow-y: auto; padding-left: 1.5rem; margin-top: 0.5rem; font-size: 0.9rem; }
-.btn-close { align-self: flex-end; padding: 0.5rem 1rem; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.help-text { color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
+.help-text code { background: var(--color-bg-input); padding: 2px 5px; border-radius: 4px; font-size: 12px; }
+.error-msg { color: #d32f2f; font-size: 13px; }
+.summary-stats { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.stats-fila { display: grid; gap: 10px; }
+.stats-totales { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stats-detalle { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.stats-detalle--cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 560px) {
+  .stats-totales,
+  .stats-detalle,
+  .stats-detalle--cuatro { grid-template-columns: 1fr; }
+}
+.stat-card {
+  display: flex;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--color-white-soft);
+  border-left: 4px solid transparent;
+}
+.stat-info { display: flex; flex-direction: column; min-width: 0; }
+.stat-number { font-size: 1.4rem; line-height: 1; color: var(--color-text-main); }
+.stats-totales .stat-number { font-size: 1.6rem; }
+.stat-label { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
+.stat-ok { border-left-color: #198754; background: #f0faf4; }
+.stat-ok .stat-number { color: #198754; }
+.stat-total { border-left-color: #334155; background: #f8fafc; }
+.stat-total .stat-number { color: #334155; }
+.stat-sin-registrar { border-left-color: #dc2626; background: #fef2f2; }
+.stat-sin-registrar .stat-number { color: #dc2626; }
+.stat-formato { border-left-color: #d97706; background: #fffbeb; }
+.stat-formato .stat-number { color: #d97706; }
+.stat-duplicado { border-left-color: #ea580c; background: #fff7ed; }
+.stat-duplicado .stat-number { color: #ea580c; }
+.stat-existente { border-left-color: #dc3545; background: #fef2f2; }
+.stat-existente .stat-number { color: #dc3545; }
+.stat-inesperado { border-left-color: #6c757d; background: #f8f9fa; }
+.stat-inesperado .stat-number { color: #6c757d; }
+.success-box { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }
+.success-box .help-text { color: #1e7a34; }
+.rejected-list { display: flex; flex-direction: column; gap: 14px; max-height: 420px; overflow-y: auto; margin-bottom: 16px; padding-right: 4px; }
+@media (max-width: 480px) { .rejected-list { max-height: none; overflow: visible; } }
+.rejected-row { border: 1px solid var(--color-white-soft); border-left: 4px solid #d32f2f; border-radius: 6px; padding: 12px 14px; background: #fff; }
+.rejected-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.rejected-fila { font-size: 12px; font-weight: 700; color: var(--color-text-secondary); }
+.btn-remove {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.btn-remove:hover { background: #fdecea; color: #dc3545; }
+.btn-remove:disabled { opacity: 0.5; cursor: not-allowed; }
+.motivos { margin: 0 0 10px; padding: 0; list-style: none; }
+.motivos li { font-size: 12px; margin-bottom: 2px; padding-left: 14px; position: relative; }
+.motivos li::before { content: '•'; position: absolute; left: 0; }
+.motivo--formato { color: #b45309; }
+.motivo--duplicado_archivo { color: #c2410c; }
+.motivo--ya_registrado { color: #b3261e; }
+.motivo--inesperado { color: #6c757d; }
+.rejected-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 480px) { .rejected-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 768px) { .rejected-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.form-group { margin-bottom: 8px; }
+.form-label { display: block; font-size: 12px; font-weight: 600; color: var(--color-text-main); margin-bottom: 4px; }
+.required { color: #d32f2f; }
+.form-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-white-soft);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--color-bg-input);
+  color: var(--color-text-main);
+  box-sizing: border-box;
+  font-family: var(--font-main);
+}
+.form-input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--shadow-input-focus); }
+.results-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
 .btn-danger {
   color: #dc3545;
   border-color: #dc3545;
