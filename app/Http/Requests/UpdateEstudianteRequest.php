@@ -6,6 +6,12 @@ use Illuminate\Validation\Rule;
 
 class UpdateEstudianteRequest extends StoreEstudianteRequest
 {
+    protected function prepareForValidation(): void
+    {
+        parent::prepareForValidation();
+
+        $this->offsetUnset('codigo_qr');
+    }
     /**
      * @return array<string, mixed>
      */
