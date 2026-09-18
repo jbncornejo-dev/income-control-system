@@ -70,4 +70,10 @@ class User extends Authenticatable
     {
         return $this->hasMany(AuditoriaLog::class, 'id_usuario', 'id');
     }
+
+    // Relación de uno a muchos (user-grupo)
+    public function grupos()
+    {
+        return $this->hasMany(Grupo::class, 'id_usuario', 'id');
+    }
 }
