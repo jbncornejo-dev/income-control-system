@@ -15,6 +15,10 @@ class UserAdminTest extends TestCase
     {
         parent::setUp();
 
+        // Deshabilitar la verificación de existencia de componentes Vue
+        // para que las pruebas de backend no fallen si el frontend aún no los crea.
+        config(['inertia.testing.ensure_pages_exist' => false]);
+
         // Create roles
         Rol::create(['nombre_rol' => 'administrador']);
         Rol::create(['nombre_rol' => 'docente']);
