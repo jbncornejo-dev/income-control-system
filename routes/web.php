@@ -162,6 +162,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas', [AsignaturaController::class, 'store'])->name('asignaturas.store');
+
+        Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
+        Route::patch('/usuarios/{usuario}/password', [UserController::class, 'updatePassword'])->name('usuarios.password');
+        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {

@@ -52,4 +52,48 @@ class UserController extends Controller
         // 3. Redirigir hacia atrás (Inertia actualizará la tabla automáticamente)
         return redirect()->back()->with('success', 'Usuario creado exitosamente.');
     }
+
+    public function update(Request $request, User $usuario)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users,username,' . $usuario->id,
+            'email' => 'required|string|email|max:255|unique:users,email,' . $usuario->id,
+            'id_rol' => 'required|integer',
+        ]);
+
+        $usuario->update([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'id_rol' => $request->id_rol,
+        ]);
+
+        return redirect()->back()->with('success', 'Usuario actualizado exitosamente.');
+    }
+
+    public function updatePassword(Request $request, User $usuario)
+    {
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $usuario->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->back()->with('success', 'Contraseña actualizada exitosamente.');
+    }
+
+    public function destroy(User $usuario)
+    {
+        // Opcional: Proteger para que un administrador no pueda eliminarse a sí mismo
+        if (auth()->id() === $usuario->id) {
+            return redirect()->back()->withErrors(['error' => 'No puedes eliminar tu propia cuenta.']);
+        }
+
+        $usuario->delete();
+
+        return redirect()->back()->with('success', 'Usuario eliminado exitosamente.');
+    }
 }

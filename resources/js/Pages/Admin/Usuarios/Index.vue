@@ -1,17 +1,44 @@
 <script setup>
 import Modal from '@/components/ui/Modal.vue';
 import UsuarioForm from '@/components/forms/UsuarioForm.vue';
+import EditUsuarioForm from '@/components/forms/EditUsuarioForm.vue';
+import EditPasswordForm from '@/components/forms/EditPasswordForm.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Button from '@/components/ui/Button.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const showCreateModal = ref(false);
 
+const showEditModal = ref(false);
+const showPasswordModal = ref(false);
+const selectedUser = ref(null);
+
+const openEditModal = (user) => {
+    selectedUser.value = user;
+    showEditModal.value = true;
+};
+
+const openPasswordModal = (user) => {
+    selectedUser.value = user;
+    showPasswordModal.value = true;
+};
+
 const props = defineProps({
+    user: { type: Object, required: true },
     usuarios: Object, // Paginador de Laravel
     roles: Array
 });
+
+const eliminarUsuario = (id) => {
+    // La confirmación nativa previene eliminaciones accidentales
+    if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
+        router.delete(`/usuarios/${id}`, {
+            preserveScroll: true,
+            // Opcional: manejar éxito o error aquí
+        });
+    }
+};
 
 // Función auxiliar para obtener la inicial del nombre para el avatar
 const getInitial = (name) => {
@@ -52,46 +79,35 @@ const getInitial = (name) => {
                             <th>NOMBRE</th>
                             <th>EMAIL</th>
                             <th>ROL</th>
-                            <th>ESTADO</th>
-                            <th class="actions-col"></th>
+                            <th>ACCIONES</th>
+
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="user in usuarios.data" :key="user.id">
-                            <!-- Columna Nombre con Avatar -->
                             <td class="name-cell">
                                 <div class="avatar">{{ getInitial(user.name) }}</div>
                                 <span>{{ user.name }}</span>
                             </td>
-                            
-                            <!-- Columna Email -->
                             <td>{{ user.email }}</td>
-                            
-                            <!-- Columna Rol -->
                             <td>
-                                <!-- Asumo que la relación se llama 'rol' y el campo 'nombre' -->
+                                <!-- Renderizado correcto del rol -->
                                 <span class="badge badge-role">
-                                    {{ user.rol ? user.rol.nombre : 'Sin rol' }}
+                                    {{ user.rol ? user.rol.nombre_rol : 'Sin rol' }}
                                 </span>
                             </td>
-                            
-                            <!-- Columna Estado -->
-                            <td>
-                                <!-- Asumo que tienes un campo 'estado' o 'activo' en tu BD -->
-                                <span :class="['badge', user.estado === 'Activo' ? 'badge-active' : 'badge-inactive']">
-                                    {{ user.estado || 'Activo' }}
-                                </span>
-                            </td>
-                            
-                            <!-- Columna Acciones -->
                             <td class="actions-cell">
-                                <!-- Botón condicional según el estado -->
-                                <button class="btn-action">
-                                    {{ user.estado === 'Inactivo' ? 'Activar' : 'Desactivar' }}
-                                </button>
-                                <button class="btn-action">Editar</button>
-                                <button class="btn-action">Clave</button>
-                                <button class="btn-action btn-delete">Eliminar</button>
+                                <!-- Botones enlazados a las funciones -->
+                                <button class="btn-action" @click="openEditModal(user)">Editar</button>
+                                <button class="btn-action" @click="openPasswordModal(user)">Clave</button>
+                                <!-- Pasar el ID correcto del usuario iterado -->
+                                <Button 
+                                    type="button" 
+                                    variant="delete" 
+                                    @click="eliminarUsuario(user.id)"
+                                >
+                                    Eliminar
+                                </Button>
                             </td>
                         </tr>
                     </tbody>
@@ -109,6 +125,32 @@ const getInitial = (name) => {
                         :roles="roles" 
                         @success="showCreateModal = false" 
                         @cancel="showCreateModal = false" 
+                    />
+                </div>
+            </Modal>
+            <!-- Modal Editar Datos -->
+            <Modal :open="showEditModal" @close="showEditModal = false">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Editar Usuario</h2>
+                    <EditUsuarioForm 
+                        v-if="selectedUser"
+                        :user="selectedUser" 
+                        :roles="roles" 
+                        @success="showEditModal = false" 
+                        @cancel="showEditModal = false" 
+                    />
+                </div>
+            </Modal>
+
+            <!-- Modal Editar Contraseña -->
+            <Modal :open="showPasswordModal" @close="showPasswordModal = false">
+                <div class="p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Cambiar Contraseña</h2>
+                    <EditPasswordForm 
+                        v-if="selectedUser"
+                        :user="selectedUser" 
+                        @success="showPasswordModal = false" 
+                        @cancel="showPasswordModal = false" 
                     />
                 </div>
             </Modal>
@@ -194,10 +236,6 @@ const getInitial = (name) => {
     vertical-align: middle;
 }
 
-.actions-col {
-    width: 300px;
-}
-
 /* Celdas específicas */
 .name-cell {
     display: flex;
@@ -209,6 +247,7 @@ const getInitial = (name) => {
 .avatar {
     width: 32px;
     height: 32px;
+    flex-shrink: 0;
     border-radius: 50%;
     background-color: #1e1b4b;
     color: white;
