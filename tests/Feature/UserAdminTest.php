@@ -122,7 +122,7 @@ class UserAdminTest extends TestCase
             'password' => \Illuminate\Support\Facades\Hash::make('oldpassword'),
         ]);
 
-        $response = $this->actingAs($admin)->patch("/usuarios/{$targetUser->id}", [
+        $response = $this->actingAs($admin)->put("/usuarios/{$targetUser->id}", [
             'name' => 'Hacked Name',
             'email' => 'hacked@example.com',
             'username' => 'hacked_username',
@@ -143,6 +143,28 @@ class UserAdminTest extends TestCase
         ]);
 
         // Verifica que la contraseña SÍ cambió
+        $updatedUser = User::find($targetUser->id);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('newpassword123', $updatedUser->password));
+    }
+
+    public function test_update_password_route()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $targetUser = User::factory()->create([
+            'id_rol' => $adminRol->id_rol,
+            'password' => \Illuminate\Support\Facades\Hash::make('oldpassword'),
+        ]);
+
+        $response = $this->actingAs($admin)->patch("/usuarios/{$targetUser->id}/password", [
+            'password' => 'newpassword123',
+            'password_confirmation' => 'newpassword123',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Contraseña actualizada exitosamente.');
+        
         $updatedUser = User::find($targetUser->id);
         $this->assertTrue(\Illuminate\Support\Facades\Hash::check('newpassword123', $updatedUser->password));
     }
@@ -226,7 +248,7 @@ class UserAdminTest extends TestCase
         $response = $this->actingAs($admin)->delete("/usuarios/{$targetUser->id}");
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Usuario eliminado correctamente.');
+        $response->assertSessionHas('success', 'Usuario eliminado exitosamente.');
         $this->assertDatabaseMissing('users', ['id' => $targetUser->id]);
     }
 
@@ -238,7 +260,7 @@ class UserAdminTest extends TestCase
         $response = $this->actingAs($admin)->delete("/usuarios/{$admin->id}");
 
         // Un ValidationException lanzado produce un redirect de vuelta con errores en la sesión
-        $response->assertSessionHasErrors(['delete' => 'No puedes eliminar tu propio usuario.']);
+        $response->assertSessionHasErrors(['error' => 'No puedes eliminar tu propia cuenta.']);
         // Verify user still exists
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }
@@ -261,8 +283,8 @@ class UserAdminTest extends TestCase
         $docenteRol = Rol::where('nombre_rol', 'docente')->first();
         $docente = User::factory()->create(['id_rol' => $docenteRol->id_rol]);
 
-        // Intentar hacer PATCH
-        $responsePatch = $this->actingAs($docente)->patch("/usuarios/{$targetUser->id}", [
+        // Intentar hacer PUT
+        $responsePatch = $this->actingAs($docente)->put("/usuarios/{$targetUser->id}", [
             'id_rol' => $docenteRol->id_rol,
             'password' => 'hackedpassword',
         ]);
@@ -282,7 +304,7 @@ class UserAdminTest extends TestCase
         $responseGet = $this->get('/usuarios');
         $responseGet->assertRedirect('/login');
 
-        $responsePatch = $this->patch("/usuarios/{$targetUser->id}", [
+        $responsePatch = $this->put("/usuarios/{$targetUser->id}", [
             'id_rol' => $adminRol->id_rol,
             'password' => 'hackedpassword',
         ]);
