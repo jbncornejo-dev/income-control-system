@@ -14,10 +14,11 @@ class StoreEstudianteRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'codigo_universitario' => trim((string) $this->codigo_universitario),
-            'documento_identidad' => trim((string) $this->documento_identidad),
             'nombres' => trim((string) $this->nombres),
             'apellidos' => trim((string) $this->apellidos),
+            'codigo_universitario' => trim((string) $this->codigo_universitario),
+            'documento_identidad' => trim((string) $this->documento_identidad),
+            'codigo_qr' => $this->codigo_qr !== null ? trim((string) $this->codigo_qr) : null,
         ]);
     }
 

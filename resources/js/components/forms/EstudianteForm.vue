@@ -94,11 +94,11 @@ const emitirGuardado = () => {
     form.post('/estudiantes', {
       onSuccess: () => {
         form.reset()
-        toastStore.success('Estudiante registrado correctamente.')
+        toastStore.success('Estudiante registrado exitosamente.')
         emit('success')
       },
       onError: () => {
-        toastStore.error('Error al registrar el estudiante.')
+        toastStore.error('Por favor, revisa los errores en el formulario.')
       },
     })
   }

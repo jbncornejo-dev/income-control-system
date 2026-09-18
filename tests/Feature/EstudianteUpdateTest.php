@@ -46,6 +46,8 @@ class EstudianteUpdateTest extends TestCase
         $response = $this->put("/estudiantes/{$estudiante->id_estudiante}", [
             'nombres' => 'Ana Maria',
             'apellidos' => 'Perez',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertRedirect(route('login'));
@@ -93,6 +95,8 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => 'QR-1',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -109,6 +113,8 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => '',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -136,6 +142,8 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => 'QR-2',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -154,6 +162,8 @@ class EstudianteUpdateTest extends TestCase
         $response = $this->actingAs($user)->put("/estudiantes/{$estudiante->id_estudiante}", [
             'nombres' => '',
             'apellidos' => '',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasErrors(['nombres', 'apellidos']);

@@ -12,8 +12,29 @@
 </template>
 
 <script setup>
+import { useForm } from '@inertiajs/vue3';
+import ToastContainer from '@/components/ui/ToastContainer.vue';
 import { useToastStore } from '../../stores/useToastStore'
 const toastStore = useToastStore()
+const registrarEstudiante = () => {
+  form.post(route('estudiantes.store'), {
+    preserveScroll: true,
+    onSuccess: () => {
+      // Usamos 'msg' para coincidir con la interpolación de tu template
+      toastStore.add({ 
+        type: 'success', 
+        msg: 'Estudiante registrado exitosamente' 
+      });
+      form.reset(); 
+    },
+    onError: () => {
+      toastStore.add({ 
+        type: 'error', 
+        msg: 'Revisa los datos ingresados' 
+      });
+    }
+  });
+};
 </script>
 
 <style scoped>

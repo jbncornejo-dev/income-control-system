@@ -3,11 +3,9 @@
     <div class="student-list-container">
       <h1 style="color: var(--color-primary);">Listado de Estudiantes</h1>
 
-      <div v-if="pageProps.props.flash?.success" class="flash-success" role="status">
-        {{ pageProps.props.flash.success }}
-      </div>
-      <div v-if="pageProps.props.flash?.error" class="flash-error" role="alert">
-        {{ pageProps.props.flash.error }}
+      <div class="toolbar">
+        <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
+        <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
       </div>
 
       <div class="toolbar">
@@ -232,6 +230,26 @@
       </Modal>
     </div>
   </AuthenticatedLayout>
+  <Modal :show="showModal" @close="showModal = false">
+    <div class="modal-content">
+      <h3>Reporte de Carga Masiva</h3>
+      <div class="summary-stats">
+        <p>Registros creados: <strong>{{ uploadResults.creados }}</strong></p>
+        <p>Registros rechazados: <strong>{{ uploadResults.rechazados }}</strong></p>
+      </div>
+
+      <div v-if="uploadResults.detalles_rechazos && uploadResults.detalles_rechazos.length > 0" class="error-container">
+        <h4>Motivos de rechazo:</h4>
+        <ul class="error-list">
+          <li v-for="(error, index) in uploadResults.detalles_rechazos" :key="index">
+            <strong>Fila {{ error.fila }}:</strong> {{ error.motivo }}
+          </li>
+        </ul>
+      </div>
+
+      <button @click="showModal = false" class="btn-close">Entendido</button>
+    </div>
+  </Modal>
 </template>
 
 <script setup>

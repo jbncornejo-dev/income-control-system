@@ -55,7 +55,14 @@ class EstudianteInertiaTest extends TestCase
 
         $this->from('/estudiantes')->put(
             route('estudiantes.update', $estudiante),
-            ['nombres' => 'Ana Maria', 'apellidos' => 'Perez Lopez', 'codigo_qr' => 'QR-NUEVO']
+            [
+                'nombres' => 'Ana Maria', 
+                'apellidos' => 'Perez Lopez', 
+                'codigo_qr' => 'QR-NUEVO',
+                // Agregamos los campos obligatorios para satisfacer la validación:
+                'codigo_universitario' => $estudiante->codigo_universitario,
+                'documento_identidad' => $estudiante->documento_identidad,
+            ]
         )->assertRedirect('/estudiantes');
 
         $this->get('/estudiantes')->assertInertia(fn (Assert $page) => $page
