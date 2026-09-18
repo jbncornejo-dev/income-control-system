@@ -163,6 +163,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador,docente')->group(function () {
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // Edición parcial (PATCH) de un examen existente.
+        Route::patch('/examenes/{examen}', [ExamenController::class, 'update'])->name('examenes.update');
         // Asociar estudiantes a un examen
         Route::post(
             '/examenes/{examen}/habilitaciones',
