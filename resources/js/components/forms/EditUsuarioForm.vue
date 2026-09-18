@@ -46,8 +46,9 @@ const submit = () => {
                     v-model="form.username" 
                     type="text" 
                     label="Nombre de Usuario"
-                    required 
+                    disabled 
                 />
+                
                 <span v-if="form.errors.username" class="error-msg">{{ form.errors.username }}</span>
             </div>
             <div class="form-group">
@@ -56,7 +57,7 @@ const submit = () => {
                     v-model="form.email" 
                     type="email" 
                     label="Correo Electrónico"
-                    required 
+                    disabled 
                 />
                 <span v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</span>
             </div>

@@ -6,8 +6,8 @@
             :value="modelValue"
             @input="$emit('update:modelValue', $event.target.value)"
             :placeholder="placeholder"
-            :class="['input-control', { 'input-expanded': expanded, 'input-search': isSearch }]"
-        />
+            :disabled="disabled"
+            :class="['input-control', { 'input-expanded': expanded, 'input-search': isSearch, 'input-disabled': disabled }]"        />
     </div>
 </template>
 
@@ -18,7 +18,8 @@ defineProps({
     type: { type: String, default: 'text' },
     placeholder: String,
     expanded: { type: Boolean, default: false },
-    isSearch: { type: Boolean, default: false }
+    isSearch: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false }
 });
 
 defineEmits(['update:modelValue']);
@@ -67,5 +68,20 @@ defineEmits(['update:modelValue']);
 .input-expanded {
     flex-grow: 1;
     width: auto;
+}
+
+/* Modificador para campos deshabilitados (solo texto grisáceo) */
+.input-disabled {
+    background-color: transparent; /* Quitamos el color de fondo */
+    border: 1px solid transparent; /* Ocultamos el borde */
+    color: #9ca3af; /* Texto grisáceo */
+    box-shadow: none; /* Quitamos sombras */
+    cursor: not-allowed; /* Indicador de que no se puede interactuar */
+    padding: 0; /* Removemos el padding para que se alinee perfectamente a la izquierda con el label */
+}
+
+.input-disabled:focus {
+    border-color: transparent;
+    box-shadow: none;
 }
 </style>
