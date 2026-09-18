@@ -62,7 +62,8 @@ class EstudianteInertiaTest extends TestCase
             ->component('Estudiantes/Index')
             ->where('estudiantes.data.0.nombres', 'Ana Maria')
             ->where('estudiantes.data.0.apellidos', 'Perez Lopez')
-            ->where('estudiantes.data.0.codigo_qr', 'QR-NUEVO')
+            // El QR ya no se modifica a través del CRUD.
+            ->where('estudiantes.data.0.codigo_qr', 'QR-1')
             ->where('flash.success', 'Estudiante actualizado correctamente.'));
     }
 }

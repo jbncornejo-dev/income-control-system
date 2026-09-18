@@ -27,4 +27,18 @@
     /* Tipografía */
     --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     --font-display: 'Rajdhani', sans-serif;
+
+    /* Tokens UI usados por los componentes Vue (botones, tablas, formularios) */
+    --color-white: #ffffff;
+    --color-white-soft: #eceff4;
+    --color-bg-base: #f8f9fb;
+    --color-bg-input: #f1f3f6;
+    --color-gray-light: #f0f0f0;
+    --color-secondary: #a12b33;
+    --color-text-main: #333333;
+    --color-text-secondary: #6c757d;
+    --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --radius-md: 8px;
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-input-focus: 0 0 0 3px rgba(29, 54, 83, 0.15);
 }

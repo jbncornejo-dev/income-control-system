@@ -33,20 +33,14 @@ class StudentController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        // Mapea a formato esperado por el diseño Vue actual (ci, name, career, status)
+        // Mapea a los campos canónicos que usa la vista Vue (tabla y formularios).
         $mapped = $students->through(function ($s) {
             return [
                 'id' => $s->id_estudiante,
-                'ci' => $s->documento_identidad,
-                'name' => trim($s->nombres.' '.$s->apellidos),
-                'career' => $s->codigo_universitario,
-                'status' => 'active',
-                'statusText' => 'Habilitada',
-                // Campos editables: el front los usa para precargar el formulario de edición.
-                'nombres' => $s->nombres,
-                'apellidos' => $s->apellidos,
                 'codigo_universitario' => $s->codigo_universitario,
                 'documento_identidad' => $s->documento_identidad,
+                'nombres' => $s->nombres,
+                'apellidos' => $s->apellidos,
                 'codigo_qr' => $s->codigo_qr,
             ];
         });
@@ -76,10 +70,6 @@ class StudentController extends Controller
                     return back()->withErrors(['documento_identidad' => 'El documento de identidad ya está registrado.'])->withInput();
                 }
 
-                if (str_contains($message, 'codigo_qr')) {
-                    return back()->withErrors(['codigo_qr' => 'El código QR ya está registrado.'])->withInput();
-                }
-
                 return back()->withErrors(['codigo_universitario' => 'Registro duplicado.'])->withInput();
             }
 
@@ -91,17 +81,9 @@ class StudentController extends Controller
 
     public function update(UpdateEstudianteRequest $request, Estudiante $estudiante)
     {
-        // codigo_universitario y documento_identidad NO son editables;
+        // codigo_universitario, documento_identidad y codigo_qr NO son editables;
         // solo se actualizan los campos definidos en el Form Request.
-        try {
-            $estudiante->update($request->safe()->only(['nombres', 'apellidos', 'codigo_qr']));
-        } catch (QueryException $e) {
-            if ($e->getCode() === '23505') {
-                return back()->withErrors(['codigo_qr' => 'El código QR ya está registrado.'])->withInput();
-            }
-
-            throw $e;
-        }
+        $estudiante->update($request->safe()->only(['nombres', 'apellidos']));
 
         return back()->with('success', 'Estudiante actualizado correctamente.');
     }

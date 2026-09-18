@@ -2,8 +2,6 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Validation\Rule;
-
 class UpdateEstudianteRequest extends StoreEstudianteRequest
 {
     /**

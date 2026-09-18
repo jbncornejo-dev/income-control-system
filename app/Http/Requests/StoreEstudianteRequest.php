@@ -20,10 +20,6 @@ class StoreEstudianteRequest extends FormRequest
             'documento_identidad' => trim((string) $this->documento_identidad),
             'codigo_qr' => $this->codigo_qr !== null ? trim((string) $this->codigo_qr) : null,
         ]);
-
-        if ($this->codigo_qr === '') {
-            $this->merge(['codigo_qr' => null]);
-        }
     }
 
     /**
@@ -36,7 +32,6 @@ class StoreEstudianteRequest extends FormRequest
             'documento_identidad' => ['required', 'string', 'max:20', 'unique:estudiante,documento_identidad'],
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
-            'codigo_qr' => ['nullable', 'string', 'max:255', 'unique:estudiante,codigo_qr'],
         ];
     }
 
@@ -52,7 +47,6 @@ class StoreEstudianteRequest extends FormRequest
             'documento_identidad.unique' => 'El documento de identidad ya está registrado.',
             'nombres.required' => 'Los nombres son obligatorios.',
             'apellidos.required' => 'Los apellidos son obligatorios.',
-            'codigo_qr.unique' => 'El código QR ya está registrado.',
         ];
     }
 }

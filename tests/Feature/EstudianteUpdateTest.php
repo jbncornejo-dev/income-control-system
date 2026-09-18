@@ -73,7 +73,8 @@ class EstudianteUpdateTest extends TestCase
             'id_estudiante' => $estudiante->id_estudiante,
             'nombres' => 'Ana Maria',
             'apellidos' => 'Perez Lopez',
-            'codigo_qr' => 'QR-NUEVO',
+            // El QR ya no se modifica a través del CRUD.
+            'codigo_qr' => 'QR-1',
         ]);
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
@@ -98,7 +99,7 @@ class EstudianteUpdateTest extends TestCase
         $this->assertDatabaseCount('estudiante', 1);
     }
 
-    public function test_can_clear_codigo_qr(): void
+    public function test_cannot_change_codigo_qr_via_update(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
@@ -111,13 +112,14 @@ class EstudianteUpdateTest extends TestCase
         ]);
 
         $response->assertSessionHasNoErrors();
+        // El QR ya no forma parte de la edición: no se puede modificar ni limpiar.
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
-            'codigo_qr' => null,
+            'codigo_qr' => 'QR-1',
         ]);
     }
 
-    public function test_rejects_duplicate_codigo_qr_on_update(): void
+    public function test_ignores_duplicate_codigo_qr_on_update(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
@@ -136,7 +138,7 @@ class EstudianteUpdateTest extends TestCase
             'codigo_qr' => 'QR-2',
         ]);
 
-        $response->assertSessionHasErrors('codigo_qr');
+        $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
             'codigo_qr' => 'QR-1',
