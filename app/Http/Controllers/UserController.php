@@ -15,11 +15,22 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        // Consultamos los usuarios incluyendo la relación 'rol'
-        // Utilizamos paginación para manejar el pie de tabla (ej. "9 de 9 usuarios")
-        $usuarios = User::with('rol')
-            ->orderBy('id', 'desc')
-            ->paginate(15);
+        $query = User::with('rol')->orderBy('id', 'desc');
+
+        // Filtro por rol (soporta 'id_rol' o 'role' según convención del frontend)
+        if ($request->filled('id_rol')) {
+            $query->where('id_rol', $request->id_rol);
+        } elseif ($request->filled('role')) {
+            $query->where('id_rol', $request->role);
+        }
+
+        // Búsqueda por email
+        if ($request->filled('search')) {
+            $query->where('email', 'like', '%' . $request->search . '%');
+        }
+
+        // Paginar y anexar los parámetros de la URL para no perderlos al cambiar de página
+        $usuarios = $query->paginate(15)->withQueryString();
 
         // Consultamos los roles para llenar el select del filtro
         $roles = Rol::all();
@@ -27,8 +38,7 @@ class UserController extends Controller
         return Inertia::render('Admin/Usuarios/Index', [
             'usuarios' => $usuarios,
             'roles' => $roles,
-            // Aquí puedes retornar los filtros aplicados si implementas la búsqueda
-            'filters' => $request->only(['search', 'role'])
+            'filters' => $request->only(['search', 'role', 'id_rol'])
         ]);
     }
 
