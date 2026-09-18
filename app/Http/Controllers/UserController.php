@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 use App\Models\Rol;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -29,51 +32,50 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+public function store(StoreUserRequest $request)
     {
-        // 1. Validar la petición
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users',
-            'email' => 'required|string|email|max:255|unique:users',
-            'id_rol' => 'required|integer', // Asegúrate de que el id_rol exista en tu tabla de roles
-            'password' => 'required|string|min:8|confirmed', // 'confirmed' busca el campo 'password_confirmation' en Vue
-        ]);
+        // 1. Obtenemos datos validados del Form Request de develop
+        $data = $request->validated();
+        $data['password'] = Hash::make($data['password']);
 
-        // 2. Crear el usuario
-        User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'id_rol' => $request->id_rol,
-            'password' => Hash::make($request->password), // Encriptación obligatoria
-        ]);
+        // 2. Mantenemos la lógica de develop para autogenerar username si es necesario
+        if (empty($data['username'])) {
+            $baseUsername = Str::slug(explode(' ', trim($data['name']))[0].'_'.Str::before($data['email'], '@'));
+            $baseUsername = Str::limit($baseUsername, 45, '');
+            $username = $baseUsername;
+            $suffix = 1;
+            while (User::where('username', $username)->exists()) {
+                $suffixStr = (string) $suffix++;
+                $username = Str::limit($baseUsername, 50 - strlen($suffixStr), '').$suffixStr;
+            }
+            $data['username'] = $username;
+        }
 
-        // 3. Redirigir hacia atrás (Inertia actualizará la tabla automáticamente)
+        User::create($data);
+
         return redirect()->back()->with('success', 'Usuario creado exitosamente.');
     }
 
-    public function update(Request $request, User $usuario)
+    public function update(UpdateUserRequest $request, User $usuario)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users,username,' . $usuario->id,
-            'email' => 'required|string|email|max:255|unique:users,email,' . $usuario->id,
-            'id_rol' => 'required|integer',
-        ]);
+        // Usamos $usuario para mantener compatibilidad con tu Route Model Binding
+        $data = $request->validated();
+        
+        // Mantenemos el fallback de develop por si otra vista actualiza la clave por aquí
+        if (!empty($data['password'])) {
+            $data['password'] = Hash::make($data['password']);
+        } else {
+            unset($data['password']);
+        }
 
-        $usuario->update([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'id_rol' => $request->id_rol,
-        ]);
+        $usuario->update($data);
 
         return redirect()->back()->with('success', 'Usuario actualizado exitosamente.');
     }
 
     public function updatePassword(Request $request, User $usuario)
     {
+        // Mantenemos tu método dedicado para el modal de Vue
         $request->validate([
             'password' => 'required|string|min:8|confirmed',
         ]);
@@ -87,7 +89,7 @@ class UserController extends Controller
 
     public function destroy(User $usuario)
     {
-        // Opcional: Proteger para que un administrador no pueda eliminarse a sí mismo
+        // Mantenemos tu protección de seguridad contra autoeliminación
         if (auth()->id() === $usuario->id) {
             return redirect()->back()->withErrors(['error' => 'No puedes eliminar tu propia cuenta.']);
         }
