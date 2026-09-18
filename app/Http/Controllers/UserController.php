@@ -81,6 +81,12 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        if ($user->id === auth()->id()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'delete' => 'No puedes eliminar tu propio usuario.'
+            ]);
+        }
+
         $user->delete();
 
         return redirect()->back()->with('success', 'Usuario eliminado correctamente.');
