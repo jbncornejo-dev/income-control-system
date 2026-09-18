@@ -11,7 +11,10 @@ class UpdateEstudianteRequest extends StoreEstudianteRequest
      */
     public function rules(): array
     {
+        // Extraemos el ID, cubriendo el caso de que la ruta inyecte el modelo completo o solo el ID numérico
         $estudiante = $this->route('estudiante');
+        $id = is_object($estudiante) ? $estudiante->id_estudiante : $estudiante;
+
         return [
             'nombres' => ['required', 'string', 'max:100'],
             'apellidos' => ['required', 'string', 'max:100'],
@@ -19,20 +22,19 @@ class UpdateEstudianteRequest extends StoreEstudianteRequest
                 'required',
                 'string',
                 'max:20',
-                // Verifica que sea único en la tabla 'estudiante', ignorando el registro actual
-                Rule::unique('estudiante', 'codigo_universitario')->ignore($estudiante),
+                Rule::unique('estudiante', 'codigo_universitario')->ignore($id, 'id_estudiante'),
             ],
             'documento_identidad' => [
                 'required',
                 'string',
                 'max:20',
-                Rule::unique('estudiante', 'documento_identidad')->ignore($estudiante),
+                Rule::unique('estudiante', 'documento_identidad')->ignore($id, 'id_estudiante'),
             ],
             'codigo_qr' => [
                 'nullable',
                 'string',
                 'max:255',
-                Rule::unique('estudiante', 'codigo_qr')->ignore($estudiante),
+                Rule::unique('estudiante', 'codigo_qr')->ignore($id, 'id_estudiante'),
             ],
         ];
     }
