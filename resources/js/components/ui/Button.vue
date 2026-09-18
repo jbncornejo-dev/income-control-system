@@ -51,7 +51,6 @@ const variantClass = computed(() => {
     cursor: not-allowed;
 }
 
-/* Estilos extraídos de styles.css y styles-login.css */
 .btn-primary {
     background-color: var(--color-primary);
     color: var(--text-white);

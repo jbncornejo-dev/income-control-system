@@ -33,24 +33,29 @@ defineEmits(['update:modelValue']);
     display: block;
     font-size: 12px;
     font-weight: 600;
-    color: #4b5563;
+    color: var(--text-muted);
     margin-bottom: 8px;
     font-family: var(--font-family);
 }
 
 .input-control {
     width: 100%;
-    padding: 12px 15px;
+    height: 42px;
+    padding: 0 0.8rem;
     border: 1px solid var(--border-light);
-    border-radius: 4px;
+    border-radius: 0.45rem;
     font-size: 14px;
+    color: var(--text-dark);
+    background-color: var(--color-cream);
     outline: none;
-    transition: border-color 0.2s;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
     font-family: var(--font-family);
 }
 
 .input-control:focus {
     border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(29, 54, 83, 0.15);
 }
 
 /* Modificador para el buscador heredado de styles.css */
