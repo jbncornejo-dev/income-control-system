@@ -35,9 +35,6 @@ class UpdateUserRequest extends FormRequest
         $userId = is_object($user) ? $user->id : $user;
 
         return [
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'email' => ['sometimes', 'required', 'email', Rule::unique('users', 'email')->ignore($userId)],
-            'username' => ['nullable', 'string', 'max:50', Rule::unique('users', 'username')->ignore($userId)],
             'id_rol' => ['sometimes', 'required', 'integer', Rule::in($allowedRoles)],
             'password' => ['nullable', 'string', 'min:8'],
         ];

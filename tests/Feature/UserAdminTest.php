@@ -62,7 +62,12 @@ class UserAdminTest extends TestCase
 
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('users', ['email' => 'test@example.com']);
+        $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'id_rol' => $docenteRol->id_rol]);
+
+        $user = User::where('email', 'test@example.com')->first();
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password123', $user->password));
+        $this->assertNotNull($user->username);
+        $this->assertStringContainsString('test', $user->username);
     }
 
     public function test_unique_email_validation()
@@ -102,25 +107,44 @@ class UserAdminTest extends TestCase
         $response->assertSessionHasErrors('id_rol');
     }
 
-    public function test_update_ignores_own_email()
+    public function test_update_modifies_only_role_and_password()
     {
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
         $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
 
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+
         $targetUser = User::factory()->create([
-            'id_rol' => $adminRol->id_rol,
-            'email' => 'target@example.com'
+            'name' => 'Original Name',
+            'email' => 'original@example.com',
+            'username' => 'original_username',
+            'id_rol' => $docenteRol->id_rol,
+            'password' => \Illuminate\Support\Facades\Hash::make('oldpassword'),
         ]);
 
         $response = $this->actingAs($admin)->patch("/usuarios/{$targetUser->id}", [
-            'name' => 'Updated Name',
-            'email' => 'target@example.com',
+            'name' => 'Hacked Name',
+            'email' => 'hacked@example.com',
+            'username' => 'hacked_username',
             'id_rol' => $adminRol->id_rol,
+            'password' => 'newpassword123',
         ]);
 
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('users', ['id' => $targetUser->id, 'name' => 'Updated Name']);
+        
+        // Verifica que los campos protegidos NO cambiaron
+        $this->assertDatabaseHas('users', [
+            'id' => $targetUser->id, 
+            'name' => 'Original Name',
+            'email' => 'original@example.com',
+            'username' => 'original_username',
+            'id_rol' => $adminRol->id_rol, // El rol SÍ cambió
+        ]);
+
+        // Verifica que la contraseña SÍ cambió
+        $updatedUser = User::find($targetUser->id);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('newpassword123', $updatedUser->password));
     }
 
     public function test_index_lists_users_with_roles()
@@ -189,5 +213,79 @@ class UserAdminTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('unique_docente@example.com');
         $response->assertDontSee('unique_admin@example.com'); // Mismo query text pero distinto rol
+    }
+
+    public function test_admin_can_delete_other_user()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+        $targetUser = User::factory()->create(['id_rol' => $docenteRol->id_rol]);
+
+        $response = $this->actingAs($admin)->delete("/usuarios/{$targetUser->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success', 'Usuario eliminado correctamente.');
+        $this->assertDatabaseMissing('users', ['id' => $targetUser->id]);
+    }
+
+    public function test_admin_cannot_delete_self()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $response = $this->actingAs($admin)->delete("/usuarios/{$admin->id}");
+
+        // Un ValidationException lanzado produce un redirect de vuelta con errores en la sesión
+        $response->assertSessionHasErrors(['delete' => 'No puedes eliminar tu propio usuario.']);
+        // Verify user still exists
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
+    public function test_user_not_found_on_delete()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $response = $this->actingAs($admin)->delete("/usuarios/99999");
+
+        $response->assertStatus(404);
+    }
+
+    public function test_docente_cannot_modify_or_delete_usuarios()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $targetUser = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        $docenteRol = Rol::where('nombre_rol', 'docente')->first();
+        $docente = User::factory()->create(['id_rol' => $docenteRol->id_rol]);
+
+        // Intentar hacer PATCH
+        $responsePatch = $this->actingAs($docente)->patch("/usuarios/{$targetUser->id}", [
+            'id_rol' => $docenteRol->id_rol,
+            'password' => 'hackedpassword',
+        ]);
+        $responsePatch->assertStatus(403);
+
+        // Intentar hacer DELETE
+        $responseDelete = $this->actingAs($docente)->delete("/usuarios/{$targetUser->id}");
+        $responseDelete->assertStatus(403);
+    }
+
+    public function test_unauthenticated_user_cannot_access_usuarios()
+    {
+        $adminRol = Rol::where('nombre_rol', 'administrador')->first();
+        $targetUser = User::factory()->create(['id_rol' => $adminRol->id_rol]);
+
+        // Attempting without actingAs
+        $responseGet = $this->get('/usuarios');
+        $responseGet->assertRedirect('/login');
+
+        $responsePatch = $this->patch("/usuarios/{$targetUser->id}", [
+            'id_rol' => $adminRol->id_rol,
+            'password' => 'hackedpassword',
+        ]);
+        $responsePatch->assertRedirect('/login');
     }
 }
