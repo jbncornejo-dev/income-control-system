@@ -1,36 +1,52 @@
 <template>
   <div>
     <div class="form-group">
-      <label>Nombres *</label>
-      <input type="text" v-model="form.nombres" placeholder="Nombres del estudiante" />
-      <p v-if="form.errors.nombres" class="form-error">{{ form.errors.nombres }}</p>
-    </div>
-    <div class="form-group">
-      <label>Apellidos *</label>
-      <input type="text" v-model="form.apellidos" placeholder="Apellidos del estudiante" />
-      <p v-if="form.errors.apellidos" class="form-error">{{ form.errors.apellidos }}</p>
-    </div>
-    <div class="form-group">
-      <label>Código Universitario *</label>
-      <input 
-        type="text" 
-        v-model="form.codigo_universitario" 
-        placeholder="Ej: 2020-12345" 
-        maxlength="20" 
-        :disabled="isEdit" 
+      <label class="form-label">Nombres <span class="required">*</span></label>
+      <input
+        type="text"
+        v-model="form.nombres"
+        placeholder="Nombres del estudiante"
+        class="form-input"
+        :class="{ 'input-error': form.errors.nombres }"
       />
-      <p v-if="form.errors.codigo_universitario" class="form-error">{{ form.errors.codigo_universitario }}</p>
+      <p v-if="form.errors.nombres" class="error-msg">{{ form.errors.nombres }}</p>
     </div>
     <div class="form-group">
-      <label>Documento de Identidad *</label>
-      <input 
-        type="text" 
-        v-model="form.documento_identidad" 
-        placeholder="CI / Documento" 
-        maxlength="20" 
-        :disabled="isEdit" 
+      <label class="form-label">Apellidos <span class="required">*</span></label>
+      <input
+        type="text"
+        v-model="form.apellidos"
+        placeholder="Apellidos del estudiante"
+        class="form-input"
+        :class="{ 'input-error': form.errors.apellidos }"
       />
-      <p v-if="form.errors.documento_identidad" class="form-error">{{ form.errors.documento_identidad }}</p>
+      <p v-if="form.errors.apellidos" class="error-msg">{{ form.errors.apellidos }}</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Código Universitario <span class="required">*</span></label>
+      <input
+        type="text"
+        v-model="form.codigo_universitario"
+        placeholder="Ej: 2020-12345"
+        maxlength="20"
+        :disabled="isEdit"
+        class="form-input"
+        :class="{ 'input-error': form.errors.codigo_universitario, 'input-readonly': isEdit }"
+      />
+      <p v-if="form.errors.codigo_universitario" class="error-msg">{{ form.errors.codigo_universitario }}</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Documento de Identidad <span class="required">*</span></label>
+      <input
+        type="text"
+        v-model="form.documento_identidad"
+        placeholder="CI / Documento"
+        maxlength="20"
+        :disabled="isEdit"
+        class="form-input"
+        :class="{ 'input-error': form.errors.documento_identidad, 'input-readonly': isEdit }"
+      />
+      <p v-if="form.errors.documento_identidad" class="error-msg">{{ form.errors.documento_identidad }}</p>
     </div>
     <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
       <LoadingSpinner size="medium" />
@@ -92,12 +108,40 @@ defineExpose({ emitirGuardado })
 </script>
 
 <style scoped>
-.form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-.form-error { color: #b3261e; font-size: 12px; margin: 4px 0 0; }
-input:disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-main);
+  margin-bottom: 6px;
+}
+.required { color: #d32f2f; }
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-white-soft);
+  border-radius: 6px;
+  font-size: 14px;
+  background: var(--color-bg-input);
+  color: var(--color-text-main);
+  box-sizing: border-box;
+  font-family: var(--font-main);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.form-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-input-focus);
+}
+.input-error { border-color: #d32f2f !important; }
+.input-readonly {
+  opacity: 0.6;
   cursor: not-allowed;
 }
+.input-readonly:focus {
+  border-color: var(--color-white-soft);
+  box-shadow: none;
+}
+.error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
 </style>

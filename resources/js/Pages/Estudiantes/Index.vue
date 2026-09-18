@@ -252,7 +252,8 @@ const cerrarModalImportacion = () => {
 
 <style scoped>
 .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); }
+.btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease; }
+.btn-primary:hover { background-color: var(--color-primary-hover); }
 .table-responsive { background: var(--color-white); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-family: var(--font-main); }
 .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
@@ -268,7 +269,7 @@ const cerrarModalImportacion = () => {
 .btn-upload:disabled { opacity: 0.6; cursor: not-allowed; }
 .spinner-inline { width: 24px; height: 24px; }
 .csv-error { color: #b3261e; margin-top: 0.5rem; font-size: 0.9rem; }
-.btn-cancelar { margin-right: 15px; background: transparent; border: none; cursor: pointer; }
+.btn-cancelar { margin-right: 15px; background: transparent; border: none; color: var(--color-text-secondary); cursor: pointer; font-size: 14px; padding: 10px 16px; }
 .modal-content { padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
 .summary-stats p { margin: 0.2rem 0; font-size: 1.1rem; }
 .error-container { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 1rem; border-radius: 4px; }
