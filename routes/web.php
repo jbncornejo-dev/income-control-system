@@ -135,8 +135,6 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador')->group(function () {
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
-        Route::patch('/usuarios/{user}', [UserController::class, 'update'])->name('usuarios.update');
-        Route::delete('/usuarios/{user}', [UserController::class, 'destroy'])->name('usuarios.destroy');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
@@ -164,6 +162,10 @@ Route::middleware('auth')->group(function () {
         Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas', [AsignaturaController::class, 'store'])->name('asignaturas.store');
+
+        Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
+        Route::patch('/usuarios/{usuario}/password', [UserController::class, 'updatePassword'])->name('usuarios.password');
+        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
 
     Route::middleware('role:administrador,docente')->group(function () {

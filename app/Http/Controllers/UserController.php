@@ -42,11 +42,13 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(StoreUserRequest $request)
+public function store(StoreUserRequest $request)
     {
+        // 1. Obtenemos datos validados del Form Request de develop
         $data = $request->validated();
         $data['password'] = Hash::make($data['password']);
 
+        // 2. Mantenemos la lógica de develop para autogenerar username si es necesario
         if (empty($data['username'])) {
             $baseUsername = Str::slug(explode(' ', trim($data['name']))[0].'_'.Str::before($data['email'], '@'));
             $baseUsername = Str::limit($baseUsername, 45, '');
@@ -61,34 +63,49 @@ class UserController extends Controller
 
         User::create($data);
 
-        return redirect()->back()->with('success', 'Usuario creado correctamente.');
+        return redirect()->back()->with('success', 'Usuario creado exitosamente.');
     }
 
-    public function update(UpdateUserRequest $request, User $user)
+    public function update(UpdateUserRequest $request, User $usuario)
     {
+        // Usamos $usuario para mantener compatibilidad con tu Route Model Binding
         $data = $request->validated();
         
+        // Mantenemos el fallback de develop por si otra vista actualiza la clave por aquí
         if (!empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
         }
 
-        $user->update($data);
+        $usuario->update($data);
 
-        return redirect()->back()->with('success', 'Usuario actualizado correctamente.');
+        return redirect()->back()->with('success', 'Usuario actualizado exitosamente.');
     }
 
-    public function destroy(User $user)
+    public function updatePassword(Request $request, User $usuario)
     {
-        if ($user->id === auth()->id()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'delete' => 'No puedes eliminar tu propio usuario.'
-            ]);
+        // Mantenemos tu método dedicado para el modal de Vue
+        $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $usuario->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->back()->with('success', 'Contraseña actualizada exitosamente.');
+    }
+
+    public function destroy(User $usuario)
+    {
+        // Mantenemos la protección de seguridad contra autoeliminación
+        if (auth()->id() === $usuario->id) {
+            return redirect()->back()->withErrors(['error' => 'No puedes eliminar tu propia cuenta.']);
         }
 
-        $user->delete();
+        $usuario->delete();
 
-        return redirect()->back()->with('success', 'Usuario eliminado correctamente.');
+        return redirect()->back()->with('success', 'Usuario eliminado exitosamente.');
     }
 }
