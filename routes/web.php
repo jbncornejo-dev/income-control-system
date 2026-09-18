@@ -134,6 +134,9 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:administrador')->group(function () {
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
+        Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
+        Route::patch('/usuarios/{user}', [UserController::class, 'update'])->name('usuarios.update');
+        Route::delete('/usuarios/{user}', [UserController::class, 'destroy'])->name('usuarios.destroy');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
