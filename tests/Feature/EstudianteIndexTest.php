@@ -35,15 +35,10 @@ class EstudianteIndexTest extends TestCase
     {
         return [
             'id' => $estudiante->id_estudiante,
-            'ci' => $estudiante->documento_identidad,
-            'name' => trim($estudiante->nombres.' '.$estudiante->apellidos),
-            'career' => $estudiante->codigo_universitario,
-            'status' => 'active',
-            'statusText' => 'Habilitada',
-            'nombres' => $estudiante->nombres,
-            'apellidos' => $estudiante->apellidos,
             'codigo_universitario' => $estudiante->codigo_universitario,
             'documento_identidad' => $estudiante->documento_identidad,
+            'nombres' => $estudiante->nombres,
+            'apellidos' => $estudiante->apellidos,
             'codigo_qr' => $estudiante->codigo_qr,
         ];
     }

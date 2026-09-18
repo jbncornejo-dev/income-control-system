@@ -32,11 +32,6 @@
       />
       <p v-if="form.errors.documento_identidad" class="form-error">{{ form.errors.documento_identidad }}</p>
     </div>
-    <div class="form-group">
-      <label>Código QR (opcional)</label>
-      <input type="text" v-model="form.codigo_qr" placeholder="QR si aplica" maxlength="255" />
-      <p v-if="form.errors.codigo_qr" class="form-error">{{ form.errors.codigo_qr }}</p>
-    </div>
     <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
       <LoadingSpinner size="medium" />
     </div>
@@ -66,12 +61,9 @@ const form = useForm({
   apellidos: props.estudiante?.apellidos || '',
   codigo_universitario: props.estudiante?.codigo_universitario || '',
   documento_identidad: props.estudiante?.documento_identidad || '',
-  codigo_qr: props.estudiante?.codigo_qr || '',
 })
 
 const emitirGuardado = () => {
-  if (form.codigo_qr === '') form.codigo_qr = null
-
   if (isEdit.value) {
     form.put(`/estudiantes/${props.estudiante.id}`, {
       onSuccess: () => {

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -28,7 +29,7 @@ class EstudianteStoreTest extends TestCase
 
     public function test_guest_cannot_create_estudiante(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $response = $this->post('/estudiantes', [
             'codigo_universitario' => '2020-00001',
             'documento_identidad' => '1111111',
@@ -41,7 +42,7 @@ class EstudianteStoreTest extends TestCase
 
     public function test_authenticated_user_can_create_estudiante(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->post('/estudiantes', [
@@ -49,7 +50,6 @@ class EstudianteStoreTest extends TestCase
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
-            'codigo_qr' => null,
         ]);
 
         $response->assertRedirect(route('estudiantes.index'));
@@ -62,7 +62,7 @@ class EstudianteStoreTest extends TestCase
 
     public function test_rejects_duplicate_codigo_universitario(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
             'codigo_universitario' => '2020-00001',
@@ -84,7 +84,7 @@ class EstudianteStoreTest extends TestCase
 
     public function test_rejects_duplicate_documento_identidad(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
             'codigo_universitario' => '2020-00001',
@@ -106,7 +106,7 @@ class EstudianteStoreTest extends TestCase
 
     public function test_rejects_missing_required_fields(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->post('/estudiantes', [
@@ -119,9 +119,9 @@ class EstudianteStoreTest extends TestCase
         $response->assertSessionHasErrors(['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos']);
     }
 
-    public function test_rejects_duplicate_codigo_qr(): void
+    public function test_ignores_codigo_qr_on_create(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
             'codigo_universitario' => '2020-00001',
@@ -139,6 +139,11 @@ class EstudianteStoreTest extends TestCase
             'codigo_qr' => 'QR-123',
         ]);
 
-        $response->assertSessionHasErrors('codigo_qr');
+        // El QR ya no forma parte del registro: se envía pero no se valida ni se guarda.
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '2020-00002',
+            'codigo_qr' => null,
+        ]);
     }
 }
