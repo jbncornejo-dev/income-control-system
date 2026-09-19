@@ -47,7 +47,7 @@ const getStatusClass = (estado) => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
-                            <th>DOCENTE</th>
+                            <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
                             <th>AMBIENTES</th>
@@ -60,8 +60,13 @@ const getStatusClass = (estado) => {
                             
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
                             
-                            <!-- Nota: El campo docente dependerá de futuras modificaciones en tu BD -->
-                            <td>{{ examen.docente?.name || 'N/D' }}</td>
+                            <!-- Grupos del docente en esa asignatura -->
+                            <td>
+                                <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
+                                    <span v-for="grupo in examen.grupos" :key="grupo" class="badge badge-grupo">{{ grupo }}</span>
+                                </span>
+                                <span v-else class="text-muted">—</span>
+                            </td>
                             
                             <td class="col-fecha">{{ examen.fecha }}</td>
                             <td class="col-hora">{{ examen.hora_inicio }}</td>
@@ -193,6 +198,18 @@ const getStatusClass = (estado) => {
 
 .text-muted {
     color: #9ca3af;
+}
+
+.group-badges {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.badge-grupo {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
 }
 
 .badge {

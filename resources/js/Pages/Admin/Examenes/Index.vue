@@ -48,6 +48,7 @@ const getStatusClass = (estado) => {
                         <tr>
                             <th>ASIGNATURA</th>
                             <th>DOCENTE</th>
+                            <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
                             <th>AMBIENTES</th>
@@ -56,14 +57,22 @@ const getStatusClass = (estado) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="examen in examenes.data" :key="examen.id">
+                        <tr v-for="examen in examenes.data" :key="examen.id_examen">
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
-                            <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>                            
-                            <td>{{ examen.docente?.name || 'N/D' }}</td>
+                            <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
+                            <td>{{ examen.docentes?.join(', ') || 'N/D' }}</td>
+
+                            <!-- Grupos de la asignatura -->
+                            <td>
+                                <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
+                                    <span v-for="grupo in examen.grupos" :key="grupo" class="badge badge-grupo">{{ grupo }}</span>
+                                </span>
+                                <span v-else class="text-muted">—</span>
+                            </td>
                             
                             <!-- Uso de una fuente monoespaciada para fechas y horas si lo deseas -->
                             <td class="col-fecha">{{ examen.fecha }}</td>
-                            <td class="col-hora">{{ examen.hora }}</td>
+                            <td class="col-hora">{{ examen.hora_inicio }}</td>
                             
                             <!-- Procesamiento de ambientes (array a string separado por comas) -->
                             <td>
@@ -86,7 +95,7 @@ const getStatusClass = (estado) => {
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td colspan="7" class="empty-state">No hay exámenes registrados.</td>
+                            <td colspan="8" class="empty-state">No hay exámenes registrados.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -197,6 +206,18 @@ const getStatusClass = (estado) => {
 
 .text-muted {
     color: #9ca3af;
+}
+
+.group-badges {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.badge-grupo {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
 }
 
 /* Badges (Estados) */

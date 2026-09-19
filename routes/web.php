@@ -72,7 +72,7 @@ Route::middleware('auth')->group(function () {
 
         // 3. LÓGICA PARA EL DOCENTE
         if ($nombreRol === 'docente') {
-            // Omitimos el filtro de id_usuario porque no existe en la BD aún.
+            // El docente solo ve los exámenes de las asignaturas que dicta (sus grupos).
             $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
                 ->withCount([
                     'habilitaciones as hab_count' => function ($query) {
@@ -82,6 +82,9 @@ Route::middleware('auth')->group(function () {
                         $query->where('estado_habilitado', false);
                     },
                 ])
+                ->whereHas('asignatura.grupos', function ($query) use ($user) {
+                    $query->where('grupo.id_usuario', $user->id);
+                })
                 ->where('fecha', '>=', now()->toDateString())
                 ->orderBy('fecha', 'asc')
                 ->orderBy('hora_inicio', 'asc')
