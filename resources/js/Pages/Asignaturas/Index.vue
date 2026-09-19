@@ -19,7 +19,6 @@
           <SearchInput v-model="filtroNombre" placeholder="Buscar asignaturas por nombre..." />
           <p v-if="erroresBusqueda.nombre_asignatura" class="error-msg">{{ erroresBusqueda.nombre_asignatura }}</p>
         </div>
-        <button type="button" class="btn-cancel" @click="limpiar">Limpiar</button>
         <span class="result-count" aria-live="polite">{{ asignaturas.total }} asignatura(s)</span>
       </div>
 
