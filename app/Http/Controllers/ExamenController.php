@@ -46,10 +46,13 @@ class ExamenController extends Controller
         }
 
         if (isset($filtros['asignatura'])) {
-            // Buscar literalmente los comodines escritos por el usuario.
+            // Búsqueda tolerante a mayúsculas/minúsculas y a acentos: se normaliza
+            // con unaccent() + lower() en ambos lados, así "CALCULO" o "calculo"
+            // encuentran la asignatura "Cálculo". Los comodines escritos por el
+            // usuario se tratan como literales.
             $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['asignatura']);
             $query->whereHas('asignatura', function ($subquery) use ($nombre) {
-                $subquery->where('nombre_asignatura', 'ilike', '%'.$nombre.'%');
+                $subquery->whereRaw('unaccent(lower(nombre_asignatura)) LIKE unaccent(lower(?))', ['%'.$nombre.'%']);
             });
         }
 
@@ -92,14 +95,16 @@ class ExamenController extends Controller
                 return $examen;
             });
 
+        $filtrosVista = [
+            'asignatura' => $filtros['asignatura'] ?? null,
+            'fecha' => $filtros['fecha'] ?? null,
+            'hora_inicio' => $filtros['hora_inicio'] ?? null,
+        ];
+
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
                 'examenes' => $examenes,
-                'filtros' => [
-                    'asignatura' => $filtros['asignatura'] ?? null,
-                    'fecha' => $filtros['fecha'] ?? null,
-                    'hora_inicio' => $filtros['hora_inicio'] ?? null,
-                ],
+                'filtros' => $filtrosVista,
             ]);
         }
 
@@ -111,11 +116,7 @@ class ExamenController extends Controller
         // Retornamos la vista de Inertia correspondiente
         return Inertia::render($vista, [
             'examenes' => $examenes,
-            'filters' => [
-                'asignatura' => $filtros['asignatura'] ?? null,
-                'fecha' => $filtros['fecha'] ?? null,
-                'hora_inicio' => $filtros['hora_inicio'] ?? null,
-            ],
+            'filters' => $filtrosVista,
         ]);
     }
 

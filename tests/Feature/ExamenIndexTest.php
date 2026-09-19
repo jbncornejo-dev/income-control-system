@@ -63,6 +63,9 @@ class ExamenIndexTest extends TestCase
     {
         $respuesta = $this->actingAs($usuario)->get('/examenes')->assertOk();
 
+        // Ya no se envían opciones para un select de asignatura.
+        $this->assertArrayNotHasKey('asignaturas', $respuesta->json());
+
         return collect($respuesta->json('examenes.data'))
             ->pluck('id_examen')
             ->all();
@@ -165,5 +168,47 @@ class ExamenIndexTest extends TestCase
             [$examenPropio->id_examen],
             collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
         );
+    }
+
+    public function test_administrador_filtra_por_fecha(): void
+    {
+        $examenA = $this->crearExamen($this->crearAsignatura('Cálculo'));
+        $examenB = $this->crearExamen($this->crearAsignatura('Física'));
+        $examenB->update(['fecha' => now()->addDays(10)->toDateString()]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?fecha='.$examenA->fecha)
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$examenA->id_examen],
+            collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
+        );
+    }
+
+    public function test_busqueda_por_asignatura_ignora_acentos_y_mayusculas(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo II');
+        $examen = $this->crearExamen($asignatura);
+
+        $admin = $this->usuario('administrador');
+
+        // Sin acento, todo en mayúsculas, con acento y con espacios alrededor.
+        foreach (['calculo', 'CALCULO', 'Cálculo', ' cALcuLO '] as $texto) {
+            $respuesta = $this->actingAs($admin)
+                ->get('/examenes?asignatura='.urlencode($texto))
+                ->assertOk();
+            $this->assertEqualsCanonicalizing(
+                [$examen->id_examen],
+                collect($respuesta->json('examenes.data'))->pluck('id_examen')->all(),
+                "La búsqueda \"{$texto}\" debería encontrar el examen de la asignatura."
+            );
+        }
+
+        // Un término que no coincida no debe devolver el examen.
+        $respuesta = $this->actingAs($admin)
+            ->get('/examenes?asignatura=canculo')
+            ->assertOk();
+        $this->assertSame([], collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
     }
 }
