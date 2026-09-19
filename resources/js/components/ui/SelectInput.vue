@@ -8,7 +8,7 @@
                 @change="$emit('update:modelValue', $event.target.value)"
                 class="filter-select"
             >
-                <option value="" disabled>{{ placeholder }}</option>
+                <option value="">{{ placeholder }}</option>
                 <option
                     v-for="option in options"
                     :key="option.value"
