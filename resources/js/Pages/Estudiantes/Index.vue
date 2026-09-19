@@ -1,12 +1,7 @@
 <template>
   <AuthenticatedLayout>
     <div class="student-list-container">
-      <h1 style="color: var(--color-primary);">Listado de Estudiantes</h1>
-
-      <div class="toolbar">
-        <SearchInput v-model="searchQuery" placeholder="Buscar por CI o Apellido..." />
-        <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
-      </div>
+      <h1 class="page-title">Estudiantes</h1>
 
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, nombres o apellidos..." />
@@ -36,7 +31,7 @@
               <td>{{ student.apellidos }}</td>
               <td>
                 <button class="btn-action" @click="abrirModalEditar(student)">Editar</button>
-                <button class="btn-action btn-danger" @click="eliminarEstudiante(student.id)">Eliminar</button>
+                <button class="btn-action btn-danger" @click="confirmarEliminar(student)">Eliminar</button>
               </td>
             </tr>
             <tr v-if="filteredStudents.length === 0">
@@ -228,6 +223,39 @@
           <button class="btn-primary btn-peligro" @click="cerrarCsvDefinitivamente">Sí, cancelar</button>
         </template>
       </Modal>
+
+      <!-- Modal: confirmar eliminación de estudiante -->
+      <Modal
+        :open="modalEliminar"
+        title="Eliminar Estudiante"
+        @close="modalEliminar = false"
+      >
+        <div class="confirm-box">
+          <div class="confirm-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+          </div>
+          <div class="confirm-content">
+            <p class="confirm-text">
+              ¿Está seguro de que desea eliminar al estudiante
+              <strong v-if="estudianteAEliminar">
+                {{ estudianteAEliminar.nombres }} {{ estudianteAEliminar.apellidos }}
+              </strong>?
+            </p>
+            <p class="confirm-note">Esta acción no se puede deshacer.</p>
+          </div>
+        </div>
+
+        <template #footer>
+          <button class="btn-cancelar" :disabled="eliminando" @click="modalEliminar = false">Cancelar</button>
+          <button class="btn-primary btn-peligro" :disabled="eliminando" @click="eliminarEstudiante">
+            {{ eliminando ? 'Eliminando...' : 'Sí, eliminar' }}
+          </button>
+        </template>
+      </Modal>
     </div>
   </AuthenticatedLayout>
   <Modal :show="showModal" @close="showModal = false">
@@ -260,6 +288,7 @@ import SearchInput from '@/components/SearchInput.vue';
 import Pagination from '@/components/Pagination.vue';
 import Modal from '@/components/ui/Modal.vue';
 import EstudianteForm from '@/components/forms/EstudianteForm.vue';
+import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
   estudiantes: {
@@ -278,6 +307,42 @@ const searchQuery = ref(props.filtros?.search ?? '');
 const mostrarModal = ref(false);
 const estudianteSeleccionado = ref(null);
 const refFormulario = ref(null);
+
+// --- Eliminación ---
+const toast = useToastStore();
+const modalEliminar = ref(false);
+const estudianteAEliminar = ref(null);
+const eliminando = ref(false);
+
+const confirmarEliminar = (estudiante) => {
+  estudianteAEliminar.value = estudiante;
+  modalEliminar.value = true;
+};
+
+const eliminarEstudiante = () => {
+  if (!estudianteAEliminar.value) return;
+
+  eliminando.value = true;
+
+  router.delete(`/estudiantes/${estudianteAEliminar.value.id}`, {
+    preserveScroll: true,
+    onSuccess: (page) => {
+      // El backend responde con flash de éxito o de error (bloqueo por registros asociados).
+      const flash = page?.props?.flash ?? {};
+      if (flash.error) toast.error(flash.error);
+      else if (flash.success) toast.success(flash.success);
+      modalEliminar.value = false;
+    },
+    onError: () => {
+      toast.error('No se pudo eliminar el estudiante.');
+      modalEliminar.value = false;
+    },
+    onFinish: () => {
+      eliminando.value = false;
+      estudianteAEliminar.value = null;
+    },
+  });
+};
 
 // --- Tabla ---
 const students = computed(() => {
@@ -315,14 +380,6 @@ const abrirModalCrear = () => {
 const abrirModalEditar = (estudiante) => {
   estudianteSeleccionado.value = estudiante; // Cargamos los datos del estudiante
   mostrarModal.value = true;
-};
-
-const eliminarEstudiante = (id) => {
-  if (confirm('¿Estás seguro de que deseas eliminar este registro?')) {
-    router.delete(`/estudiantes/${id}`, {
-      preserveScroll: true,
-    });
-  }
 };
 
 // --- Importación CSV ---
@@ -513,8 +570,21 @@ const construirCsv = (filas) => {
 </script>
 
 <style scoped>
+.page-title {
+  color: var(--color-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin: 0 0 1.5rem;
+}
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+/* El buscador ocupa el espacio disponible y queda alineado verticalmente con los botones */
+.student-list-container :deep(.search-wrapper) {
+  margin-bottom: 0;
+  max-width: 420px;
+  flex: 1;
+}
 .btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
 .btn-primary:hover:not(:disabled) { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); transform: translateY(-1px); }
 .btn-primary:hover:not(:disabled):not(.btn-peligro) { background-color: var(--color-primary-hover); }
@@ -522,6 +592,29 @@ const construirCsv = (filas) => {
 .btn-peligro { background-color: #dc3545; }
 .btn-peligro:hover:not(:disabled) { background-color: #b02a37; }
 .confirm-text { color: var(--color-text-main); font-size: 14px; line-height: 1.6; margin: 0; }
+.confirm-note { color: #9f3a38; font-size: 13px; margin: 0; }
+.confirm-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 16px;
+}
+.confirm-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fde8e8;
+  color: #dc3545;
+}
+.confirm-content { display: flex; flex-direction: column; gap: 6px; }
+.confirm-content strong { color: #b3261e; }
 .btn-import { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, color 0.15s ease; }
 .btn-import:hover { background-color: var(--color-primary); color: var(--color-white); }
 .table-responsive { background: var(--color-white); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
