@@ -6,8 +6,8 @@
       <div class="toolbar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, nombres o apellidos..." />
         <div class="toolbar-actions">
-          <button class="btn-import" @click="abrirModalCsv">Importar CSV</button>
-          <button class="btn-primary" @click="abrirModalCrear">Añadir Estudiante</button>
+          <Button variant="action" @click="abrirModalCsv">Importar CSV</Button>
+          <Button variant="primary" @click="abrirModalCrear">Añadir Estudiante</Button>
         </div>
       </div>
 
@@ -30,8 +30,8 @@
               <td>{{ student.nombres }}</td>
               <td>{{ student.apellidos }}</td>
               <td>
-                <button class="btn-action" @click="abrirModalEditar(student)">Editar</button>
-                <button class="btn-action btn-danger" @click="confirmarEliminar(student)">Eliminar</button>
+                <Button variant="action" @click="abrirModalEditar(student)">Editar</Button>
+                <Button variant="delete" @click="confirmarEliminar(student)">Eliminar</Button>
               </td>
             </tr>
             <tr v-if="students.length === 0">
@@ -60,10 +60,10 @@
         />
 
         <template #footer>
-          <button class="btn-cancelar" @click="mostrarModal = false">Cancelar</button>
-          <button class="btn-primary" @click="refFormulario?.emitirGuardado()">
+          <Button variant="action" class="btn-modal" @click="mostrarModal = false">Cancelar</Button>
+          <Button variant="primary" @click="refFormulario?.emitirGuardado()">
             {{ estudianteSeleccionado ? 'Actualizar Registro' : 'Guardar Registro' }}
-          </button>
+          </Button>
         </template>
       </Modal>
 
@@ -83,13 +83,13 @@
               @change="handleFileChange"
               class="file-input"
             />
-            <button
-              class="btn-upload"
+            <Button
+              variant="primary"
               :disabled="csvSubiendo || !csvFile"
               @click="submitCsv"
             >
               {{ csvSubiendo ? 'Importando...' : 'Importar archivo' }}
-            </button>
+            </Button>
           </div>
           <p v-if="csvError" class="error-msg" role="alert">{{ csvError }}</p>
         </div>
@@ -194,15 +194,15 @@
             <p v-if="csvError" class="error-msg" role="alert">{{ csvError }}</p>
 
             <div class="results-actions">
-              <button class="btn-primary" :disabled="csvSubiendo" @click="corregirYReintentar">
+              <Button variant="primary" :disabled="csvSubiendo" @click="corregirYReintentar">
                 {{ csvSubiendo ? 'Reintentando...' : 'Reintentar corregidos' }}
-              </button>
-              <button class="btn-cancelar" @click="volverSubir">Subir otro archivo</button>
+              </Button>
+              <Button variant="action" @click="volverSubir">Subir otro archivo</Button>
             </div>
           </div>
 
           <div v-if="filasRechazadas.length === 0" class="results-actions">
-            <button class="btn-primary" @click="solicitarCerrarCsv">Cerrar</button>
+            <Button variant="primary" @click="solicitarCerrarCsv">Cerrar</Button>
           </div>
         </div>
       </Modal>
@@ -219,8 +219,8 @@
         </p>
 
         <template #footer>
-          <button class="btn-cancelar" @click="confirmarCierre = false">Seguir corrigiendo</button>
-          <button class="btn-primary btn-peligro" @click="cerrarCsvDefinitivamente">Sí, cancelar</button>
+          <Button variant="action" @click="confirmarCierre = false">Seguir corrigiendo</Button>
+          <Button variant="primary" class="btn-peligro" @click="cerrarCsvDefinitivamente">Sí, cancelar</Button>
         </template>
       </Modal>
 
@@ -250,10 +250,10 @@
         </div>
 
         <template #footer>
-          <button class="btn-cancelar" :disabled="eliminando" @click="modalEliminar = false">Cancelar</button>
-          <button class="btn-primary btn-peligro" :disabled="eliminando" @click="eliminarEstudiante">
+          <Button variant="action" :disabled="eliminando" @click="modalEliminar = false">Cancelar</Button>
+          <Button variant="primary" class="btn-peligro" :disabled="eliminando" @click="eliminarEstudiante">
             {{ eliminando ? 'Eliminando...' : 'Sí, eliminar' }}
-          </button>
+          </Button>
         </template>
       </Modal>
     </div>
@@ -275,12 +275,13 @@
         </ul>
       </div>
 
-      <button @click="showModal = false" class="btn-close">Entendido</button>
+      <Button variant="primary" @click="showModal = false">Entendido</Button>
     </div>
   </Modal>
 </template>
 
 <script setup>
+import Button from '@/components/ui/Button.vue';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
@@ -602,10 +603,7 @@ const construirCsv = (filas) => {
   max-width: 420px;
   flex: 1;
 }
-.btn-primary { background-color: var(--color-primary); color: var(--color-white); border: none; padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
-.btn-primary:hover:not(:disabled) { box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18); transform: translateY(-1px); }
-.btn-primary:hover:not(:disabled):not(.btn-peligro) { background-color: var(--color-primary-hover); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
 .btn-peligro { background-color: #dc3545; }
 .btn-peligro:hover:not(:disabled) { background-color: #b02a37; }
 .confirm-text { color: var(--color-text-main); font-size: 14px; line-height: 1.6; margin: 0; }
@@ -632,39 +630,18 @@ const construirCsv = (filas) => {
 }
 .confirm-content { display: flex; flex-direction: column; gap: 6px; }
 .confirm-content strong { color: #b3261e; }
-.btn-import { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 10px 20px; border-radius: var(--radius-md); cursor: pointer; font-family: var(--font-main); font-size: 14px; font-weight: 600; transition: background-color 0.15s ease, color 0.15s ease; }
-.btn-import:hover { background-color: var(--color-primary); color: var(--color-white); }
 .table-responsive { background: var(--color-white); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
 .data-table { width: 100%; border-collapse: collapse; font-family: var(--font-main); }
 .data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
 .data-table th { background-color: #f8f9fa; color: var(--color-text-main); font-weight: bold; }
 .empty-cell { text-align: center; color: #6c757d; padding: 24px 15px; }
-.btn-action { background: transparent; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; }
 .flash-success { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 .flash-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c2b9; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
-.btn-cancelar {
-  background: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  padding: 10px 20px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font-main);
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.btn-cancelar:hover {
-  background-color: var(--color-primary);
-  color: var(--color-white);
-}
 
 /* ---- Modal CSV ---- */
 .csv-upload { display: flex; flex-direction: column; gap: 14px; }
 .csv-file-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .file-input { border: 1px solid var(--color-white-soft); padding: 0.5rem; border-radius: 6px; background: var(--color-bg-input); width: 100%; max-width: 320px; }
-.btn-upload { padding: 10px 20px; background-color: #198754; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; font-family: var(--font-main); }
-.btn-upload:disabled { opacity: 0.6; cursor: not-allowed; }
 .help-text { color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
 .help-text code { background: var(--color-bg-input); padding: 2px 5px; border-radius: 4px; font-size: 12px; }
 .error-msg { color: #d32f2f; font-size: 13px; }
@@ -753,13 +730,24 @@ const construirCsv = (filas) => {
 }
 .form-input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--shadow-input-focus); }
 .results-actions { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-.btn-danger {
-  color: #dc3545;
-  border-color: #dc3545;
+/* Estandarización de botones secundarios en toolbar y modales */
+.btn-toolbar,
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+/* Espaciado entre botones de acción en la tabla */
+.data-table td :deep(.btn-base) + :deep(.btn-base) {
   margin-left: 8px;
 }
-.btn-danger:hover {
-  background-color: #dc3545;
-  color: white;
+
+/* Botón destructivo para modales de confirmación */
+.btn-peligro {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+.btn-peligro:hover:not(:disabled) {
+  background-color: #b02a37 !important;
 }
 </style>
