@@ -7,10 +7,17 @@ import EditPasswordForm from '@/components/forms/EditPasswordForm.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Button from '@/components/ui/Button.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+
+const props = defineProps({
+    user: { type: Object, required: true },
+    usuarios: Object, // Paginador de Laravel
+    roles: Array,
+    filters: { type: Object, default: () => ({}) }
+});
 
 const showCreateModal = ref(false);
-const filtroRol = ref('');
+const filtroRol = ref(props.filters?.id_rol ?? props.filters?.role ?? '');
 const showEditModal = ref(false);
 const showPasswordModal = ref(false);
 const selectedUser = ref(null);
@@ -24,12 +31,6 @@ const openPasswordModal = (user) => {
     selectedUser.value = user;
     showPasswordModal.value = true;
 };
-
-const props = defineProps({
-    user: { type: Object, required: true },
-    usuarios: Object, // Paginador de Laravel
-    roles: Array
-});
 
 const eliminarUsuario = (id) => {
     // La confirmación nativa previene eliminaciones accidentales
@@ -45,6 +46,18 @@ const eliminarUsuario = (id) => {
 const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : '?';
 };
+
+watch(filtroRol, (value) => {
+    router.get(
+        '/usuarios',
+        { id_rol: value || undefined },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }
+    );
+});
 </script>
 
 <template>
