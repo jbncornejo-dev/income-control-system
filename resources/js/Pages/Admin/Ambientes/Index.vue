@@ -22,6 +22,7 @@ const modalEliminar   = ref(false);
 const modoEdicion     = ref(false);
 const guardando       = ref(false);
 const eliminando      = ref(false);
+const errorEliminar   = ref('');
 const ambienteEditando  = ref(null);
 const ambienteAEliminar = ref(null);
 
@@ -146,14 +147,33 @@ function guardar() {
 
 function confirmarEliminar(ambiente) {
     ambienteAEliminar.value = ambiente;
+    errorEliminar.value = '';
     modalEliminar.value = true;
 }
 
 function eliminar() {
+    if (eliminando.value) return;
     eliminando.value = true;
+    errorEliminar.value = '';
     router.delete(`/ambientes/${ambienteAEliminar.value.id_ambiente}`, {
-        onSuccess: () => { toast.success('Ambiente eliminado correctamente.'); modalEliminar.value = false; },
-        onError: () => { toast.error('No se puede eliminar el ambiente porque tiene exámenes registrados.'); modalEliminar.value = false; },
+        preserveState: true,
+        preserveScroll: true,
+        // Una redirección con flash.error también ejecuta onSuccess en Inertia.
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                errorEliminar.value = page.props.flash.error;
+                toast.error(errorEliminar.value);
+                return;
+            }
+            if (page.props.flash?.success) {
+                toast.success(page.props.flash.success);
+                modalEliminar.value = false;
+            }
+        },
+        onError: () => {
+            errorEliminar.value = 'No se pudo eliminar el ambiente.';
+            toast.error(errorEliminar.value);
+        },
         onFinish: () => { eliminando.value = false; }
     });
 }
@@ -246,6 +266,7 @@ function eliminar() {
         <!-- Modal Confirmar Eliminar -->
         <Modal :open="modalEliminar" title="Eliminar Ambiente" @close="modalEliminar = false">
             <p class="confirm-text">¿Estás seguro de eliminar <strong>{{ ambienteAEliminar?.nombre_ambiente }}</strong>? Esta acción no se puede deshacer.</p>
+            <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
             <template #footer>
                 <button @click="modalEliminar = false" class="btn-cancel">Cancelar</button>
                 <button @click="eliminar" class="btn-danger" :disabled="eliminando">
