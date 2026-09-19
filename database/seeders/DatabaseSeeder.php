@@ -67,6 +67,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AmbienteSeeder::class,
             AsignaturaSeeder::class,
+            GrupoSeeder::class,
             EstudianteSeeder::class,
             ExamenSeeder::class,
             HabilitacionSeeder::class,

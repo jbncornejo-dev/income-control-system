@@ -18,12 +18,32 @@ class ExamenController extends Controller
     public function index(IndexExamenRequest $request)
     {
         $filtros = $request->validated();
+        $esDocente = auth()->user()->rol->nombre_rol === 'docente';
+
         $query = Examen::query()
             ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'])
             ->with([
-                'asignatura:id_asignatura,nombre_asignatura',
-                'examenesAmbientes.ambiente:id_ambiente,nombre_ambiente',
+                'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
+                'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             ]);
+
+        if ($esDocente) {
+            // El docente solo ve los exámenes de las asignaturas que dicta (sus grupos).
+            $query->whereHas('asignatura.grupos', function ($subquery) {
+                $subquery->where('grupo.id_usuario', auth()->id());
+            });
+
+            // Contexto: solo se cargan los grupos del docente en cada asignatura.
+            $query->with(['asignatura.grupos' => fn ($subquery) => $subquery
+                ->where('id_usuario', auth()->id())
+                ->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo'])]);
+        } else {
+            // Contexto para el administrador: grupos y docentes de cada asignatura.
+            $query->with([
+                'asignatura.grupos' => fn ($subquery) => $subquery->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']),
+                'asignatura.grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
+            ]);
+        }
 
         if (isset($filtros['asignatura'])) {
             // Buscar literalmente los comodines escritos por el usuario.
@@ -46,7 +66,31 @@ class ExamenController extends Controller
             ->orderBy('hora_inicio')
             ->orderBy('id_examen')
             ->paginate(15)
-            ->appends($filtros);
+            ->appends($filtros)
+            ->through(function (Examen $examen) use ($esDocente) {
+                $grupos = $examen->asignatura?->grupos ?? collect();
+
+                // Nombres de grupos como array plano, sin duplicados.
+                $examen->setAttribute('grupos', $grupos
+                    ->pluck('nombre_grupo')
+                    ->unique()
+                    ->values()
+                    ->all());
+
+                if (! $esDocente) {
+                    $examen->setAttribute('docentes', $grupos
+                        ->pluck('usuario.name')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all());
+                }
+
+                // El detalle de grupos ya se expone en "grupos"; no se repite anidado.
+                $examen->asignatura?->makeHidden('grupos');
+
+                return $examen;
+            });
 
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
