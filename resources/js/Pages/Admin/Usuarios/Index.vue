@@ -1,4 +1,5 @@
 <script setup>
+import SelectInput from '@/components/ui/SelectInput.vue';
 import Modal from '@/components/ui/Modal.vue';
 import UsuarioForm from '@/components/forms/UsuarioForm.vue';
 import EditUsuarioForm from '@/components/forms/EditUsuarioForm.vue';
@@ -9,7 +10,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const showCreateModal = ref(false);
-
+const filtroRol = ref('');
 const showEditModal = ref(false);
 const showPasswordModal = ref(false);
 const selectedUser = ref(null);
@@ -61,12 +62,14 @@ const getInitial = (name) => {
                     class="search-input"
                 >
                 <div class="action-controls">
-                    <select class="role-filter">
-                        <option value="">Todos los roles</option>
-                        <option v-for="rol in roles" :key="rol.id_rol" :value="rol.id_rol">
-                            {{ rol.nombre_rol }}
-                        </option>
-                    </select>
+                    <SelectInput
+                        v-model="filtroRol"
+                        :options="roles.map(r => ({ value: r.id_rol, label: r.nombre_rol }))"
+                        placeholder="Todos los roles"
+                        :capitalize="true"
+                        class="role-filter-custom"
+                        style="width: 180px; flex: 0 0 auto;"
+                    />
                     <Button @click="showCreateModal = true" variant="primary">+ Nuevo usuario</Button>
                 </div>
             </div>
