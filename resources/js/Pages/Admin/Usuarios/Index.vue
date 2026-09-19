@@ -64,7 +64,7 @@ const getInitial = (name) => {
                     <select class="role-filter">
                         <option value="">Todos los roles</option>
                         <option v-for="rol in roles" :key="rol.id_rol" :value="rol.id_rol">
-                            {{ rol.nombre }}
+                            {{ rol.nombre_rol }}
                         </option>
                     </select>
                     <Button @click="showCreateModal = true" variant="primary">+ Nuevo usuario</Button>
