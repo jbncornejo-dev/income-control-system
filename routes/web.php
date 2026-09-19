@@ -54,48 +54,12 @@ Route::middleware('auth')->group(function () {
 
         // 2. LÓGICA PARA EL ADMINISTRADOR
         if ($nombreRol === 'administrador') {
-            return Inertia::render('Admin/Dashboard', [
-                'stats' => [
-                    'estudiantes' => Estudiante::count(),
-                    'examenes' => Examen::count(),
-                    'asignaturas' => Asignatura::count(),
-                    'ambientes' => Ambiente::count(),
-                    'usuarios' => User::count(),
-                ],
-                // Corregida la relación de ambientes para coincidir con tu controlador
-                'proximosExamenes' => Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
-                    ->orderBy('fecha', 'asc')
-                    ->take(4)
-                    ->get(),
-            ]);
+            return redirect()->route('admin.dashboard');
         }
 
         // 3. LÓGICA PARA EL DOCENTE
         if ($nombreRol === 'docente') {
-            // Omitimos el filtro de id_usuario porque no existe en la BD aún.
-            $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
-                ->withCount([
-                    'habilitaciones as hab_count' => function ($query) {
-                        $query->where('estado_habilitado', true);
-                    },
-                    'habilitaciones as inhab_count' => function ($query) {
-                        $query->where('estado_habilitado', false);
-                    },
-                ])
-                ->where('fecha', '>=', now()->toDateString())
-                ->orderBy('fecha', 'asc')
-                ->orderBy('hora_inicio', 'asc')
-                ->take(3)
-                ->get();
-
-            return Inertia::render('Docente/Dashboard', [
-                'stats' => [
-                    'examenes' => $proximosExamenes->count(),
-                    'habilitados' => (int) $proximosExamenes->sum('hab_count'),
-                    'inhabilitados' => (int) $proximosExamenes->sum('inhab_count'),
-                ],
-                'proximosExamenes' => $proximosExamenes,
-            ]);
+            return redirect()->route('docente.dashboard');
         }
 
         // 4. LÓGICA PARA EL ESTUDIANTE
@@ -107,21 +71,7 @@ Route::middleware('auth')->group(function () {
 
         // 5. LÓGICA PARA CONTROL DE INGRESO
         if ($nombreRol === 'personal de control de ingreso') {
-            // Obtenemos solo los exámenes de hoy
-            $examenesHoy = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
-                ->where('fecha', now()->toDateString())
-                ->orderBy('hora_inicio', 'asc')
-                ->get();
-
-            return Inertia::render('Control/Dashboard', [
-                'stats' => [
-                    'hoy' => $examenesHoy->count(),
-                    // Los siguientes valores requerirán lógica de tiempo real y de la tabla registro_ingreso
-                    'en_curso' => 0,
-                    'ingresos' => 0,
-                ],
-                'examenes' => $examenesHoy,
-            ]);
+            return redirect()->route('control.dashboard');
         }
 
         abort(403, 'Tu rol no tiene un panel principal configurado.');
@@ -129,10 +79,12 @@ Route::middleware('auth')->group(function () {
     })->middleware(['verified'])->name('dashboard');
 
     Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
+        Route::get('/control/dashboard', [\App\Http\Controllers\DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
     });
 
     Route::middleware('role:administrador')->group(function () {
+        Route::get('/admin/dashboard', [\App\Http\Controllers\DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
@@ -169,6 +121,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
+        Route::get('/docente/dashboard', [\App\Http\Controllers\DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Edición parcial (PATCH) de un examen existente.
