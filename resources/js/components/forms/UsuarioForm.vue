@@ -78,17 +78,14 @@ const submit = () => {
         <!-- Campo: Rol -->
         <div class="form-group">
             <label for="id_rol">Rol del Usuario</label>
-            <select
+            <SelectInput
                 id="id_rol"
                 v-model="form.id_rol"
-                class="input-control select-control"
-                required
-            >
-                <option value="" disabled>Seleccione un rol...</option>
-                <option v-for="rol in roles" :key="rol.id_rol" :value="rol.id_rol">
-                    {{ rol.nombre_rol }}
-                </option>
-            </select>
+                :options="roles.map(r => ({ value: r.id_rol, label: r.nombre_rol }))"
+                label="Rol del Usuario"
+                placeholder="Seleccione un rol..."
+                :capitalize="true"
+            />
             <span v-if="form.errors.id_rol" class="error-msg">{{ form.errors.id_rol }}</span>
         </div>
 
