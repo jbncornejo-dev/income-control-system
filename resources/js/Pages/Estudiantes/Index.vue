@@ -23,7 +23,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="student in filteredStudents" :key="student.id">
+            <tr v-for="student in students" :key="student.id">
               <!-- Campos canónicos del backend (tabla `estudiante`) -->
               <td>{{ student.codigo_universitario }}</td>
               <td>{{ student.documento_identidad }}</td>
@@ -34,11 +34,11 @@
                 <button class="btn-action btn-danger" @click="confirmarEliminar(student)">Eliminar</button>
               </td>
             </tr>
-            <tr v-if="filteredStudents.length === 0">
+            <tr v-if="students.length === 0">
               <td colspan="5" class="empty-cell">
-                {{ students.length === 0
-                  ? 'No hay estudiantes registrados.'
-                  : 'No se encontraron resultados para la búsqueda.' }}
+                {{ searchQuery
+                  ? 'No se encontraron resultados para la búsqueda.'
+                  : 'No hay estudiantes registrados.' }}
               </td>
             </tr>
           </tbody>
@@ -281,7 +281,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import SearchInput from '@/components/SearchInput.vue';
@@ -350,14 +350,31 @@ const students = computed(() => {
   return Array.isArray(raw) ? raw : [];
 });
 
-const filteredStudents = computed(() => {
-  if (!searchQuery.value) return students.value;
-  const termino = searchQuery.value.toLowerCase();
-  return students.value.filter((s) =>
-    [s.codigo_universitario, s.documento_identidad, s.nombres, s.apellidos]
-      .some((campo) => String(campo ?? '').toLowerCase().includes(termino))
-  );
-});
+// --- Búsqueda (server-side) ---
+// El backend filtra sobre TODAS las páginas antes de paginar
+// (`StudentController::index`); aquí solo disparamos la consulta con debounce
+// para no saturar el servidor con cada tecla. El filtrado client-side se eliminó
+// porque solo veía la página actual (15 registros).
+let debounceTimer = null;
+
+const buscarEstudiantes = () => {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    const termino = searchQuery.value.trim();
+
+    router.get('/estudiantes', { search: termino || null }, {
+      // preserveState mantiene el texto del buscador mientras llega la respuesta.
+      preserveState: true,
+      // replace evita llenar el historial del navegador con cada búsqueda.
+      replace: true,
+      // Solo se recargan las props que cambian con la búsqueda.
+      only: ['estudiantes', 'filtros'],
+    });
+  }, 300);
+};
+
+watch(searchQuery, buscarEstudiantes);
+onBeforeUnmount(() => clearTimeout(debounceTimer));
 
 const currentPage = computed(() => props.estudiantes?.current_page ?? 1);
 const totalPages = computed(() => props.estudiantes?.last_page ?? 1);
