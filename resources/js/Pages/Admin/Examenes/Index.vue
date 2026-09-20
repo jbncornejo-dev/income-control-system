@@ -236,7 +236,7 @@ const claseBotonConfirmacion = computed(() => {
                             <th>HORA FIN</th>
                             <th>AMBIENTES</th>
                             <th>ESTADO</th>
-                            <th class="actions-col"></th>
+                            <th class="actions-col">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -439,7 +439,8 @@ const claseBotonConfirmacion = computed(() => {
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
-    overflow: hidden;
+    overflow-x: auto; /* Permite visualizar las columnas completas */
+    width: 100%;
 }
 
 .data-table {
