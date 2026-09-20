@@ -208,7 +208,8 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
                             <td>
                                 <button
                                     :class="['btn-toggle', hab.estado_habilitado ? 'btn-toggle-red' : 'btn-toggle-gray']"
-                                    :disabled="procesando"
+                                    :disabled="procesando || !!hab.registro_ingreso"
+:title="hab.registro_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
                                     @click="clickToggle(hab)"
                                 >
                                     {{ hab.estado_habilitado ? 'Inhabilitar' : 'Habilitar' }}
@@ -245,7 +246,7 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
                 </button>
                 <button
                     @click="confirmarInhabilitar"
-                    :disabled="procesando"
+                    :disabled="procesando || !!hab.registro_ingreso"
                     style="background:#d32f2f; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer;"
                 >
                     Confirmar inhabilitación
