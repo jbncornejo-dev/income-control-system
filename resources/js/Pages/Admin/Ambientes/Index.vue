@@ -1,10 +1,11 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import SearchInput from '@/components/SearchInput.vue';
 import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
@@ -21,15 +22,70 @@ const modalEliminar   = ref(false);
 const modoEdicion     = ref(false);
 const guardando       = ref(false);
 const eliminando      = ref(false);
+const errorEliminar   = ref('');
 const ambienteEditando  = ref(null);
 const ambienteAEliminar = ref(null);
 
 const form   = ref({ nombre_ambiente: '', capacidad: '' });
 const errores = ref({ nombre_ambiente: '', capacidad: '' });
+const cargando = ref(false);
+const errorBusqueda = ref('');
+let debounceTimer = null;
+let cancelarConsulta = null;
+let consultaActual = 0;
+
+function cancelarBusqueda() {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+    consultaActual++;
+    cancelarConsulta?.();
+    cancelarConsulta = null;
+    cargando.value = false;
+}
+
+function visitar(url, filtros = {}, reemplazar = false) {
+    if (!url) return;
+    cancelarBusqueda();
+    const consulta = consultaActual;
+    errorBusqueda.value = '';
+    router.get(url, filtros, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: reemplazar,
+        only: ['ambientes', 'filters'],
+        onCancelToken: (token) => { cancelarConsulta = () => token.cancel(); },
+        onStart: () => { cargando.value = true; },
+        onError: (errores) => {
+            if (consulta === consultaActual) errorBusqueda.value = errores.nombre_ambiente ?? 'No se pudo realizar la búsqueda.';
+        },
+        onFinish: () => {
+            if (consulta === consultaActual) {
+                cargando.value = false;
+                cancelarConsulta = null;
+            }
+        },
+    });
+}
 
 function buscar() {
-    router.get('/ambientes', { nombre_ambiente: busqueda.value }, { preserveState: true });
+    visitar('/ambientes', { nombre_ambiente: busqueda.value.trim() || undefined }, true);
 }
+
+// Esperar una pausa al escribir y cancelar consultas que ya no corresponden al texto.
+watch(busqueda, () => {
+    cancelarBusqueda();
+    errorBusqueda.value = '';
+    if (busqueda.value.trim() === (props.filters?.nombre_ambiente ?? '')) return;
+    cargando.value = true;
+    debounceTimer = setTimeout(buscar, 300);
+}, { flush: 'sync' });
+
+// Recuperar el filtro al navegar sin sobrescribir una búsqueda pendiente.
+watch(() => props.filters, (filters) => {
+    if (!cargando.value && !debounceTimer) busqueda.value = filters?.nombre_ambiente ?? '';
+});
+
+onBeforeUnmount(cancelarBusqueda);
 
 function abrirModalNuevo() {
     modoEdicion.value = false;
@@ -91,14 +147,33 @@ function guardar() {
 
 function confirmarEliminar(ambiente) {
     ambienteAEliminar.value = ambiente;
+    errorEliminar.value = '';
     modalEliminar.value = true;
 }
 
 function eliminar() {
+    if (eliminando.value) return;
     eliminando.value = true;
+    errorEliminar.value = '';
     router.delete(`/ambientes/${ambienteAEliminar.value.id_ambiente}`, {
-        onSuccess: () => { toast.success('Ambiente eliminado correctamente.'); modalEliminar.value = false; },
-        onError: () => { toast.error('No se puede eliminar el ambiente porque tiene exámenes registrados.'); modalEliminar.value = false; },
+        preserveState: true,
+        preserveScroll: true,
+        // Una redirección con flash.error también ejecuta onSuccess en Inertia.
+        onSuccess: (page) => {
+            if (page.props.flash?.error) {
+                errorEliminar.value = page.props.flash.error;
+                toast.error(errorEliminar.value);
+                return;
+            }
+            if (page.props.flash?.success) {
+                toast.success(page.props.flash.success);
+                modalEliminar.value = false;
+            }
+        },
+        onError: () => {
+            errorEliminar.value = 'No se pudo eliminar el ambiente.';
+            toast.error(errorEliminar.value);
+        },
         onFinish: () => { eliminando.value = false; }
     });
 }
@@ -118,17 +193,14 @@ function eliminar() {
             </div>
 
             <div class="search-section">
-                <input
-                    v-model="busqueda"
-                    type="text"
-                    placeholder="Buscar por nombre..."
-                    class="search-input"
-                    @keyup.enter="buscar"
-                />
-                <button class="btn-search" @click="buscar">Buscar</button>
+                <div class="filter-field">
+                    <SearchInput v-model="busqueda" placeholder="Buscar ambientes por nombre..." />
+                </div>
+                <span class="result-count" aria-live="polite">{{ ambientes.total }} ambiente(s)</span>
             </div>
+            <p v-if="errorBusqueda" class="error-msg" role="alert">{{ errorBusqueda }}</p>
 
-            <div class="table-container">
+            <div class="table-container" :aria-busy="cargando">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -157,9 +229,9 @@ function eliminar() {
 
             <!-- Paginación -->
             <div class="pagination" v-if="ambientes.last_page > 1">
-                <button :disabled="ambientes.current_page === 1" @click="router.get(`/ambientes?page=${ambientes.current_page - 1}`)" class="btn-page">← Anterior</button>
+                <button :disabled="cargando || !ambientes.prev_page_url" @click="visitar(ambientes.prev_page_url)" class="btn-page">← Anterior</button>
                 <span class="page-info">Página {{ ambientes.current_page }} de {{ ambientes.last_page }}</span>
-                <button :disabled="ambientes.current_page === ambientes.last_page" @click="router.get(`/ambientes?page=${ambientes.current_page + 1}`)" class="btn-page">Siguiente →</button>
+                <button :disabled="cargando || !ambientes.next_page_url" @click="visitar(ambientes.next_page_url)" class="btn-page">Siguiente →</button>
             </div>
 
         </div>
@@ -194,6 +266,7 @@ function eliminar() {
         <!-- Modal Confirmar Eliminar -->
         <Modal :open="modalEliminar" title="Eliminar Ambiente" @close="modalEliminar = false">
             <p class="confirm-text">¿Estás seguro de eliminar <strong>{{ ambienteAEliminar?.nombre_ambiente }}</strong>? Esta acción no se puede deshacer.</p>
+            <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
             <template #footer>
                 <button @click="modalEliminar = false" class="btn-cancel">Cancelar</button>
                 <button @click="eliminar" class="btn-danger" :disabled="eliminando">
@@ -212,9 +285,10 @@ function eliminar() {
 .panel-title { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin: 0 0 4px; letter-spacing: 0.05em; }
 .subtitle { font-size: 0.875rem; color: #6b7280; }
 .highlight-number { font-weight: 700; color: var(--color-primary); }
-.search-section { display: flex; gap: 0.75rem; margin-bottom: 1.5rem; }
-.search-input { flex: 1; max-width: 400px; padding: 0.5rem 1rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.875rem; }
-.btn-search { background: var(--color-primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.875rem; }
+.search-section { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 16px; }
+.filter-field { flex: 1; min-width: 150px; }
+.search-section :deep(.search-wrapper) { margin-bottom: 0; }
+.result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
 .table-container { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; width: 100%; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
 .data-table th { background-color: var(--color-primary); color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }

@@ -13,22 +13,14 @@
         </button>
       </div>
 
-      <!-- HU7: filtros enviados al servidor; se conservan al paginar. -->
-      <form class="toolbar" @submit.prevent="buscar">
+      <!-- La búsqueda consulta todo el catálogo antes de paginar. -->
+      <div class="toolbar">
         <div class="filter-field">
-          <label for="filtro-id">ID</label>
-          <input id="filtro-id" v-model="filtroId" type="number" min="1" step="1" class="form-input" placeholder="ID exacto" />
-          <p v-if="erroresBusqueda.id_asignatura" class="error-msg">{{ erroresBusqueda.id_asignatura }}</p>
-        </div>
-        <div class="filter-field">
-          <label for="filtro-nombre">Nombre</label>
-          <input id="filtro-nombre" v-model="filtroNombre" type="text" maxlength="150" class="form-input" placeholder="Buscar por nombre" />
+          <SearchInput v-model="filtroNombre" placeholder="Buscar asignaturas por nombre..." />
           <p v-if="erroresBusqueda.nombre_asignatura" class="error-msg">{{ erroresBusqueda.nombre_asignatura }}</p>
         </div>
-        <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
-        <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
-        <span class="result-count">{{ asignaturas.total }} asignatura(s)</span>
-      </form>
+        <span class="result-count" aria-live="polite">{{ asignaturas.total }} asignatura(s)</span>
+      </div>
 
       <!-- HU7: filas y total procedentes del paginador de Laravel. -->
       <div class="table-card">
@@ -134,11 +126,12 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Modal from '@/components/ui/Modal.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import SearchInput from '@/components/SearchInput.vue'
 import { useToastStore } from '@/stores/useToastStore'
 
 // HU7: sustituir el arreglo temporal por el paginador y filtros de Laravel.
@@ -147,7 +140,6 @@ const props = defineProps({
   filtros: { type: Object, default: () => ({}) },
 })
 const toast = useToastStore()
-const filtroId = ref(props.filtros.id_asignatura ?? '')
 const filtroNombre = ref(props.filtros.nombre_asignatura ?? '')
 const erroresBusqueda = ref({})
 const cargando = ref(false)
@@ -160,35 +152,68 @@ const asignaturaEditando = ref(null)
 const asignaturaAEliminar = ref(null)
 const form = useForm({ nombre_asignatura: '' })
 
-// HU7: sincronizar filtros al navegar o volver con el historial del navegador.
+let debounceTimer = null
+let cancelarConsulta = null
+let consultaActual = 0
+
+// Sincronizar la navegación sin sobrescribir texto que aún se está buscando.
 watch(() => props.filtros, (filtros) => {
-  filtroId.value = filtros.id_asignatura ?? ''
-  filtroNombre.value = filtros.nombre_asignatura ?? ''
+  if (!cargando.value && !debounceTimer) {
+    filtroNombre.value = filtros.nombre_asignatura ?? ''
+  }
 })
 
-function visitar(url, filtros = {}) {
-  if (!url || cargando.value) return
+function cancelarBusqueda() {
+  clearTimeout(debounceTimer)
+  debounceTimer = null
+  consultaActual++
+  cancelarConsulta?.()
+  cancelarConsulta = null
+  cargando.value = false
+}
+
+function visitar(url, filtros = {}, reemplazar = false) {
+  if (!url) return
+  cancelarBusqueda()
+  const consulta = consultaActual
   erroresBusqueda.value = {}
   router.get(url, filtros, {
     preserveState: true,
     preserveScroll: true,
+    replace: reemplazar,
+    only: ['asignaturas', 'filtros'],
+    onCancelToken: (token) => { cancelarConsulta = () => token.cancel() },
     onStart: () => { cargando.value = true },
-    onError: (errores) => { erroresBusqueda.value = errores },
-    onFinish: () => { cargando.value = false },
+    onError: (errores) => {
+      if (consulta === consultaActual) erroresBusqueda.value = errores
+    },
+    onFinish: () => {
+      if (consulta === consultaActual) {
+        cargando.value = false
+        cancelarConsulta = null
+      }
+    },
   })
 }
 
 function buscar() {
   visitar('/asignaturas', {
-    id_asignatura: filtroId.value || undefined,
     nombre_asignatura: filtroNombre.value.trim() || undefined,
-  })
+  }, true)
 }
 
+watch(filtroNombre, () => {
+  cancelarBusqueda()
+  erroresBusqueda.value = {}
+  if (filtroNombre.value.trim() === (props.filtros.nombre_asignatura ?? '') && !props.filtros.id_asignatura) return
+  debounceTimer = setTimeout(buscar, 300)
+}, { flush: 'sync' })
+
+onBeforeUnmount(cancelarBusqueda)
+
 function limpiar() {
-  filtroId.value = ''
   filtroNombre.value = ''
-  visitar('/asignaturas')
+  buscar()
 }
 
 function abrirModalNueva() {
@@ -287,34 +312,7 @@ function eliminar() {
   margin-bottom: 16px;
 }
 .filter-field { flex: 1; min-width: 150px; }
-.filter-field label { display: block; margin-bottom: 4px; font-size: 13px; }
-
-.search-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--color-bg-input);
-  border: 1px solid var(--color-white-soft);
-  border-radius: 6px;
-  padding: 8px 12px;
-  flex: 1;
-  max-width: 400px;
-}
-.search-input {
-  border: none;
-  background: transparent;
-  outline: none;
-  flex: 1;
-  font-size: 14px;
-  color: var(--color-text-main);
-}
-.clear-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
+.filter-field :deep(.search-wrapper) { margin-bottom: 0; }
 .result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
 
 .table-card {
