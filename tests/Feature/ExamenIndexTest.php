@@ -186,6 +186,16 @@ class ExamenIndexTest extends TestCase
         );
     }
 
+    public function test_lista_incluye_la_hora_de_finalizacion_calculada(): void
+    {
+        // 09:00 + 90 minutos = 10:30.
+        $this->crearExamen($this->crearAsignatura('Cálculo'));
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertSame('10:30', $respuesta->json('examenes.data.0.hora_fin'));
+    }
+
     public function test_busqueda_por_asignatura_ignora_acentos_y_mayusculas(): void
     {
         $asignatura = $this->crearAsignatura('Cálculo II');

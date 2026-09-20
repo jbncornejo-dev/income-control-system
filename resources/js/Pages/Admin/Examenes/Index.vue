@@ -137,6 +137,7 @@ const getStatusClass = (estado) => {
                             <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
+                            <th>HORA FIN</th>
                             <th>AMBIENTES</th>
                             <th>ESTADO</th>
                             <th class="actions-col"></th>
@@ -158,7 +159,8 @@ const getStatusClass = (estado) => {
                             
                             <!-- Uso de una fuente monoespaciada para fechas y horas si lo deseas -->
                             <td class="col-fecha">{{ examen.fecha }}</td>
-                            <td class="col-hora">{{ examen.hora_inicio }}</td>
+                            <td class="col-hora">{{ (examen.hora_inicio || '').slice(0, 5) }}</td>
+                            <td class="col-hora">{{ examen.hora_fin || '—' }}</td>
                             
                             <!-- Procesamiento de ambientes (array a string separado por comas) -->
                             <td>
@@ -182,7 +184,7 @@ const getStatusClass = (estado) => {
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td colspan="8" class="empty-state">
+                            <td colspan="9" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>

@@ -32,6 +32,18 @@ const ambientesSeleccionados = computed(() =>
     props.ambientes.filter((a) => form.id_ambientes.includes(a.id_ambiente))
 );
 
+// Hora de fin estimada: hora de inicio + duración (solo lectura, se recalcula en vivo).
+const horaFin = computed(() => {
+    if (!form.hora_inicio || !form.duracion_minutos) return '—';
+
+    const [h, m] = form.hora_inicio.split(':').map(Number);
+    const total = h * 60 + m + Number(form.duracion_minutos);
+    const horas = String(Math.floor(total / 60) % 24).padStart(2, '0');
+    const minutos = String(total % 60).padStart(2, '0');
+
+    return `${horas}:${minutos}`;
+});
+
 function toggleAmbiente(idAmbiente) {
     if (form.id_ambientes.includes(idAmbiente)) {
         form.id_ambientes = form.id_ambientes.filter((id) => id !== idAmbiente);
@@ -140,6 +152,12 @@ function guardar() {
                                 @input="form.clearErrors('duracion_minutos')"
                             />
                             <p v-if="form.errors.duracion_minutos" class="error-msg">{{ form.errors.duracion_minutos }}</p>
+                        </div>
+
+                        <div class="form-group">
+                            <span class="form-label">Hora de finalización</span>
+                            <div class="form-input form-input--readonly" aria-live="polite">{{ horaFin }}</div>
+                            <p class="help-text">Se calcula automáticamente con la hora de inicio y la duración.</p>
                         </div>
                     </div>
 
@@ -270,6 +288,12 @@ function guardar() {
 }
 
 textarea.form-input { resize: vertical; }
+
+.form-input--readonly {
+    background-color: #f1f3f5;
+    color: #6b7280;
+    border-style: dashed;
+}
 
 .input-error { border-color: #d32f2f !important; }
 
