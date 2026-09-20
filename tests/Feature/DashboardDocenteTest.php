@@ -16,7 +16,9 @@ class DashboardDocenteTest extends TestCase
     use RefreshDatabase;
 
     protected $docenteUser;
+
     protected $docenteUser2;
+
     protected $adminUser;
 
     protected function setUp(): void
@@ -41,7 +43,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignatura->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
 
         $examenFuturo = Examen::create([
@@ -73,7 +75,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
         $examenDoc1 = Examen::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
@@ -87,7 +89,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
             'id_usuario' => $this->docenteUser2->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G2'
+            'nombre_grupo' => 'G2',
         ]);
         $examenDoc2 = Examen::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
@@ -117,7 +119,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignatura->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
 
         // Past exam (yesterday)
@@ -132,7 +134,7 @@ class DashboardDocenteTest extends TestCase
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
             'fecha' => now()->toDateString(),
-            'hora_inicio' => '00:00:00',
+            'hora_inicio' => now()->subHour()->toTimeString(),
             'duracion_minutos' => 90,
         ]);
 
@@ -164,7 +166,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignaturaAsignada->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
 
         $asignaturaNoAsignada = Asignatura::create(['nombre_asignatura' => 'Geografía']);
@@ -218,7 +220,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignatura->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
 
         // Only past exams exist
@@ -251,19 +253,19 @@ class DashboardDocenteTest extends TestCase
         // Caso 9 — Usuario con otro rol
         // Estudiante rol doesn't have access to /docente/dashboard by default
         // The middleware is 'role:administrador,docente'
-        
+
         $estudianteRol = Rol::where('nombre_rol', 'estudiante')->first() ?? Rol::create(['nombre_rol' => 'estudiante']);
         $estudianteUser = User::factory()->create(['id_rol' => $estudianteRol->id_rol]);
 
         $this->actingAs($estudianteUser)
             ->get(route('docente.dashboard'))
             ->assertStatus(403);
-            
+
         // Admin also has access based on the middleware `role:administrador,docente`
-        // Wait, does admin have access to /docente/dashboard? 
+        // Wait, does admin have access to /docente/dashboard?
         // The prompt says "Verificar que un Administrador... no pueda acceder indebidamente... salvo que el sistema tenga una regla explícita que lo autorice"
         // The rule `Route::middleware('role:administrador,docente')` explicitly authorizes both, but wait, the generic dashboard redirect is what usually handles it.
-        // Actually, the route `/docente/dashboard` is in `Route::middleware('role:administrador,docente')->group(...)` so admin CAN access it. 
+        // Actually, the route `/docente/dashboard` is in `Route::middleware('role:administrador,docente')->group(...)` so admin CAN access it.
         // We will just test that a role without permission (estudiante) gets 403.
     }
 
@@ -277,7 +279,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G1'
+            'nombre_grupo' => 'G1',
         ]);
         Examen::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
@@ -291,7 +293,7 @@ class DashboardDocenteTest extends TestCase
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
             'id_usuario' => $this->docenteUser2->id,
             'gestion' => '2026',
-            'nombre_grupo' => 'G2'
+            'nombre_grupo' => 'G2',
         ]);
         Examen::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,

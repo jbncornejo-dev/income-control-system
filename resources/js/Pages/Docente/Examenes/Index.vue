@@ -1,18 +1,165 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { useToastStore } from '@/stores/useToastStore';
+import Modal from '@/components/ui/Modal.vue';
+
+const toast = useToastStore();
 
 const props = defineProps({
-    examenes: Object, 
-    filters: Object
+    examenes: Object,
+    filters: Object,
 });
 
-const getStatusClass = (estado) => {
-    const status = estado ? estado.toLowerCase() : '';
-    if (status === 'confirmado') return 'badge-confirmado';
-    if (status === 'borrador') return 'badge-borrador';
-    return 'badge-pendiente';
+// Filtros reales que soporta el backend: asignatura (coincidencia parcial,
+// tolerante a acentos y mayúsculas), fecha exacta y hora. La búsqueda se
+// dispara con el botón Buscar; así no se traba la página mientras se escribe.
+const busqueda = ref(props.filters?.asignatura ?? '');
+const fecha = ref(props.filters?.fecha ?? '');
+const horaInicio = ref(props.filters?.hora_inicio ?? '');
+const cargando = ref(false);
+
+// Si llegan filtros desde la URL, el estado vacío lo indica con otro mensaje.
+const hayFiltrosActivos = computed(() =>
+    !!(props.filters?.asignatura || props.filters?.fecha || props.filters?.hora_inicio)
+);
+
+// Mantiene los inputs en sincronía con la URL al navegar o volver con el historial.
+watch(() => props.filters, (filtros) => {
+    busqueda.value = filtros?.asignatura ?? '';
+    fecha.value = filtros?.fecha ?? '';
+    horaInicio.value = filtros?.hora_inicio ?? '';
+});
+
+function visitar(url, datos = {}, opciones = {}) {
+    if (!url || cargando.value) return;
+    router.get(url, datos, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: false,
+        onStart: () => { cargando.value = true; },
+        onFinish: () => { cargando.value = false; },
+        ...opciones,
+    });
+}
+
+function busquedaParams() {
+    return {
+        asignatura: busqueda.value.trim() || undefined,
+        fecha: fecha.value || undefined,
+        hora_inicio: horaInicio.value || undefined,
+    };
+}
+
+function buscar() {
+    // replace=true evita acumular en el historial una entrada por cada búsqueda
+    // y que al volver a la sección se restaure una URL con filtros obsoletos.
+    visitar('/examenes', busquedaParams(), {
+        replace: true,
+        only: ['examenes', 'filters'],
+    });
+}
+
+function limpiar() {
+    busqueda.value = '';
+    fecha.value = '';
+    horaInicio.value = '';
+    visitar('/examenes', {}, {
+        replace: true,
+        only: ['examenes', 'filters'],
+    });
+}
+
+// Paginación: la URL generada por Laravel ya conserva los filtros aplicados.
+function visitarPagina(url) {
+    visitar(url);
+}
+
+// Información visual de cada estado del examen (ciclo de vida).
+const ESTADOS = {
+    programado: { clase: 'badge-programado', etiqueta: 'Programado' },
+    en_curso: { clase: 'badge-en-curso', etiqueta: 'En curso' },
+    finalizado: { clase: 'badge-finalizado', etiqueta: 'Finalizado' },
+    cancelado: { clase: 'badge-cancelado', etiqueta: 'Anulado' },
 };
+
+function estadoInfo(estadoActual) {
+    return ESTADOS[estadoActual] ?? { clase: 'badge-pendiente', etiqueta: estadoActual ?? 'Sin estado' };
+}
+
+// Confirmación de acciones manuales (anular/suspender/reanudar) mediante
+// un modal, en lugar del confirm nativo del navegador.
+const confirmacion = ref({
+    abierta: false,
+    examen: null,
+    accion: null,
+    titulo: '',
+    descripcion: '',
+    boton: '',
+});
+
+const CONTENIDO_ACCIONES = {
+    anular: {
+        titulo: 'Anular examen',
+        descripcion: 'Esta acción es DEFINITIVA y quedará registrada en la auditoría. El examen dejará de considerarse y no podrá reanudarse.',
+        boton: 'Anular',
+    },
+    suspender: {
+        titulo: 'Suspender examen',
+        descripcion: 'Se pausa el registro de nuevos ingresos. El examen continúa en curso según su horario (la duración no cambia) y podrás reanudarlo al resolver el incidente.',
+        boton: 'Suspender',
+    },
+    reanudar: {
+        titulo: 'Reanudar examen',
+        descripcion: 'Vuelve a permitir el registro de ingresos. El estado del examen volverá a derivarse automáticamente de su horario.',
+        boton: 'Reanudar',
+    },
+};
+
+function abrirConfirmacion(examen, accion) {
+    const contenido = CONTENIDO_ACCIONES[accion];
+    if (!contenido) return;
+    confirmacion.value = {
+        abierta: true,
+        examen,
+        accion,
+        titulo: contenido.titulo,
+        descripcion: contenido.descripcion,
+        boton: contenido.boton,
+    };
+}
+
+function cerrarConfirmacion() {
+    confirmacion.value.abierta = false;
+}
+
+function confirmarAccion() {
+    const { examen, accion } = confirmacion.value;
+    cerrarConfirmacion();
+    if (!examen) return;
+
+    router.patch(`/examenes/${examen.id_examen}/estado`, { accion }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: (page) => {
+            if (page.props.flash?.success) toast.success(page.props.flash.success);
+        },
+        onError: (errors) => {
+            toast.error(Object.values(errors)[0] || 'No se pudo realizar la operación.');
+        },
+    });
+}
+
+// Clase del botón de confirmación según la acción.
+const claseBotonConfirmacion = computed(() => {
+    const clases = {
+        anular: 'btn-anular',
+        suspender: 'btn-suspender',
+        reanudar: 'btn-reanudar',
+    };
+    return clases[confirmacion.value.accion] ?? '';
+});
 </script>
 
 <template>
@@ -22,22 +169,42 @@ const getStatusClass = (estado) => {
         <div class="panel-container">
             <h1 class="panel-title">GESTIÓN DE EXÁMENES</h1>
 
-            <!-- Barra de Acciones -->
+            <!-- Barra de Acciones: buscador con lupa + botón de registro + filtros seleccionables.
+                 Los filtros se aplican al pulsar Buscar para no trabar la página mientras se escribe. -->
             <div class="action-bar">
-                <input 
-                    type="text" 
-                    placeholder="Buscar por asignatura o docente..." 
-                    class="search-input"
-                >
-                <div class="action-controls">
-                    <select class="state-filter">
-                        <option value="">Todos los estados</option>
-                        <option value="confirmado">Confirmado</option>
-                        <option value="pendiente">Pendiente</option>
-                        <option value="borrador">Borrador</option>
-                    </select>
-                    <!-- Botón solicitado (sin funcionalidad por ahora) -->
-                    <button class="btn-primary">+ Nuevo examen</button>
+                <div class="action-bar-main">
+                    <form class="search-row" @submit.prevent="buscar">
+                        <div class="search-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input
+                                v-model="busqueda"
+                                type="text"
+                                placeholder="Buscar por asignatura..."
+                                class="search-input"
+                                :disabled="cargando"
+                            >
+                        </div>
+                        <div class="search-actions">
+                            <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
+                            <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
+                        </div>
+                    </form>
+
+                    <Link href="/examenes/crear" class="btn-primary btn-create">+ Registrar Examen</Link>
+                </div>
+
+                <div class="filter-row">
+                    <label class="filter-field">
+                        <span class="filter-label">Fecha</span>
+                        <input v-model="fecha" type="date" class="filter-input" :disabled="cargando" />
+                    </label>
+                    <label class="filter-field">
+                        <span class="filter-label">Hora</span>
+                        <input v-model="horaInicio" type="time" class="filter-input" :disabled="cargando" />
+                    </label>
                 </div>
             </div>
 
@@ -47,9 +214,10 @@ const getStatusClass = (estado) => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
-                            <th>DOCENTE</th>
+                            <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
+                            <th>HORA FIN</th>
                             <th>AMBIENTES</th>
                             <th>ESTADO</th>
                             <th class="actions-col"></th>
@@ -60,11 +228,17 @@ const getStatusClass = (estado) => {
                             
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
                             
-                            <!-- Nota: El campo docente dependerá de futuras modificaciones en tu BD -->
-                            <td>{{ examen.docente?.name || 'N/D' }}</td>
+                            <!-- Grupos del docente en esa asignatura -->
+                            <td>
+                                <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
+                                    <span v-for="grupo in examen.grupos" :key="grupo" class="badge badge-grupo">{{ grupo }}</span>
+                                </span>
+                                <span v-else class="text-muted">—</span>
+                            </td>
                             
                             <td class="col-fecha">{{ examen.fecha }}</td>
-                            <td class="col-hora">{{ examen.hora_inicio }}</td>
+                            <td class="col-hora">{{ (examen.hora_inicio || '').slice(0, 5) }}</td>
+                            <td class="col-hora">{{ examen.hora_fin || '—' }}</td>
                             
                             <td>
                                 <span v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0">
@@ -74,28 +248,67 @@ const getStatusClass = (estado) => {
                             </td>
                             
                             <td>
-                                <span :class="['badge', getStatusClass(examen.estado)]">
-                                    {{ examen.estado || 'Pendiente' }}
-                                </span>
+                                <div class="estado-cell">
+                                    <span :class="['badge', estadoInfo(examen.estado_actual).clase]">
+                                        {{ estadoInfo(examen.estado_actual).etiqueta }}
+                                    </span>
+                                    <span v-if="examen.estado === 'suspendido' && ['programado', 'en_curso'].includes(examen.estado_actual)" class="tag-ingreso-suspendido">
+                                        Ingreso suspendido
+                                    </span>
+                                </div>
                             </td>
                             
                             <td class="actions-cell">
-                                <button class="btn-action">Ver</button>
+                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
+                                <button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
+
+                                <!-- Suspendido: se puede reanudar (o anular si sigue en curso). -->
+                                <template v-if="examen.estado === 'suspendido'">
+                                    <button class="btn-action btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</button>
+                                    <button v-if="examen.estado_actual !== 'finalizado'" class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                </template>
+
+                                <!-- Anulado: definitivo, no se puede reanudar. -->
+                                <template v-else-if="examen.estado !== 'cancelado' && examen.estado_actual !== 'finalizado'">
+                                    <button v-if="examen.estado_actual === 'en_curso'" class="btn-action btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</button>
+                                    <button class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                </template>
                             </td>
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td colspan="7" class="empty-state">No hay exámenes registrados.</td>
+                            <td colspan="8" class="empty-state">
+                                {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
+                            </td>
                         </tr>
                     </tbody>
                 </table>
                 
                 <!-- Pie de tabla -->
                 <div class="table-footer">
-                    <span>{{ examenes.to || 0 }} de {{ examenes.total || 0 }} exámenes</span>
+                    <span>{{ cargando ? 'Cargando…' : (examenes.to || 0) + ' de ' + (examenes.total || 0) + ' exámenes' }}</span>
+                </div>
+
+                <!-- Navegación: los enlaces del servidor conservan los filtros aplicados -->
+                <div v-if="examenes.last_page > 1" class="pagination-bar">
+                    <button class="btn-page" :disabled="cargando || !examenes.prev_page_url" @click="visitarPagina(examenes.prev_page_url)">
+                        ← Anterior
+                    </button>
+                    <span class="page-info">Página {{ examenes.current_page }} de {{ examenes.last_page }}</span>
+                    <button class="btn-page" :disabled="cargando || !examenes.next_page_url" @click="visitarPagina(examenes.next_page_url)">
+                        Siguiente →
+                    </button>
                 </div>
             </div>
         </div>
+    <!-- Modal de confirmación para acciones manuales sobre exámenes -->
+        <Modal :open="confirmacion.abierta" :title="confirmacion.titulo" @close="cerrarConfirmacion">
+            <p class="modal-desc">{{ confirmacion.descripcion }}</p>
+            <template #footer>
+                <button class="btn-action" @click="cerrarConfirmacion">Cancelar</button>
+                <button class="btn-action" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</button>
+            </template>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 
@@ -118,32 +331,94 @@ const getStatusClass = (estado) => {
 
 .action-bar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 0.75rem;
     margin-bottom: 1.5rem;
+}
+
+/* Fila principal: buscador a la izquierda y botón de registro a la derecha */
+.action-bar-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-create {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
+}
+
+/* Fila del buscador (lupa + botones) */
+.search-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.search-wrapper {
+    position: relative;
+    flex: 1;
+    max-width: 500px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+    pointer-events: none;
 }
 
 .search-input {
-    flex: 1;
-    max-width: 500px;
-    padding: 0.5rem 1rem;
+    width: 100%;
+    padding: 0.5rem 1rem 0.5rem 2.25rem;
     border: 1px solid #d1d5db;
     border-radius: 0.25rem;
     font-size: 0.875rem;
+    box-sizing: border-box;
 }
 
-.action-controls {
+.search-actions {
     display: flex;
+    gap: 0.5rem;
+}
+
+/* Fila de filtros seleccionables */
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
     gap: 1rem;
 }
 
-.state-filter {
-    padding: 0.5rem 2rem 0.5rem 1rem;
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 140px;
+}
+
+.filter-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+}
+
+.filter-input {
+    padding: 0.35rem 0.5rem;
     border: 1px solid #d1d5db;
     border-radius: 0.25rem;
     font-size: 0.875rem;
     background-color: white;
+    box-sizing: border-box;
 }
 
 .btn-primary {
@@ -195,6 +470,18 @@ const getStatusClass = (estado) => {
     color: #9ca3af;
 }
 
+.group-badges {
+    display: flex;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.badge-grupo {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
 .badge {
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
@@ -221,9 +508,87 @@ const getStatusClass = (estado) => {
     border: 1px solid #fde047;
 }
 
+/* Badges de estados de exámenes */
+.badge-programado {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.badge-en-curso {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.badge-finalizado {
+    background-color: #ede9fe;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+}
+
+.badge-cancelado {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+/* Contenedor del badge + tag secundario de ingreso suspendido */
+.estado-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tag-ingreso-suspendido {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #b45309;
+    background-color: #fffbeb;
+    border: 1px solid #fde047;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+}
+
+.modal-desc {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
 .actions-cell {
     display: flex;
+    gap: 0.5rem;
     justify-content: flex-end;
+}
+
+.btn-anular {
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.btn-anular:hover {
+    background-color: #fef2f2;
+}
+
+.btn-suspender {
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+.btn-suspender:hover {
+    background-color: #fffbeb;
+}
+
+.btn-reanudar {
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.btn-reanudar:hover {
+    background-color: #f0fdf4;
 }
 
 .btn-action {
@@ -253,5 +618,63 @@ const getStatusClass = (estado) => {
     text-align: center;
     color: #6b7280;
     padding: 2rem !important;
+}
+
+/* Botones y estados deshabilitados */
+.btn-cancel {
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+    color: #374151;
+    background-color: white;
+    cursor: pointer;
+}
+
+.btn-cancel:hover {
+    background-color: #f9fafb;
+}
+
+.btn-primary:disabled,
+.btn-cancel:disabled,
+.search-input:disabled,
+.filter-input:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Paginación */
+.pagination-bar {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-top: 1px solid #e5e7eb;
+    background-color: #ffffff;
+}
+
+.btn-page {
+    background-color: #3b0707;
+    color: white;
+    border: none;
+    padding: 0.4rem 1rem;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.btn-page:hover:not(:disabled) {
+    opacity: 0.85;
+}
+
+.btn-page:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.page-info {
+    font-size: 0.8rem;
+    color: #6b7280;
 }
 </style>

@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CambiarEstadoExamenRequest;
+use App\Http\Requests\DisponibilidadExamenRequest;
 use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
 use App\Http\Requests\UpdateExamenRequest;
 use App\Models\Ambiente;
+use App\Models\Asignatura;
+use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Grupo;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,18 +24,41 @@ class ExamenController extends Controller
     public function index(IndexExamenRequest $request)
     {
         $filtros = $request->validated();
+        $esDocente = auth()->user()->rol->nombre_rol === 'docente';
+
         $query = Examen::query()
-            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'])
+            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->with([
-                'asignatura:id_asignatura,nombre_asignatura',
-                'examenesAmbientes.ambiente:id_ambiente,nombre_ambiente',
+                'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
+                'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             ]);
 
+        if ($esDocente) {
+            // El docente solo ve los exámenes de las asignaturas que dicta (sus grupos).
+            $query->whereHas('asignatura.grupos', function ($subquery) {
+                $subquery->where('grupo.id_usuario', auth()->id());
+            });
+
+            // Contexto: solo se cargan los grupos del docente en cada asignatura.
+            $query->with(['asignatura.grupos' => fn ($subquery) => $subquery
+                ->where('id_usuario', auth()->id())
+                ->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo'])]);
+        } else {
+            // Contexto para el administrador: grupos y docentes de cada asignatura.
+            $query->with([
+                'asignatura.grupos' => fn ($subquery) => $subquery->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']),
+                'asignatura.grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
+            ]);
+        }
+
         if (isset($filtros['asignatura'])) {
-            // Buscar literalmente los comodines escritos por el usuario.
+            // Búsqueda tolerante a mayúsculas/minúsculas y a acentos: se normaliza
+            // con unaccent() + lower() en ambos lados, así "CALCULO" o "calculo"
+            // encuentran la asignatura "Cálculo". Los comodines escritos por el
+            // usuario se tratan como literales.
             $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['asignatura']);
             $query->whereHas('asignatura', function ($subquery) use ($nombre) {
-                $subquery->where('nombre_asignatura', 'ilike', '%'.$nombre.'%');
+                $subquery->whereRaw('unaccent(lower(nombre_asignatura)) LIKE unaccent(lower(?))', ['%'.$nombre.'%']);
             });
         }
 
@@ -46,16 +75,42 @@ class ExamenController extends Controller
             ->orderBy('hora_inicio')
             ->orderBy('id_examen')
             ->paginate(15)
-            ->appends($filtros);
+            ->appends($filtros)
+            ->through(function (Examen $examen) use ($esDocente) {
+                $grupos = $examen->asignatura?->grupos ?? collect();
+
+                // Nombres de grupos como array plano, sin duplicados.
+                $examen->setAttribute('grupos', $grupos
+                    ->pluck('nombre_grupo')
+                    ->unique()
+                    ->values()
+                    ->all());
+
+                if (! $esDocente) {
+                    $examen->setAttribute('docentes', $grupos
+                        ->pluck('usuario.name')
+                        ->filter()
+                        ->unique()
+                        ->values()
+                        ->all());
+                }
+
+                // El detalle de grupos ya se expone en "grupos"; no se repite anidado.
+                $examen->asignatura?->makeHidden('grupos');
+
+                return $examen;
+            });
+
+        $filtrosVista = [
+            'asignatura' => $filtros['asignatura'] ?? null,
+            'fecha' => $filtros['fecha'] ?? null,
+            'hora_inicio' => $filtros['hora_inicio'] ?? null,
+        ];
 
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
                 'examenes' => $examenes,
-                'filtros' => [
-                    'asignatura' => $filtros['asignatura'] ?? null,
-                    'fecha' => $filtros['fecha'] ?? null,
-                    'hora_inicio' => $filtros['hora_inicio'] ?? null,
-                ],
+                'filtros' => $filtrosVista,
             ]);
         }
 
@@ -67,48 +122,172 @@ class ExamenController extends Controller
         // Retornamos la vista de Inertia correspondiente
         return Inertia::render($vista, [
             'examenes' => $examenes,
-            'filters' => [
-                'asignatura' => $filtros['asignatura'] ?? null,
-                'fecha' => $filtros['fecha'] ?? null,
-                'hora_inicio' => $filtros['hora_inicio'] ?? null,
-            ],
+            'filters' => $filtrosVista,
         ]);
+    }
+
+    public function create()
+    {
+        $esDocente = auth()->user()->rol->nombre_rol === 'docente';
+
+        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        $asignaturas = Asignatura::query()
+            ->orderBy('nombre_asignatura')
+            ->when($esDocente, function ($query) {
+                $query->whereHas('grupos', function ($subquery) {
+                    $subquery->where('id_usuario', auth()->id());
+                });
+            })
+            ->get(['id_asignatura', 'nombre_asignatura']);
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
+
+        return Inertia::render('Admin/Examenes/Create', [
+            'asignaturas' => $asignaturas,
+            'ambientes' => $ambientes,
+        ]);
+    }
+
+    public function edit(Examen $examen)
+    {
+        $usuario = auth()->user();
+        $esDocente = $usuario->rol->nombre_rol === 'docente';
+
+        // El docente solo puede abrir la edición de exámenes de las asignaturas que dicta.
+        if ($esDocente
+            && ! Grupo::query()
+                ->where('id_usuario', $usuario->id)
+                ->where('id_asignatura', $examen->id_asignatura)
+                ->exists()
+        ) {
+            abort(403);
+        }
+
+        // Los exámenes anulados o finalizados no pueden editarse.
+        if (in_array($examen->estado_actual, ['cancelado', 'finalizado'], true)) {
+            abort(403);
+        }
+
+        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        $asignaturas = Asignatura::query()
+            ->orderBy('nombre_asignatura')
+            ->when($esDocente, function ($query) {
+                $query->whereHas('grupos', function ($subquery) {
+                    $subquery->where('id_usuario', auth()->id());
+                });
+            })
+            ->get(['id_asignatura', 'nombre_asignatura']);
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
+
+        $examen->load(['examenesAmbientes:id_examen_ambiente,id_examen,id_ambiente']);
+
+        return Inertia::render('Admin/Examenes/Create', [
+            'examen' => $examen,
+            'asignaturas' => $asignaturas,
+            'ambientes' => $ambientes,
+        ]);
+    }
+
+    /**
+     * Disponibilidad de ambientes para una ventana de fecha/hora/duración.
+     * Se usa desde el formulario de registro/edición para marcar visualmente
+     * qué ambientes están libres y cuáles ocupados en ese horario.
+     */
+    public function disponibilidad(DisponibilidadExamenRequest $request)
+    {
+        $datos = $request->validated();
+
+        // Ambientes con algún examen que se solape con la ventana consultada.
+        $ocupados = Examen::query()
+            ->select('examen_ambiente.id_ambiente')
+            ->join('examen_ambiente', 'examen_ambiente.id_examen', '=', 'examen.id_examen')
+            ->when(isset($datos['excluir_examen']), function ($query) use ($datos) {
+                $query->where('examen.id_examen', '!=', $datos['excluir_examen']);
+            })
+            ->where('examen.fecha', $datos['fecha'])
+            ->whereRaw(
+                "examen.hora_inicio < (CAST(? AS time) + (? * interval '1 minute'))",
+                [$datos['hora_inicio'], $datos['duracion_minutos']]
+            )
+            ->whereRaw(
+                "(examen.hora_inicio + (examen.duracion_minutos * interval '1 minute')) > CAST(? AS time)",
+                [$datos['hora_inicio']]
+            )
+            ->pluck('examen_ambiente.id_ambiente')
+            ->unique()
+            ->values()
+            ->all();
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad'])
+            ->map(fn (Ambiente $ambiente) => [
+                'id_ambiente' => $ambiente->id_ambiente,
+                'nombre_ambiente' => $ambiente->nombre_ambiente,
+                'capacidad' => $ambiente->capacidad,
+                'disponible' => ! in_array($ambiente->id_ambiente, $ocupados, true),
+            ])
+            ->values();
+
+        return response()->json(['ambientes' => $ambientes]);
     }
 
     public function store(StoreExamenRequest $request)
     {
         $datos = $request->validated();
 
-        DB::transaction(function () use ($datos) {
-            // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
-            Ambiente::query()
-                ->whereIn('id_ambiente', $datos['id_ambientes'])
-                ->lockForUpdate()
-                ->get();
+        // Orden determinista de ambientes: reduce el riesgo de deadlock entre
+        // altas concurrentes que bloquean las mismas filas en distinto orden.
+        sort($datos['id_ambientes']);
 
-            if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
-                throw ValidationException::withMessages([
-                    'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+        try {
+            DB::transaction(function () use ($datos) {
+                // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
+                Ambiente::query()
+                    ->whereIn('id_ambiente', $datos['id_ambientes'])
+                    ->orderBy('id_ambiente')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
+                    throw ValidationException::withMessages([
+                        'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+                    ]);
+                }
+
+                $examen = Examen::create([
+                    'id_asignatura' => $datos['id_asignatura'],
+                    'fecha' => $datos['fecha'],
+                    'hora_inicio' => $datos['hora_inicio'],
+                    'duracion_minutos' => $datos['duracion_minutos'],
+                    'normas_generales' => $datos['normas_generales'] ?? null,
                 ]);
+
+                foreach ($datos['id_ambientes'] as $idAmbiente) {
+                    ExamenAmbiente::create([
+                        'id_examen' => $examen->id_examen,
+                        'id_ambiente' => $idAmbiente,
+                    ]);
+                }
+            });
+        } catch (QueryException $e) {
+            // Deadlock entre registros simultáneos que usan los mismos ambientes.
+            if ($e->getCode() === '40P01') {
+                return back()->withErrors([
+                    'id_ambientes' => 'Se detectó otro registro simultáneo en el mismo ambiente. Inténtalo de nuevo.',
+                ])->withInput();
             }
 
-            $examen = Examen::create([
-                'id_asignatura' => $datos['id_asignatura'],
-                'fecha' => $datos['fecha'],
-                'hora_inicio' => $datos['hora_inicio'],
-                'duracion_minutos' => $datos['duracion_minutos'],
-                'normas_generales' => $datos['normas_generales'] ?? null,
-            ]);
+            throw $e;
+        }
 
-            foreach ($datos['id_ambientes'] as $idAmbiente) {
-                ExamenAmbiente::create([
-                    'id_examen' => $examen->id_examen,
-                    'id_ambiente' => $idAmbiente,
-                ]);
-            }
-        });
-
-        return back()->with('success', 'Examen registrado correctamente.');
+        return redirect()->route('examenes.index')
+            ->with('success', 'Examen registrado correctamente.');
     }
 
     /**
@@ -118,6 +297,26 @@ class ExamenController extends Controller
      */
     public function update(UpdateExamenRequest $request, Examen $examen)
     {
+        $estadoActual = $examen->estado_actual;
+
+        // Los exámenes anulados o finalizados no pueden editarse.
+        if (in_array($estadoActual, ['cancelado', 'finalizado'], true)) {
+            throw ValidationException::withMessages([
+                'estado' => 'No se puede editar un examen ya anulado o finalizado.',
+            ]);
+        }
+
+        // Mientras un examen está en curso (incluye suspendido) solo se pueden
+        // actualizar las normas generales: fecha, hora, duración, ambientes y
+        // asignatura definen la ventana y el ingreso, por lo que quedan congelados.
+        $camposEstructurales = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
+
+        if ($estadoActual === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
+            throw ValidationException::withMessages([
+                'estado' => 'Un examen en curso solo permite editar las normas generales.',
+            ]);
+        }
+
         $datos = $request->validated();
 
         try {
@@ -137,9 +336,14 @@ class ExamenController extends Controller
                     ? $datos['id_ambientes']
                     : $examen->examenesAmbientes()->pluck('id_ambiente')->all();
 
+                // Orden determinista: reduce el riesgo de deadlock entre ediciones
+                // concurrentes que bloquean las mismas filas en distinto orden.
+                sort($idAmbientes);
+
                 // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
                 Ambiente::query()
                     ->whereIn('id_ambiente', $idAmbientes)
+                    ->orderBy('id_ambiente')
                     ->lockForUpdate()
                     ->get();
 
@@ -177,10 +381,93 @@ class ExamenController extends Controller
                     'id_ambientes' => 'No se pueden modificar los ambientes porque el examen ya tiene ingresos registrados.',
                 ])->withInput();
             }
+
+            // Deadlock entre ediciones simultáneas que usan los mismos ambientes.
+            if ($e->getCode() === '40P01') {
+                return back()->withErrors([
+                    'id_ambientes' => 'Se detectó otra edición simultánea del mismo ambiente. Inténtalo de nuevo.',
+                ])->withInput();
+            }
+
             throw $e;
         }
 
-        return back()->with('success', 'Examen actualizado correctamente.');
+        return redirect()->route('examenes.index')
+            ->with('success', 'Examen actualizado correctamente.');
+    }
+
+    /**
+     * Cambia el estado manual del examen (anular, suspender o reanudar).
+     * Las transiciones automáticas (programado -> en_curso -> finalizado)
+     * no se guardan: se derivan del horario en `estado_actual`.
+     */
+    public function cambiarEstado(CambiarEstadoExamenRequest $request, Examen $examen)
+    {
+        $accion = $request->validated()['accion'];
+
+        $nuevoEstado = match ($accion) {
+            'anular' => 'cancelado',
+            'suspender' => 'suspendido',
+            'reanudar' => null,
+        };
+
+        // Estado automático según el horario (sin considerar la decisión manual).
+        $inicio = Carbon::parse($examen->fecha.' '.$examen->hora_inicio);
+        $fin = $inicio->copy()->addMinutes((int) $examen->duracion_minutos);
+        $automatico = now()->lt($inicio)
+            ? 'programado'
+            : (now()->lt($fin) ? 'en_curso' : 'finalizado');
+
+        // Un examen anulado es definitivo: queda congelado y no admite cambios.
+        if ($examen->estado === 'cancelado') {
+            throw ValidationException::withMessages([
+                'estado' => 'El examen ya está anulado y es definitivo; no se puede modificar.',
+            ]);
+        }
+
+        // Suspender solo tiene sentido mientras el examen está en curso:
+        // un examen que aún no empieza se anula, no se suspende.
+        if ($accion === 'suspender' && $automatico !== 'en_curso') {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede suspender un examen que está en curso.',
+            ]);
+        }
+
+        if ($nuevoEstado !== null && $automatico === 'finalizado') {
+            throw ValidationException::withMessages([
+                'estado' => 'No se puede anular o suspender un examen que ya finalizó.',
+            ]);
+        }
+
+        if ($nuevoEstado !== null && $examen->estado === $nuevoEstado) {
+            $yaEnEstado = $accion === 'anular' ? 'El examen ya está anulado.' : 'El examen ya está suspendido.';
+            throw ValidationException::withMessages(['estado' => $yaEnEstado]);
+        }
+
+        if ($nuevoEstado === null && $examen->estado !== 'suspendido') {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede reanudar un examen suspendido.',
+            ]);
+        }
+
+        DB::transaction(function () use ($request, $examen, $nuevoEstado, $accion) {
+            $examen->update(['estado' => $nuevoEstado]);
+
+            AuditoriaLog::create([
+                'id_usuario' => $request->user()->id,
+                'tabla_afectada' => 'examen',
+                'id_registro_afectado' => $examen->id_examen,
+                'accion' => strtoupper($accion),
+            ]);
+        });
+
+        $mensajes = [
+            'anular' => 'Examen anulado correctamente.',
+            'suspender' => 'Examen suspendido correctamente.',
+            'reanudar' => 'Examen reanudado correctamente.',
+        ];
+
+        return back()->with('success', $mensajes[$accion]);
     }
 
     public function destroy(Examen $examen)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Grupo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -10,7 +11,7 @@ class StoreExamenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->rol?->nombre_rol === 'administrador';
+        return in_array($this->user()?->rol?->nombre_rol, ['administrador', 'docente'], true);
     }
 
     protected function prepareForValidation(): void
@@ -49,6 +50,21 @@ class StoreExamenRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+
+            // El docente solo puede registrar exámenes de las asignaturas que dicta.
+            if ($this->user()?->rol?->nombre_rol === 'docente') {
+                $dicta = Grupo::query()
+                    ->where('id_usuario', $this->user()->id)
+                    ->where('id_asignatura', $this->input('id_asignatura'))
+                    ->exists();
+
+                if (! $dicta) {
+                    $validator->errors()->add(
+                        'id_asignatura',
+                        'Solo puedes registrar exámenes de las asignaturas que dictas.'
+                    );
+                }
             }
 
             $inicio = Carbon::createFromFormat(

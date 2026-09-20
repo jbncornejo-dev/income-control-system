@@ -90,6 +90,8 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
+            // Alinea CURRENT_TIMESTAMP y now() de Postgres con la hora local de la app.
+            'timezone' => env('DB_TIMEZONE', 'America/La_Paz'),
             'search_path' => 'public',
             'sslmode' => 'prefer',
         ],
