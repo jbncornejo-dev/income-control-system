@@ -4,6 +4,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Modal from '@/components/ui/Modal.vue';
+import Button from '@/components/ui/Button.vue';
 
 const toast = useToastStore();
 
@@ -201,12 +202,11 @@ const claseBotonConfirmacion = computed(() => {
                             >
                         </div>
                         <div class="search-actions">
-                            <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
-                            <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
+                            <Button type="submit" variant="primary" class="btn-toolbar" :disabled="cargando">Buscar</Button>
+                            <Button type="button" variant="action" class="btn-toolbar" :disabled="cargando" @click="limpiar">Limpiar</Button>
                         </div>
-                    </form>
-
-                    <Link href="/examenes/crear" class="btn-primary btn-create">+ Registrar Examen</Link>
+                        </form>
+                        <Link href="/examenes/crear" class="btn-base btn-primary btn-create">+ Registrar Examen</Link>
                 </div>
 
                 <div class="filter-row">
@@ -276,22 +276,21 @@ const claseBotonConfirmacion = computed(() => {
                             </td>
                             
                             <td class="actions-cell">
-                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
-                                <button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
+                                <Button variant="action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</Button>
+                                <Button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" variant="action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</Button>
 
-                                <!-- Suspendido: se puede reanudar (o anular si sigue en curso). -->
                                 <template v-if="examen.estado === 'suspendido'">
-                                    <button class="btn-action btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</button>
-                                    <button v-if="examen.estado_actual !== 'finalizado'" class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                    <Button variant="action" class="btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</Button>
+                                    <Button v-if="examen.estado_actual !== 'finalizado'" variant="action" class="btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</Button>
                                 </template>
 
-                                <!-- Anulado: definitivo, no se puede reanudar. -->
                                 <template v-else-if="examen.estado !== 'cancelado' && examen.estado_actual !== 'finalizado'">
-                                    <button v-if="examen.estado_actual === 'en_curso'" class="btn-action btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</button>
-                                    <button class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                    <Button v-if="examen.estado_actual === 'en_curso'" variant="action" class="btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</Button>
+                                    <Button variant="action" class="btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</Button>
                                 </template>
 
-                                <button class="btn-action btn-delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</button>
+                                <!-- Exclusivo del Admin (Si está presente en Docente, ignora) -->
+                                <Button variant="delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</Button>
                             </td>
                         </tr>
                         
@@ -324,8 +323,8 @@ const claseBotonConfirmacion = computed(() => {
         <Modal :open="confirmacion.abierta" :title="confirmacion.titulo" @close="cerrarConfirmacion">
             <p class="modal-desc">{{ confirmacion.descripcion }}</p>
             <template #footer>
-                <button class="btn-action" @click="cerrarConfirmacion">Cancelar</button>
-                <button class="btn-action" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</button>
+                <Button variant="action" class="btn-modal" @click="cerrarConfirmacion">Cancelar</Button>
+                <Button variant="primary" class="btn-modal" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</Button>
             </template>
         </Modal>
     </AuthenticatedLayout>
@@ -439,16 +438,6 @@ const claseBotonConfirmacion = computed(() => {
     font-size: 0.875rem;
     background-color: white;
     box-sizing: border-box;
-}
-
-.btn-primary {
-    background-color: #1e1b4b; 
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    cursor: pointer;
 }
 
 /* Tabla de Datos */
@@ -588,30 +577,6 @@ const claseBotonConfirmacion = computed(() => {
     justify-content: flex-end;
 }
 
-.btn-action {
-    background: transparent;
-    border: 1px solid #d1d5db;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    color: #374151;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-action:hover {
-    background-color: #f9fafb;
-}
-
-.btn-delete {
-    color: #ef4444;
-    border-color: #fca5a5;
-}
-
-.btn-delete:hover {
-    background-color: #fef2f2;
-}
-
 .btn-anular {
     color: #b91c1c;
     border-color: #fca5a5;
@@ -655,22 +620,6 @@ const claseBotonConfirmacion = computed(() => {
 }
 
 /* Botones y estados deshabilitados */
-.btn-cancel {
-    padding: 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    color: #374151;
-    background-color: white;
-    cursor: pointer;
-}
-
-.btn-cancel:hover {
-    background-color: #f9fafb;
-}
-
-.btn-primary:disabled,
-.btn-cancel:disabled,
 .search-input:disabled,
 .filter-input:disabled {
     opacity: 0.6;
@@ -688,27 +637,55 @@ const claseBotonConfirmacion = computed(() => {
     background-color: #ffffff;
 }
 
-.btn-page {
-    background-color: #1e1b4b;
-    color: white;
-    border: none;
-    padding: 0.4rem 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.btn-page:hover:not(:disabled) {
-    opacity: 0.85;
-}
-
-.btn-page:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
 .page-info {
     font-size: 0.8rem;
     color: #6b7280;
+}
+
+/* Estandarización geométrica global */
+.btn-toolbar,
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+/* El enlace <Link> requiere copiar la estructura base de Button.vue para verse igual */
+.btn-create {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: opacity 0.2s ease;
+  display: inline-flex;
+  justify-content: center;
+}
+
+/* Mantenemos los colores semánticos locales, pero añadimos !important 
+   para sobreescribir el color azul base de variant="primary" */
+.btn-anular {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-anular:hover {
+    background-color: #b02a37 !important;
+}
+
+.btn-suspender {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-suspender:hover {
+    background-color: #d97706 !important;
+}
+
+.btn-reanudar {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-reanudar:hover {
+    background-color: #059669 !important;
 }
 </style>
