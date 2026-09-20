@@ -7,6 +7,7 @@ use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Grupo;
 use App\Models\RegistroIngreso;
 use App\Models\Rol;
 use App\Models\User;
@@ -200,7 +201,33 @@ class ExamenUpdateTest extends TestCase
         ]);
     }
 
-    public function test_docente_no_puede_actualizar_un_examen(): void
+    public function test_docente_puede_actualizar_un_examen_de_una_asignatura_que_dicta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $creado = $this->crearExamenConAmbiente();
+        $examen = $creado['examen'];
+
+        $docente = $this->docente();
+        Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+
+        $response = $this->actingAs($docente)->patch(
+            "/examenes/{$examen->id_examen}",
+            ['normas_generales' => 'Normas editadas por el docente']
+        );
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $examen->id_examen,
+            'normas_generales' => 'Normas editadas por el docente',
+        ]);
+    }
+
+    public function test_docente_no_puede_actualizar_un_examen_de_una_asignatura_que_no_dicta(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $creado = $this->crearExamenConAmbiente();
@@ -215,6 +242,34 @@ class ExamenUpdateTest extends TestCase
         $this->assertDatabaseHas('examen', [
             'id_examen' => $examen->id_examen,
             'normas_generales' => 'Normas originales',
+        ]);
+    }
+
+    public function test_docente_no_puede_cambiar_a_una_asignatura_que_no_dicta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $creado = $this->crearExamenConAmbiente();
+        $examen = $creado['examen'];
+
+        $docente = $this->docente();
+        Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+
+        $otraAsignatura = Asignatura::create(['nombre_asignatura' => static::siguienteNombreAmbiente().' externa']);
+
+        $response = $this->actingAs($docente)->patch(
+            "/examenes/{$examen->id_examen}",
+            ['id_asignatura' => $otraAsignatura->id_asignatura]
+        );
+
+        $response->assertSessionHasErrors('id_asignatura');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $examen->id_examen,
+            'id_asignatura' => $examen->id_asignatura,
         ]);
     }
 

@@ -8,20 +8,24 @@ import { useToastStore } from '@/stores/useToastStore';
 const props = defineProps({
     asignaturas: { type: Array, default: () => [] },
     ambientes: { type: Array, default: () => [] },
+    // Cuando llega "examen", la página funciona como edición (PATCH) del mismo.
+    examen: { type: Object, default: null },
 });
 
 const toast = useToastStore();
+
+const esEdicion = computed(() => !!props.examen);
 
 // Fecha mínima seleccionable: hoy (la validación exige que el examen sea futuro).
 const hoy = ref(new Date().toISOString().slice(0, 10));
 
 const form = useForm({
-    id_asignatura: '',
-    fecha: '',
-    hora_inicio: '',
-    duracion_minutos: 90,
-    normas_generales: '',
-    id_ambientes: [],
+    id_asignatura: props.examen?.id_asignatura ?? '',
+    fecha: props.examen?.fecha ?? '',
+    hora_inicio: props.examen ? String(props.examen.hora_inicio ?? '').slice(0, 5) : '',
+    duracion_minutos: props.examen?.duracion_minutos ?? 90,
+    normas_generales: props.examen?.normas_generales ?? '',
+    id_ambientes: (props.examen?.examenes_ambientes ?? []).map((ea) => ea.id_ambiente),
 });
 
 const ambientesSeleccionados = computed(() =>
@@ -40,17 +44,23 @@ function toggleAmbiente(idAmbiente) {
 function guardar() {
     if (form.processing) return;
 
-    form.post('/examenes', {
+    const opciones = {
         preserveScroll: true,
         onSuccess: (page) => {
             if (page.props.flash?.success) toast.success(page.props.flash.success);
         },
-    });
+    };
+
+    if (esEdicion.value) {
+        form.patch(`/examenes/${props.examen.id_examen}`, opciones);
+    } else {
+        form.post('/examenes', opciones);
+    }
 }
 </script>
 
 <template>
-    <Head title="Registrar Examen" />
+    <Head :title="esEdicion ? 'Editar Examen' : 'Registrar Examen'" />
 
     <AuthenticatedLayout>
         <div class="panel-container">
@@ -59,8 +69,10 @@ function guardar() {
             </div>
 
             <div class="form-card">
-                <h1 class="form-title">Registrar Examen</h1>
-                <p class="form-subtitle">Programa una nueva evaluación asignándole asignatura, horario y ambientes.</p>
+                <h1 class="form-title">{{ esEdicion ? 'Editar Examen' : 'Registrar Examen' }}</h1>
+                <p class="form-subtitle">
+                    {{ esEdicion ? 'Modifica asignatura, horario o ambientes de la evaluación.' : 'Programa una nueva evaluación asignándole asignatura, horario y ambientes.' }}
+                </p>
 
                 <form @submit.prevent="guardar" novalidate>
                     <!-- Asignatura -->
@@ -179,7 +191,7 @@ function guardar() {
                         <Link href="/examenes" class="btn-cancel">Cancelar</Link>
                         <button type="submit" class="btn-primary" :disabled="form.processing">
                             <LoadingSpinner v-if="form.processing" size="small" />
-                            <span v-else>Registrar Examen</span>
+                            <span v-else>{{ esEdicion ? 'Guardar Cambios' : 'Registrar Examen' }}</span>
                         </button>
                     </div>
                 </form>

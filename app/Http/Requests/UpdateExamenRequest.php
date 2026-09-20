@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Examen;
+use App\Models\Grupo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -10,7 +12,24 @@ class UpdateExamenRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->rol?->nombre_rol === 'administrador';
+        $rol = $this->user()?->rol?->nombre_rol;
+
+        if ($rol === 'administrador') {
+            return true;
+        }
+
+        // El docente solo puede editar exámenes de las asignaturas que dicta.
+        if ($rol === 'docente') {
+            $examen = $this->route('examen');
+
+            return $examen instanceof Examen
+                && Grupo::query()
+                    ->where('id_usuario', $this->user()->id)
+                    ->where('id_asignatura', $examen->id_asignatura)
+                    ->exists();
+        }
+
+        return false;
     }
 
     protected function prepareForValidation(): void
@@ -47,6 +66,25 @@ class UpdateExamenRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+
+            // authorize() ya garantiza que el examen pertenece a una asignatura del docente;
+            // aquí se evita que lo cambie a una asignatura que no dicta.
+            if ($this->user()?->rol?->nombre_rol === 'docente') {
+                $examen = $this->route('examen');
+                $idAsignatura = $this->input('id_asignatura') ?? $examen->id_asignatura;
+
+                $dicta = Grupo::query()
+                    ->where('id_usuario', $this->user()->id)
+                    ->where('id_asignatura', $idAsignatura)
+                    ->exists();
+
+                if (! $dicta) {
+                    $validator->errors()->add(
+                        'id_asignatura',
+                        'Solo puedes editar exámenes de las asignaturas que dictas.'
+                    );
+                }
             }
 
             $fecha = $this->input('fecha');

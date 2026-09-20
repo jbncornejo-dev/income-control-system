@@ -3,6 +3,7 @@
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\StudentController;
@@ -11,7 +12,6 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
-use App\Models\User;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -79,12 +79,12 @@ Route::middleware('auth')->group(function () {
     })->middleware(['verified'])->name('dashboard');
 
     Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
-        Route::get('/control/dashboard', [\App\Http\Controllers\DashboardController::class, 'control'])->name('control.dashboard');
+        Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
     });
 
     Route::middleware('role:administrador')->group(function () {
-        Route::get('/admin/dashboard', [\App\Http\Controllers\DashboardController::class, 'admin'])->name('admin.dashboard');
+        Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
@@ -121,10 +121,12 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:administrador,docente')->group(function () {
-        Route::get('/docente/dashboard', [\App\Http\Controllers\DashboardController::class, 'docente'])->name('docente.dashboard');
+        Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
         Route::get('/examenes/crear', [ExamenController::class, 'create'])->name('examenes.create');
+        // Página de edición: comparte el mismo formulario que el registro, precargado con el examen.
+        Route::get('/examenes/{examen}/editar', [ExamenController::class, 'edit'])->name('examenes.edit');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Edición parcial (PATCH) de un examen existente.
         Route::patch('/examenes/{examen}', [ExamenController::class, 'update'])->name('examenes.update');

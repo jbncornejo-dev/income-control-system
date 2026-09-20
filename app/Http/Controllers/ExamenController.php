@@ -9,6 +9,7 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Grupo;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -145,6 +146,44 @@ class ExamenController extends Controller
         ]);
     }
 
+    public function edit(Examen $examen)
+    {
+        $usuario = auth()->user();
+        $esDocente = $usuario->rol->nombre_rol === 'docente';
+
+        // El docente solo puede abrir la edición de exámenes de las asignaturas que dicta.
+        if ($esDocente
+            && ! Grupo::query()
+                ->where('id_usuario', $usuario->id)
+                ->where('id_asignatura', $examen->id_asignatura)
+                ->exists()
+        ) {
+            abort(403);
+        }
+
+        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        $asignaturas = Asignatura::query()
+            ->orderBy('nombre_asignatura')
+            ->when($esDocente, function ($query) {
+                $query->whereHas('grupos', function ($subquery) {
+                    $subquery->where('id_usuario', auth()->id());
+                });
+            })
+            ->get(['id_asignatura', 'nombre_asignatura']);
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
+
+        $examen->load(['examenesAmbientes:id_examen_ambiente,id_examen,id_ambiente']);
+
+        return Inertia::render('Admin/Examenes/Create', [
+            'examen' => $examen,
+            'asignaturas' => $asignaturas,
+            'ambientes' => $ambientes,
+        ]);
+    }
+
     public function store(StoreExamenRequest $request)
     {
         $datos = $request->validated();
@@ -251,7 +290,8 @@ class ExamenController extends Controller
             throw $e;
         }
 
-        return back()->with('success', 'Examen actualizado correctamente.');
+        return redirect()->route('examenes.index')
+            ->with('success', 'Examen actualizado correctamente.');
     }
 
     public function destroy(Examen $examen)

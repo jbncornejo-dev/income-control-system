@@ -176,6 +176,7 @@ const getStatusClass = (estado) => {
                             
                             <td class="actions-cell">
                                 <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
+                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
                                 <button class="btn-action btn-delete">Eliminar</button>
                             </td>
                         </tr>
