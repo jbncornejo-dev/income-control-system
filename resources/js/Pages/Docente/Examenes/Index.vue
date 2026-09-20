@@ -194,7 +194,9 @@ const claseBotonConfirmacion = computed(() => {
                         </div>
                         </form>
 
-                        <Link href="/examenes/crear" class="btn-base btn-primary btn-create">+ Registrar Examen</Link>
+                        <Button as="a" variant="primary" class="btn-create" @click.prevent="router.visit('/examenes/crear')">
+                            + Registrar Examen
+                        </Button>
                 </div>
 
                 <div class="filter-row">
@@ -346,14 +348,6 @@ const claseBotonConfirmacion = computed(() => {
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-}
-
-.btn-create {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    white-space: nowrap;
 }
 
 /* Fila del buscador (lupa + botones) */
