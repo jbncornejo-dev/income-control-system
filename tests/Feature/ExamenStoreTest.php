@@ -10,9 +10,13 @@ use App\Models\Grupo;
 use App\Models\Rol;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Mockery;
+use PDOException;
+use ReflectionProperty;
 use Tests\TestCase;
 
 class ExamenStoreTest extends TestCase
@@ -165,5 +169,53 @@ class ExamenStoreTest extends TestCase
         $response = $this->actingAs($this->administrador())->post('/examenes', $datos);
 
         $response->assertSessionHasErrors('fecha');
+    }
+
+    public function test_registro_acepta_ambientes_en_cualquier_orden(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $asignatura = Asignatura::create(['nombre_asignatura' => 'Física II']);
+        $a = Ambiente::create(['nombre_ambiente' => 'Aula 201', 'capacidad' => 30]);
+        $b = Ambiente::create(['nombre_ambiente' => 'Aula 202', 'capacidad' => 30]);
+
+        $response = $this->actingAs($this->administrador())->post('/examenes', [
+            'id_asignatura' => $asignatura->id_asignatura,
+            'fecha' => now()->addDay()->format('Y-m-d'),
+            'hora_inicio' => '10:00',
+            'duracion_minutos' => 60,
+            'id_ambientes' => [$b->id_ambiente, $a->id_ambiente], // En desorden a propósito.
+        ]);
+
+        $response->assertSessionHas('success');
+        // El orden no importa: ambos ambientes quedan asociados al examen.
+        $this->assertDatabaseHas('examen_ambiente', ['id_ambiente' => $a->id_ambiente]);
+        $this->assertDatabaseHas('examen_ambiente', ['id_ambiente' => $b->id_ambiente]);
+    }
+
+    public function test_devuelve_error_amigable_cuando_el_registro_simultaneo_genera_deadlock(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
+        // Simula un deadlock (SQLSTATE 40P01) de Postgres en la transacción.
+        $gestor = app('db');
+        $gestorMock = Mockery::mock($gestor)->makePartial();
+        $gestorMock->shouldReceive('transaction')->andThrow($this->excepcionDeadlock());
+        $this->instance('db', $gestorMock);
+
+        $datos = $this->datosValidos();
+
+        $response = $this->actingAs($this->administrador())->post('/examenes', $datos);
+
+        $response->assertSessionHasErrors('id_ambientes');
+        $this->assertDatabaseCount('examen', 0);
+    }
+
+    private function excepcionDeadlock(): QueryException
+    {
+        $excepcion = new QueryException('pgsql', 'select * from ambiente', [], new PDOException('deadlock detected'));
+
+        (new ReflectionProperty(PDOException::class, 'code'))->setValue($excepcion, '40P01');
+
+        return $excepcion;
     }
 }

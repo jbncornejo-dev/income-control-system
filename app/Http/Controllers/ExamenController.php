@@ -188,34 +188,50 @@ class ExamenController extends Controller
     {
         $datos = $request->validated();
 
-        DB::transaction(function () use ($datos) {
-            // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
-            Ambiente::query()
-                ->whereIn('id_ambiente', $datos['id_ambientes'])
-                ->lockForUpdate()
-                ->get();
+        // Orden determinista de ambientes: reduce el riesgo de deadlock entre
+        // altas concurrentes que bloquean las mismas filas en distinto orden.
+        sort($datos['id_ambientes']);
 
-            if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
-                throw ValidationException::withMessages([
-                    'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+        try {
+            DB::transaction(function () use ($datos) {
+                // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
+                Ambiente::query()
+                    ->whereIn('id_ambiente', $datos['id_ambientes'])
+                    ->orderBy('id_ambiente')
+                    ->lockForUpdate()
+                    ->get();
+
+                if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
+                    throw ValidationException::withMessages([
+                        'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+                    ]);
+                }
+
+                $examen = Examen::create([
+                    'id_asignatura' => $datos['id_asignatura'],
+                    'fecha' => $datos['fecha'],
+                    'hora_inicio' => $datos['hora_inicio'],
+                    'duracion_minutos' => $datos['duracion_minutos'],
+                    'normas_generales' => $datos['normas_generales'] ?? null,
                 ]);
+
+                foreach ($datos['id_ambientes'] as $idAmbiente) {
+                    ExamenAmbiente::create([
+                        'id_examen' => $examen->id_examen,
+                        'id_ambiente' => $idAmbiente,
+                    ]);
+                }
+            });
+        } catch (QueryException $e) {
+            // Deadlock entre registros simultáneos que usan los mismos ambientes.
+            if ($e->getCode() === '40P01') {
+                return back()->withErrors([
+                    'id_ambientes' => 'Se detectó otro registro simultáneo en el mismo ambiente. Inténtalo de nuevo.',
+                ])->withInput();
             }
 
-            $examen = Examen::create([
-                'id_asignatura' => $datos['id_asignatura'],
-                'fecha' => $datos['fecha'],
-                'hora_inicio' => $datos['hora_inicio'],
-                'duracion_minutos' => $datos['duracion_minutos'],
-                'normas_generales' => $datos['normas_generales'] ?? null,
-            ]);
-
-            foreach ($datos['id_ambientes'] as $idAmbiente) {
-                ExamenAmbiente::create([
-                    'id_examen' => $examen->id_examen,
-                    'id_ambiente' => $idAmbiente,
-                ]);
-            }
-        });
+            throw $e;
+        }
 
         return redirect()->route('examenes.index')
             ->with('success', 'Examen registrado correctamente.');
@@ -247,9 +263,14 @@ class ExamenController extends Controller
                     ? $datos['id_ambientes']
                     : $examen->examenesAmbientes()->pluck('id_ambiente')->all();
 
+                // Orden determinista: reduce el riesgo de deadlock entre ediciones
+                // concurrentes que bloquean las mismas filas en distinto orden.
+                sort($idAmbientes);
+
                 // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
                 Ambiente::query()
                     ->whereIn('id_ambiente', $idAmbientes)
+                    ->orderBy('id_ambiente')
                     ->lockForUpdate()
                     ->get();
 
@@ -287,6 +308,14 @@ class ExamenController extends Controller
                     'id_ambientes' => 'No se pueden modificar los ambientes porque el examen ya tiene ingresos registrados.',
                 ])->withInput();
             }
+
+            // Deadlock entre ediciones simultáneas que usan los mismos ambientes.
+            if ($e->getCode() === '40P01') {
+                return back()->withErrors([
+                    'id_ambientes' => 'Se detectó otra edición simultánea del mismo ambiente. Inténtalo de nuevo.',
+                ])->withInput();
+            }
+
             throw $e;
         }
 

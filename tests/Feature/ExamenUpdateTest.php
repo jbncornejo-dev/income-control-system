@@ -11,9 +11,13 @@ use App\Models\Grupo;
 use App\Models\RegistroIngreso;
 use App\Models\Rol;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Mockery;
+use PDOException;
+use ReflectionProperty;
 use Tests\TestCase;
 
 class ExamenUpdateTest extends TestCase
@@ -292,5 +296,38 @@ class ExamenUpdateTest extends TestCase
             'id_examen' => $examen->id_examen,
             'fecha' => now()->addDays(10)->format('Y-m-d'),
         ]);
+    }
+
+    public function test_devuelve_error_amigable_cuando_la_edicion_simultanea_genera_deadlock(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
+        // Simula un deadlock (SQLSTATE 40P01) de Postgres en la transacción.
+        $gestor = app('db');
+        $gestorMock = Mockery::mock($gestor)->makePartial();
+        $gestorMock->shouldReceive('transaction')->andThrow($this->excepcionDeadlock());
+        $this->instance('db', $gestorMock);
+
+        $creado = $this->crearExamenConAmbiente();
+
+        $response = $this->actingAs($this->administrador())->patch(
+            "/examenes/{$creado['examen']->id_examen}",
+            ['normas_generales' => 'Intento con deadlock']
+        );
+
+        $response->assertSessionHasErrors('id_ambientes');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $creado['examen']->id_examen,
+            'normas_generales' => 'Normas originales',
+        ]);
+    }
+
+    private function excepcionDeadlock(): QueryException
+    {
+        $excepcion = new QueryException('pgsql', 'select * from ambiente', [], new PDOException('deadlock detected'));
+
+        (new ReflectionProperty(PDOException::class, 'code'))->setValue($excepcion, '40P01');
+
+        return $excepcion;
     }
 }
