@@ -132,6 +132,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Edición parcial (PATCH) de un examen existente.
         Route::patch('/examenes/{examen}', [ExamenController::class, 'update'])->name('examenes.update');
+        // Cambiar el estado manual del examen: anular (cancelado), suspender o reanudar.
+        Route::patch('/examenes/{examen}/estado', [ExamenController::class, 'cambiarEstado'])->name('examenes.estado');
         // Asociar estudiantes a un examen
         Route::post(
             '/examenes/{examen}/habilitaciones',

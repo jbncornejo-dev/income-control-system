@@ -16,6 +16,12 @@ const toast = useToastStore();
 
 const esEdicion = computed(() => !!props.examen);
 
+// En un examen en curso (incluye suspendido) solo se editan las normas generales;
+// los datos estructurales (fecha, hora, duración, ambientes, asignatura) quedan congelados.
+const soloNormas = computed(() =>
+    esEdicion.value && props.examen?.estado_actual === 'en_curso'
+);
+
 // Fecha mínima seleccionable: hoy (la validación exige que el examen sea futuro).
 const hoy = ref(new Date().toISOString().slice(0, 10));
 
@@ -146,6 +152,14 @@ const horaFin = computed(() => {
 function guardar() {
     if (form.processing) return;
 
+    // En un examen en curso el formulario solo envía las normas generales;
+    // los demás campos ni siquiera viajan al backend.
+    if (soloNormas.value) {
+        form.transform((datos) => ({
+            normas_generales: datos.normas_generales,
+        }));
+    }
+
     const opciones = {
         preserveScroll: true,
         onSuccess: (page) => {
@@ -173,12 +187,19 @@ function guardar() {
             <div class="form-card">
                 <h1 class="form-title">{{ esEdicion ? 'Editar Examen' : 'Registrar Examen' }}</h1>
                 <p class="form-subtitle">
-                    {{ esEdicion ? 'Modifica asignatura, horario o ambientes de la evaluación.' : 'Programa una nueva evaluación asignándole asignatura, horario y ambientes.' }}
+                    {{ esEdicion
+                        ? (soloNormas
+                            ? 'El examen está en curso: solo puedes actualizar las normas generales.'
+                            : 'Modifica asignatura, horario o ambientes de la evaluación.')
+                        : 'Programa una nueva evaluación asignándole asignatura, horario y ambientes.' }}
+                </p>
+                <p v-if="soloNormas" class="form-aviso">
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes y asignatura quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
                     <!-- Asignatura -->
-                    <div class="form-group">
+                    <div v-if="!soloNormas" class="form-group">
                         <label for="id_asignatura" class="form-label">Asignatura <span class="required">*</span></label>
                         <select
                             id="id_asignatura"
@@ -198,7 +219,7 @@ function guardar() {
                     </div>
 
                     <!-- Fecha / Hora / Duración -->
-                    <div class="form-grid">
+                    <div v-if="!soloNormas" class="form-grid">
                         <div class="form-group">
                             <label for="fecha" class="form-label">Fecha <span class="required">*</span></label>
                             <input
@@ -268,10 +289,11 @@ function guardar() {
                             @input="form.clearErrors('normas_generales')"
                         ></textarea>
                         <p v-if="form.errors.normas_generales" class="error-msg">{{ form.errors.normas_generales }}</p>
+                        <p v-if="soloNormas" class="help-text">Durante el examen se actualizan únicamente las indicaciones que se muestran a los estudiantes.</p>
                     </div>
 
                     <!-- Ambientes -->
-                    <div class="form-group">
+                    <div v-if="!soloNormas" class="form-group">
                         <span class="form-label">Ambientes <span class="required">*</span></span>
 
                         <div v-if="ambientes.length > 0" class="ambiente-toolbar">
@@ -365,6 +387,16 @@ function guardar() {
     font-size: 0.875rem;
     color: #6b7280;
     margin: 0 0 1.5rem;
+}
+
+.form-aviso {
+    background-color: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #1d4ed8;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    padding: 0.625rem 0.75rem;
+    margin: -0.75rem 0 1.25rem;
 }
 
 .form-grid {

@@ -17,9 +17,9 @@ class Examen extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'];
+    protected $fillable = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
 
-    protected $appends = ['hora_fin'];
+    protected $appends = ['hora_fin', 'estado_actual'];
 
     /**
      * Hora de finalización calculada a partir de la hora de inicio y la duración.
@@ -34,6 +34,37 @@ class Examen extends Model
             return Carbon::parse($this->hora_inicio)
                 ->addMinutes((int) $this->duracion_minutos)
                 ->format('H:i');
+        });
+    }
+
+    /**
+     * Estado actual del examen (ciclo de vida).
+     *
+     * - Solo 'cancelado' (anulado) sobreescribe el ciclo: es una decisión
+     *   definitiva e independiente del horario.
+     * - 'suspendido' NO es parte del ciclo de vida: es una pausa temporal
+     *   del registro de ingresos. El examen sigue su curso según el horario
+     *   (programado -> en_curso -> finalizado) y su duración no se altera.
+     */
+    protected function estadoActual(): Attribute
+    {
+        return Attribute::get(function (): string {
+            if ($this->estado === 'cancelado') {
+                return 'cancelado';
+            }
+
+            $inicio = Carbon::parse($this->fecha.' '.$this->hora_inicio);
+            $fin = $inicio->copy()->addMinutes((int) $this->duracion_minutos);
+
+            if (now()->lt($inicio)) {
+                return 'programado';
+            }
+
+            if (now()->lt($fin)) {
+                return 'en_curso';
+            }
+
+            return 'finalizado';
         });
     }
 

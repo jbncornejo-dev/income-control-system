@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CambiarEstadoExamenRequest;
 use App\Http\Requests\DisponibilidadExamenRequest;
 use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
 use App\Http\Requests\UpdateExamenRequest;
 use App\Models\Ambiente;
 use App\Models\Asignatura;
+use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
+use Carbon\Carbon;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +27,7 @@ class ExamenController extends Controller
         $esDocente = auth()->user()->rol->nombre_rol === 'docente';
 
         $query = Examen::query()
-            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales'])
+            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->with([
                 'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
                 'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
@@ -162,6 +165,11 @@ class ExamenController extends Controller
             abort(403);
         }
 
+        // Los exámenes anulados o finalizados no pueden editarse.
+        if (in_array($examen->estado_actual, ['cancelado', 'finalizado'], true)) {
+            abort(403);
+        }
+
         // El docente solo ve (y puede elegir) las asignaturas que dicta.
         $asignaturas = Asignatura::query()
             ->orderBy('nombre_asignatura')
@@ -289,6 +297,26 @@ class ExamenController extends Controller
      */
     public function update(UpdateExamenRequest $request, Examen $examen)
     {
+        $estadoActual = $examen->estado_actual;
+
+        // Los exámenes anulados o finalizados no pueden editarse.
+        if (in_array($estadoActual, ['cancelado', 'finalizado'], true)) {
+            throw ValidationException::withMessages([
+                'estado' => 'No se puede editar un examen ya anulado o finalizado.',
+            ]);
+        }
+
+        // Mientras un examen está en curso (incluye suspendido) solo se pueden
+        // actualizar las normas generales: fecha, hora, duración, ambientes y
+        // asignatura definen la ventana y el ingreso, por lo que quedan congelados.
+        $camposEstructurales = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
+
+        if ($estadoActual === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
+            throw ValidationException::withMessages([
+                'estado' => 'Un examen en curso solo permite editar las normas generales.',
+            ]);
+        }
+
         $datos = $request->validated();
 
         try {
@@ -366,6 +394,80 @@ class ExamenController extends Controller
 
         return redirect()->route('examenes.index')
             ->with('success', 'Examen actualizado correctamente.');
+    }
+
+    /**
+     * Cambia el estado manual del examen (anular, suspender o reanudar).
+     * Las transiciones automáticas (programado -> en_curso -> finalizado)
+     * no se guardan: se derivan del horario en `estado_actual`.
+     */
+    public function cambiarEstado(CambiarEstadoExamenRequest $request, Examen $examen)
+    {
+        $accion = $request->validated()['accion'];
+
+        $nuevoEstado = match ($accion) {
+            'anular' => 'cancelado',
+            'suspender' => 'suspendido',
+            'reanudar' => null,
+        };
+
+        // Estado automático según el horario (sin considerar la decisión manual).
+        $inicio = Carbon::parse($examen->fecha.' '.$examen->hora_inicio);
+        $fin = $inicio->copy()->addMinutes((int) $examen->duracion_minutos);
+        $automatico = now()->lt($inicio)
+            ? 'programado'
+            : (now()->lt($fin) ? 'en_curso' : 'finalizado');
+
+        // Un examen anulado es definitivo: queda congelado y no admite cambios.
+        if ($examen->estado === 'cancelado') {
+            throw ValidationException::withMessages([
+                'estado' => 'El examen ya está anulado y es definitivo; no se puede modificar.',
+            ]);
+        }
+
+        // Suspender solo tiene sentido mientras el examen está en curso:
+        // un examen que aún no empieza se anula, no se suspende.
+        if ($accion === 'suspender' && $automatico !== 'en_curso') {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede suspender un examen que está en curso.',
+            ]);
+        }
+
+        if ($nuevoEstado !== null && $automatico === 'finalizado') {
+            throw ValidationException::withMessages([
+                'estado' => 'No se puede anular o suspender un examen que ya finalizó.',
+            ]);
+        }
+
+        if ($nuevoEstado !== null && $examen->estado === $nuevoEstado) {
+            $yaEnEstado = $accion === 'anular' ? 'El examen ya está anulado.' : 'El examen ya está suspendido.';
+            throw ValidationException::withMessages(['estado' => $yaEnEstado]);
+        }
+
+        if ($nuevoEstado === null && $examen->estado !== 'suspendido') {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede reanudar un examen suspendido.',
+            ]);
+        }
+
+        DB::transaction(function () use ($request, $examen, $nuevoEstado, $accion) {
+            $examen->update(['estado' => $nuevoEstado]);
+
+            AuditoriaLog::create([
+                'id_usuario' => $request->user()->id,
+                'tabla_afectada' => 'examen',
+                'id_registro_afectado' => $examen->id_examen,
+                'accion' => strtoupper($accion),
+            ]);
+        });
+
+        $mensajes = [
+            'anular' => 'Examen anulado correctamente.',
+            'suspender' => 'Examen suspendido correctamente.',
+            'reanudar' => 'Examen reanudado correctamente.',
+        ];
+
+        return back()->with('success', $mensajes[$accion]);
     }
 
     public function destroy(Examen $examen)

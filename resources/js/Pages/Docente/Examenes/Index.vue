@@ -2,6 +2,10 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
+import { useToastStore } from '@/stores/useToastStore';
+import Modal from '@/components/ui/Modal.vue';
+
+const toast = useToastStore();
 
 const props = defineProps({
     examenes: Object,
@@ -72,12 +76,90 @@ function visitarPagina(url) {
     visitar(url);
 }
 
-const getStatusClass = (estado) => {
-    const status = estado ? estado.toLowerCase() : '';
-    if (status === 'confirmado') return 'badge-confirmado';
-    if (status === 'borrador') return 'badge-borrador';
-    return 'badge-pendiente';
+// Información visual de cada estado del examen (ciclo de vida).
+const ESTADOS = {
+    programado: { clase: 'badge-programado', etiqueta: 'Programado' },
+    en_curso: { clase: 'badge-en-curso', etiqueta: 'En curso' },
+    finalizado: { clase: 'badge-finalizado', etiqueta: 'Finalizado' },
+    cancelado: { clase: 'badge-cancelado', etiqueta: 'Anulado' },
 };
+
+function estadoInfo(estadoActual) {
+    return ESTADOS[estadoActual] ?? { clase: 'badge-pendiente', etiqueta: estadoActual ?? 'Sin estado' };
+}
+
+// Confirmación de acciones manuales (anular/suspender/reanudar) mediante
+// un modal, en lugar del confirm nativo del navegador.
+const confirmacion = ref({
+    abierta: false,
+    examen: null,
+    accion: null,
+    titulo: '',
+    descripcion: '',
+    boton: '',
+});
+
+const CONTENIDO_ACCIONES = {
+    anular: {
+        titulo: 'Anular examen',
+        descripcion: 'Esta acción es DEFINITIVA y quedará registrada en la auditoría. El examen dejará de considerarse y no podrá reanudarse.',
+        boton: 'Anular',
+    },
+    suspender: {
+        titulo: 'Suspender examen',
+        descripcion: 'Se pausa el registro de nuevos ingresos. El examen continúa en curso según su horario (la duración no cambia) y podrás reanudarlo al resolver el incidente.',
+        boton: 'Suspender',
+    },
+    reanudar: {
+        titulo: 'Reanudar examen',
+        descripcion: 'Vuelve a permitir el registro de ingresos. El estado del examen volverá a derivarse automáticamente de su horario.',
+        boton: 'Reanudar',
+    },
+};
+
+function abrirConfirmacion(examen, accion) {
+    const contenido = CONTENIDO_ACCIONES[accion];
+    if (!contenido) return;
+    confirmacion.value = {
+        abierta: true,
+        examen,
+        accion,
+        titulo: contenido.titulo,
+        descripcion: contenido.descripcion,
+        boton: contenido.boton,
+    };
+}
+
+function cerrarConfirmacion() {
+    confirmacion.value.abierta = false;
+}
+
+function confirmarAccion() {
+    const { examen, accion } = confirmacion.value;
+    cerrarConfirmacion();
+    if (!examen) return;
+
+    router.patch(`/examenes/${examen.id_examen}/estado`, { accion }, {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: (page) => {
+            if (page.props.flash?.success) toast.success(page.props.flash.success);
+        },
+        onError: (errors) => {
+            toast.error(Object.values(errors)[0] || 'No se pudo realizar la operación.');
+        },
+    });
+}
+
+// Clase del botón de confirmación según la acción.
+const claseBotonConfirmacion = computed(() => {
+    const clases = {
+        anular: 'btn-anular',
+        suspender: 'btn-suspender',
+        reanudar: 'btn-reanudar',
+    };
+    return clases[confirmacion.value.accion] ?? '';
+});
 </script>
 
 <template>
@@ -166,13 +248,31 @@ const getStatusClass = (estado) => {
                             </td>
                             
                             <td>
-                                <span :class="['badge', getStatusClass(examen.estado)]">
-                                    {{ examen.estado || 'Pendiente' }}
-                                </span>
+                                <div class="estado-cell">
+                                    <span :class="['badge', estadoInfo(examen.estado_actual).clase]">
+                                        {{ estadoInfo(examen.estado_actual).etiqueta }}
+                                    </span>
+                                    <span v-if="examen.estado === 'suspendido' && ['programado', 'en_curso'].includes(examen.estado_actual)" class="tag-ingreso-suspendido">
+                                        Ingreso suspendido
+                                    </span>
+                                </div>
                             </td>
                             
                             <td class="actions-cell">
-                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
+                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
+                                <button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
+
+                                <!-- Suspendido: se puede reanudar (o anular si sigue en curso). -->
+                                <template v-if="examen.estado === 'suspendido'">
+                                    <button class="btn-action btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</button>
+                                    <button v-if="examen.estado_actual !== 'finalizado'" class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                </template>
+
+                                <!-- Anulado: definitivo, no se puede reanudar. -->
+                                <template v-else-if="examen.estado !== 'cancelado' && examen.estado_actual !== 'finalizado'">
+                                    <button v-if="examen.estado_actual === 'en_curso'" class="btn-action btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</button>
+                                    <button class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                </template>
                             </td>
                         </tr>
                         
@@ -201,6 +301,14 @@ const getStatusClass = (estado) => {
                 </div>
             </div>
         </div>
+    <!-- Modal de confirmación para acciones manuales sobre exámenes -->
+        <Modal :open="confirmacion.abierta" :title="confirmacion.titulo" @close="cerrarConfirmacion">
+            <p class="modal-desc">{{ confirmacion.descripcion }}</p>
+            <template #footer>
+                <button class="btn-action" @click="cerrarConfirmacion">Cancelar</button>
+                <button class="btn-action" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</button>
+            </template>
+        </Modal>
     </AuthenticatedLayout>
 </template>
 
@@ -400,9 +508,87 @@ const getStatusClass = (estado) => {
     border: 1px solid #fde047;
 }
 
+/* Badges de estados de exámenes */
+.badge-programado {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+.badge-en-curso {
+    background-color: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+.badge-finalizado {
+    background-color: #ede9fe;
+    color: #6d28d9;
+    border: 1px solid #c4b5fd;
+}
+
+.badge-cancelado {
+    background-color: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
+}
+
+/* Contenedor del badge + tag secundario de ingreso suspendido */
+.estado-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.tag-ingreso-suspendido {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #b45309;
+    background-color: #fffbeb;
+    border: 1px solid #fde047;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+    white-space: nowrap;
+}
+
+.modal-desc {
+    margin: 0;
+    color: #4b5563;
+    line-height: 1.5;
+}
+
 .actions-cell {
     display: flex;
+    gap: 0.5rem;
     justify-content: flex-end;
+}
+
+.btn-anular {
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.btn-anular:hover {
+    background-color: #fef2f2;
+}
+
+.btn-suspender {
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+.btn-suspender:hover {
+    background-color: #fffbeb;
+}
+
+.btn-reanudar {
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.btn-reanudar:hover {
+    background-color: #f0fdf4;
 }
 
 .btn-action {

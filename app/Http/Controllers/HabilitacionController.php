@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditoriaLog;
 use App\Models\Examen;
+use App\Models\Grupo;
 use App\Models\Habilitacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,9 +13,18 @@ use Inertia\Inertia;
 
 class HabilitacionController extends Controller
 {
-
     public function index(Request $request, Examen $examen)
     {
+        // El docente solo accede a las habilitaciones de las asignaturas que dicta.
+        if ($request->user()->rol->nombre_rol === 'docente'
+            && ! Grupo::query()
+                ->where('id_usuario', $request->user()->id)
+                ->where('id_asignatura', $examen->id_asignatura)
+                ->exists()
+        ) {
+            abort(403);
+        }
+
         // 1. Cargamos las relaciones del examen necesarias para la vista
         $examen->load(['asignatura', 'examenesAmbientes.ambiente']);
 
@@ -25,9 +35,9 @@ class HabilitacionController extends Controller
 
         // 3. Calculamos las estadísticas clonando la consulta (evita interferir con la paginación)
         $stats = [
-            'habilitados'   => (clone $query)->where('estado_habilitado', true)->count(),
+            'habilitados' => (clone $query)->where('estado_habilitado', true)->count(),
             'inhabilitados' => (clone $query)->where('estado_habilitado', false)->count(),
-            'ingresaron'    => 0,
+            'ingresaron' => 0,
         ];
 
         // 4. Ejecutamos tu paginación original
@@ -41,14 +51,14 @@ class HabilitacionController extends Controller
         }
 
         // 6. Retornamos la vista de Inertia
-        $vista = $request->user()->rol->nombre_rol === 'docente' 
-            ? 'Docente/Habilitaciones/Index' 
+        $vista = $request->user()->rol->nombre_rol === 'docente'
+            ? 'Docente/Habilitaciones/Index'
             : 'Admin/Habilitaciones/Index';
 
         return Inertia::render($vista, [
-            'examen'         => $examen,
+            'examen' => $examen,
             'habilitaciones' => $habilitaciones,
-            'stats'          => $stats
+            'stats' => $stats,
         ]);
     }
 
@@ -70,8 +80,7 @@ class HabilitacionController extends Controller
             && blank($datos['motivo_inhabilitacion'] ?? null)
         ) {
             throw ValidationException::withMessages([
-                'motivo_inhabilitacion'
-                    => 'El motivo de inhabilitación es obligatorio cuando el estudiante está inhabilitado.',
+                'motivo_inhabilitacion' => 'El motivo de inhabilitación es obligatorio cuando el estudiante está inhabilitado.',
             ]);
         }
 
@@ -114,6 +123,7 @@ class HabilitacionController extends Controller
             'Estado de habilitación actualizado correctamente.'
         );
     }
+
     public function store(Request $request, Examen $examen)
     {
         $datos = $request->validate([
