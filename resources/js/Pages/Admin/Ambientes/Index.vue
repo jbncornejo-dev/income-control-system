@@ -6,6 +6,7 @@ import { Head } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import SearchInput from '@/components/SearchInput.vue';
+import Button from '@/components/ui/Button.vue';
 import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
@@ -189,7 +190,7 @@ function eliminar() {
                     <h1 class="panel-title">AMBIENTES</h1>
                     <p class="subtitle">Capacidad total: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
                 </div>
-                <button class="btn-primary" @click="abrirModalNuevo">+ Nuevo Ambiente</button>
+                <Button variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
             </div>
 
             <div class="search-section">
@@ -216,8 +217,8 @@ function eliminar() {
                             <td>{{ ambiente.nombre_ambiente }}</td>
                             <td><span class="capacity-badge">{{ ambiente.capacidad }} personas</span></td>
                             <td class="col-actions">
-                                <button class="btn-action btn-edit" @click="abrirModalEditar(ambiente)">Editar</button>
-                                <button class="btn-action btn-delete" @click="confirmarEliminar(ambiente)">Eliminar</button>
+                                <Button variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
+                                <Button variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
                             </td>
                         </tr>
                         <tr v-if="!ambientes.data || ambientes.data.length === 0">
@@ -229,9 +230,9 @@ function eliminar() {
 
             <!-- Paginación -->
             <div class="pagination" v-if="ambientes.last_page > 1">
-                <button :disabled="cargando || !ambientes.prev_page_url" @click="visitar(ambientes.prev_page_url)" class="btn-page">← Anterior</button>
+                <Button variant="primary" :disabled="cargando || !ambientes.prev_page_url" @click="visitar(ambientes.prev_page_url)">Anterior</Button>
                 <span class="page-info">Página {{ ambientes.current_page }} de {{ ambientes.last_page }}</span>
-                <button :disabled="cargando || !ambientes.next_page_url" @click="visitar(ambientes.next_page_url)" class="btn-page">Siguiente →</button>
+                <Button variant="primary" :disabled="cargando || !ambientes.next_page_url" @click="visitar(ambientes.next_page_url)">Siguiente</Button>
             </div>
 
         </div>
@@ -255,11 +256,11 @@ function eliminar() {
                 <p class="help-text">El ID no es editable.</p>
             </div>
             <template #footer>
-                <button @click="cerrarModal" class="btn-cancel">Cancelar</button>
-                <button @click="guardar" class="btn-primary" :disabled="guardando">
+                <Button variant="action" class="btn-modal" @click="cerrarModal" :disabled="guardando">Cancelar</Button>
+                <Button variant="primary" class="btn-modal" @click="guardar" :disabled="guardando">
                     <LoadingSpinner v-if="guardando" size="small" />
                     <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear ambiente' }}</span>
-                </button>
+                </Button>
             </template>
         </Modal>
 
@@ -268,11 +269,11 @@ function eliminar() {
             <p class="confirm-text">¿Estás seguro de eliminar <strong>{{ ambienteAEliminar?.nombre_ambiente }}</strong>? Esta acción no se puede deshacer.</p>
             <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
             <template #footer>
-                <button @click="modalEliminar = false" class="btn-cancel">Cancelar</button>
-                <button @click="eliminar" class="btn-danger" :disabled="eliminando">
+                <Button variant="action" class="btn-modal" @click="modalEliminar = false" :disabled="eliminando">Cancelar</Button>
+                <Button variant="primary" class="btn-modal btn-peligro" @click="eliminar" :disabled="eliminando">
                     <LoadingSpinner v-if="eliminando" size="small" />
                     <span v-else>Sí, eliminar</span>
-                </button>
+                </Button>
             </template>
         </Modal>
 
@@ -299,12 +300,7 @@ function eliminar() {
 .col-actions { display: flex; gap: 8px; }
 .capacity-badge { background: #eff6ff; color: var(--color-primary); padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
-.btn-action { padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
-.btn-edit { background: #eff6ff; color: var(--color-primary); border: 1px solid var(--color-primary); }
-.btn-delete { background: #fdecea; color: #d32f2f; border: 1px solid #d32f2f; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px; }
-.btn-page { background: var(--color-primary); color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; }
-.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
 .page-info { font-size: 13px; color: #6b7280; }
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
@@ -315,8 +311,24 @@ function eliminar() {
 .input-readonly { opacity: 0.6; cursor: not-allowed; }
 .error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
 .help-text { color: #6b7280; font-size: 12px; margin-top: 4px; }
-.btn-primary { background: var(--color-primary); color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-.btn-cancel { background: transparent; border: none; color: #6b7280; cursor: pointer; font-size: 14px; padding: 10px 16px; }
-.btn-danger { background: #d32f2f; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .confirm-text { font-size: 14px; color: #374151; line-height: 1.6; }
+/* Estandarización de botones */
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+/* Espaciado entre botones en la tabla */
+.data-table td :deep(.btn-base) + :deep(.btn-base) {
+  margin-left: 8px;
+}
+
+/* Botón destructivo para confirmaciones */
+.btn-peligro {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+.btn-peligro:hover:not(:disabled) {
+  background-color: #b02a37 !important;
+}
 </style>
