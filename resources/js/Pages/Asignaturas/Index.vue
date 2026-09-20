@@ -8,9 +8,9 @@
           <h1 class="page-title">Gestión de Asignaturas</h1>
           <p class="page-subtitle">Administra el catálogo de materias del sistema</p>
         </div>
-        <button class="btn-primary" @click="abrirModalNueva">
+        <Button variant="primary" @click="abrirModalNueva">
           + Nueva Asignatura
-        </button>
+        </Button>
       </div>
 
       <!-- La búsqueda consulta todo el catálogo antes de paginar. -->
@@ -41,12 +41,12 @@
               <td class="id-cell">{{ asignatura.id_asignatura }}</td>
               <td>{{ asignatura.nombre_asignatura }}</td>
               <td class="actions-cell">
-                <button class="btn-action btn-edit" @click="abrirModalEditar(asignatura)">
+                <Button variant="action" @click="abrirModalEditar(asignatura)">
                   Editar
-                </button>
-                <button class="btn-action btn-delete" @click="confirmarEliminar(asignatura)">
+                </Button>
+                <Button variant="delete" @click="confirmarEliminar(asignatura)">
                   Eliminar
-                </button>
+                </Button>
               </td>
             </tr>
             <tr v-if="asignaturas.data.length === 0">
@@ -57,13 +57,13 @@
 
         <!-- HU7: los enlaces del servidor mantienen los filtros aplicados. -->
         <div class="pagination" v-if="asignaturas.last_page > 1">
-          <button :disabled="cargando || !asignaturas.prev_page_url" @click="visitar(asignaturas.prev_page_url)" class="btn-page">
-            ← Anterior
-          </button>
+          <Button variant="primary" :disabled="cargando || !asignaturas.prev_page_url" @click="visitar(asignaturas.prev_page_url)">
+            Anterior
+          </Button>
           <span class="page-info">Página {{ asignaturas.current_page }} de {{ asignaturas.last_page }}</span>
-          <button :disabled="cargando || !asignaturas.next_page_url" @click="visitar(asignaturas.next_page_url)" class="btn-page">
-            Siguiente →
-          </button>
+          <Button variant="primary" :disabled="cargando || !asignaturas.next_page_url" @click="visitar(asignaturas.next_page_url)">
+            Siguiente
+          </Button>
         </div>
       </div>
 
@@ -97,11 +97,11 @@
         </div>
 
         <template #footer>
-          <button @click="cerrarModal" :disabled="form.processing" class="btn-cancel">Cancelar</button>
-          <button @click="guardar" class="btn-primary" :disabled="form.processing">
+          <Button variant="action" class="btn-modal" @click="cerrarModal" :disabled="form.processing">Cancelar</Button>
+          <Button variant="primary" class="btn-modal" @click="guardar" :disabled="form.processing">
             <LoadingSpinner v-if="form.processing" size="small" />
             <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear asignatura' }}</span>
-          </button>
+          </Button>
         </template>
       </Modal>
 
@@ -113,11 +113,11 @@
         </p>
         <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
         <template #footer>
-          <button @click="cerrarEliminar" :disabled="eliminando" class="btn-cancel">Cancelar</button>
-          <button @click="eliminar" class="btn-danger" :disabled="eliminando">
+          <Button variant="action" class="btn-modal" @click="cerrarEliminar" :disabled="eliminando">Cancelar</Button>
+          <Button variant="primary" class="btn-modal btn-peligro" @click="eliminar" :disabled="eliminando">
             <LoadingSpinner v-if="eliminando" size="small" />
             <span v-else>Sí, eliminar</span>
-          </button>
+          </Button>
         </template>
       </Modal>
 
@@ -132,6 +132,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Modal from '@/components/ui/Modal.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
 import SearchInput from '@/components/SearchInput.vue'
+import Button from '@/components/ui/Button.vue'
 import { useToastStore } from '@/stores/useToastStore'
 
 // HU7: sustituir el arreglo temporal por el paginador y filtros de Laravel.
@@ -337,20 +338,6 @@ function eliminar() {
 .actions-cell { display: flex; gap: 8px; }
 .empty-row { text-align: center; color: var(--color-text-secondary); padding: 32px !important; }
 
-.btn-action {
-  padding: 5px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-}
-.btn-edit {
-  background: var(--color-bg-input);
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-}
-.btn-delete { background: #fdecea; color: #d32f2f; border: 1px solid #d32f2f; }
 
 .pagination {
   display: flex;
@@ -360,16 +347,7 @@ function eliminar() {
   padding: 16px;
   border-top: 1px solid var(--color-white-soft);
 }
-.btn-page {
-  background: var(--color-primary);
-  color: var(--color-white);
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .page-info { font-size: 13px; color: var(--color-text-secondary); }
 
 .loading-center { display: flex; justify-content: center; padding: 48px; }
@@ -393,39 +371,25 @@ function eliminar() {
 .error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
 .help-text { color: var(--color-text-secondary); font-size: 12px; margin-top: 4px; }
 
-.btn-primary {
-  background: var(--color-primary);
-  color: var(--color-white);
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.btn-cancel {
-  background: transparent;
-  border: none;
-  color: var(--color-text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-  padding: 10px 16px;
-}
-.btn-danger {
-  background: #d32f2f;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 .confirm-text { font-size: 14px; color: var(--color-text-main); line-height: 1.6; }
+
+/* Estandarización de botones */
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+/* Botón destructivo para modales de confirmación */
+.btn-peligro {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+.btn-peligro:hover:not(:disabled) {
+  background-color: #b02a37 !important;
+}
+
+/* Evitar que flex junte los botones de la tabla */
+.data-table td :deep(.btn-base) + :deep(.btn-base) {
+  margin-left: 8px;
+}
 </style>
