@@ -6,6 +6,7 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Grupo;
 use App\Models\Rol;
 use App\Models\User;
 use Carbon\Carbon;
@@ -65,9 +66,39 @@ class ExamenStoreTest extends TestCase
         ]);
     }
 
-    public function test_non_administrator_cannot_register_an_exam(): void
+    public function test_docente_puede_registrar_un_examen_de_una_asignatura_que_dicta(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
+        $datos = $this->datosValidos();
+
+        $rol = Rol::create(['nombre_rol' => 'docente']);
+        $docente = User::create([
+            'id_rol' => $rol->id_rol,
+            'name' => 'Docente',
+            'username' => 'docente',
+            'email' => 'docente@example.com',
+            'password' => Hash::make('pass'),
+        ]);
+        Grupo::create([
+            'id_asignatura' => $datos['id_asignatura'],
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+
+        $response = $this->actingAs($docente)->post('/examenes', $datos);
+
+        $response->assertSessionHas('success');
+        $this->assertDatabaseHas('examen', [
+            'id_asignatura' => $datos['id_asignatura'],
+        ]);
+    }
+
+    public function test_docente_no_puede_registrar_un_examen_de_una_asignatura_que_no_dicta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $datos = $this->datosValidos();
+
         $rol = Rol::create(['nombre_rol' => 'docente']);
         $docente = User::create([
             'id_rol' => $rol->id_rol,
@@ -77,9 +108,10 @@ class ExamenStoreTest extends TestCase
             'password' => Hash::make('pass'),
         ]);
 
-        $response = $this->actingAs($docente)->post('/examenes', $this->datosValidos());
+        $response = $this->actingAs($docente)->post('/examenes', $datos);
 
-        $response->assertForbidden();
+        $response->assertSessionHasErrors('id_asignatura');
+        $this->assertDatabaseCount('examen', 0);
     }
 
     public function test_rejects_invalid_or_missing_exam_data(): void

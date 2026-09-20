@@ -6,6 +6,7 @@ use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
 use App\Http\Requests\UpdateExamenRequest;
 use App\Models\Ambiente;
+use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use Illuminate\Database\QueryException;
@@ -120,6 +121,30 @@ class ExamenController extends Controller
         ]);
     }
 
+    public function create()
+    {
+        $esDocente = auth()->user()->rol->nombre_rol === 'docente';
+
+        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        $asignaturas = Asignatura::query()
+            ->orderBy('nombre_asignatura')
+            ->when($esDocente, function ($query) {
+                $query->whereHas('grupos', function ($subquery) {
+                    $subquery->where('id_usuario', auth()->id());
+                });
+            })
+            ->get(['id_asignatura', 'nombre_asignatura']);
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
+
+        return Inertia::render('Admin/Examenes/Create', [
+            'asignaturas' => $asignaturas,
+            'ambientes' => $ambientes,
+        ]);
+    }
+
     public function store(StoreExamenRequest $request)
     {
         $datos = $request->validated();
@@ -153,7 +178,8 @@ class ExamenController extends Controller
             }
         });
 
-        return back()->with('success', 'Examen registrado correctamente.');
+        return redirect()->route('examenes.index')
+            ->with('success', 'Examen registrado correctamente.');
     }
 
     /**

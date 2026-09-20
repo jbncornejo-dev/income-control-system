@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
@@ -87,28 +87,32 @@ const getStatusClass = (estado) => {
         <div class="panel-container">
             <h1 class="panel-title">GESTIÓN DE EXÁMENES</h1>
 
-            <!-- Barra de Acciones: buscador con lupa + filtros seleccionables. Los filtros
-                 se aplican al pulsar Buscar para no trabar la página mientras se escribe. -->
+            <!-- Barra de Acciones: buscador con lupa + botón de registro + filtros seleccionables.
+                 Los filtros se aplican al pulsar Buscar para no trabar la página mientras se escribe. -->
             <div class="action-bar">
-                <form class="search-row" @submit.prevent="buscar">
-                    <div class="search-wrapper">
-                        <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input
-                            v-model="busqueda"
-                            type="text"
-                            placeholder="Buscar por asignatura..."
-                            class="search-input"
-                            :disabled="cargando"
-                        >
-                    </div>
-                    <div class="search-actions">
-                        <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
-                        <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
-                    </div>
-                </form>
+                <div class="action-bar-main">
+                    <form class="search-row" @submit.prevent="buscar">
+                        <div class="search-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input
+                                v-model="busqueda"
+                                type="text"
+                                placeholder="Buscar por asignatura..."
+                                class="search-input"
+                                :disabled="cargando"
+                            >
+                        </div>
+                        <div class="search-actions">
+                            <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
+                            <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
+                        </div>
+                    </form>
+
+                    <Link href="/examenes/crear" class="btn-primary btn-create">+ Registrar Examen</Link>
+                </div>
 
                 <div class="filter-row">
                     <label class="filter-field">
@@ -220,6 +224,23 @@ const getStatusClass = (estado) => {
     flex-direction: column;
     gap: 0.75rem;
     margin-bottom: 1.5rem;
+}
+
+/* Fila principal: buscador a la izquierda y botón de registro a la derecha */
+.action-bar-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-create {
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    white-space: nowrap;
 }
 
 /* Fila del buscador (lupa + botones) */

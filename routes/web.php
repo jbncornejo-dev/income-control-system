@@ -123,6 +123,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador,docente')->group(function () {
         Route::get('/docente/dashboard', [\App\Http\Controllers\DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
+        // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
+        Route::get('/examenes/crear', [ExamenController::class, 'create'])->name('examenes.create');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
         // Edición parcial (PATCH) de un examen existente.
         Route::patch('/examenes/{examen}', [ExamenController::class, 'update'])->name('examenes.update');
