@@ -57,6 +57,7 @@ class HabilitacionController extends Controller
         $datos = $request->validate([
             'estado_habilitado' => ['required', 'boolean'],
             'motivo_inhabilitacion' => ['nullable', 'string', 'max:1000'],
+            'normas_particulares' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $estaHabilitado = filter_var(
@@ -87,6 +88,8 @@ class HabilitacionController extends Controller
             $habilitacion->fill([
                 'estado_habilitado' => $estaHabilitado,
                 'motivo_inhabilitacion' => $nuevoMotivo,
+                'normas_particulares' => $datos['normas_particulares'] ?? null,
+                'normas_particulares' => $datos['normas_particulares'] ?? null,
             ]);
 
             if (! $habilitacion->isDirty([

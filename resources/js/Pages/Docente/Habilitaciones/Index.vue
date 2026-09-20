@@ -102,6 +102,19 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
         onFinish: () => { procesando.value = false; },
     });
 }
+
+function guardarNormas(hab) {
+    router.patch(`/habilitaciones/${hab.id_habilitacion}`, {
+        estado_habilitado: hab.estado_habilitado,
+        motivo_inhabilitacion: hab.motivo_inhabilitacion,
+        normas_particulares: hab.normas_particulares,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => toast.success('Normas particulares guardadas.'),
+        onError: () => toast.error('Error al guardar las normas particulares.'),
+    });
+}
 </script>
  
 <template>
@@ -187,6 +200,7 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
                             <th>NOMBRE</th>
                             <th>ESTADO</th>
                             <th>INGRESO</th>
+                            <th>NORMAS PARTICULARES</th>
                             <th>HABILITACIÓN</th>
                         </tr>
                     </thead>
@@ -203,6 +217,9 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
                                 <span :class="['badge', hab.estado_habilitado ? 'badge-hab' : 'badge-inhab']">
                                     {{ hab.estado_habilitado ? 'Habilitado' : 'Inhabilitado' }}
                                 </span>
+                            </td>
+                            <td>
+                                <textarea v-model="hab.normas_particulares" rows="1" style="width:100%; font-size:0.75rem; border:1px solid #d1d5db; border-radius:3px; padding:2px 6px; resize:vertical;" @change="guardarNormas(hab)"></textarea>
                             </td>
                             <td class="col-mono text-purple">&mdash;</td>
                             <td>
