@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\DisponibilidadExamenRequest;
 use App\Http\Requests\IndexExamenRequest;
 use App\Http\Requests\StoreExamenRequest;
 use App\Http\Requests\UpdateExamenRequest;
@@ -182,6 +183,50 @@ class ExamenController extends Controller
             'asignaturas' => $asignaturas,
             'ambientes' => $ambientes,
         ]);
+    }
+
+    /**
+     * Disponibilidad de ambientes para una ventana de fecha/hora/duración.
+     * Se usa desde el formulario de registro/edición para marcar visualmente
+     * qué ambientes están libres y cuáles ocupados en ese horario.
+     */
+    public function disponibilidad(DisponibilidadExamenRequest $request)
+    {
+        $datos = $request->validated();
+
+        // Ambientes con algún examen que se solape con la ventana consultada.
+        $ocupados = Examen::query()
+            ->select('examen_ambiente.id_ambiente')
+            ->join('examen_ambiente', 'examen_ambiente.id_examen', '=', 'examen.id_examen')
+            ->when(isset($datos['excluir_examen']), function ($query) use ($datos) {
+                $query->where('examen.id_examen', '!=', $datos['excluir_examen']);
+            })
+            ->where('examen.fecha', $datos['fecha'])
+            ->whereRaw(
+                "examen.hora_inicio < (CAST(? AS time) + (? * interval '1 minute'))",
+                [$datos['hora_inicio'], $datos['duracion_minutos']]
+            )
+            ->whereRaw(
+                "(examen.hora_inicio + (examen.duracion_minutos * interval '1 minute')) > CAST(? AS time)",
+                [$datos['hora_inicio']]
+            )
+            ->pluck('examen_ambiente.id_ambiente')
+            ->unique()
+            ->values()
+            ->all();
+
+        $ambientes = Ambiente::query()
+            ->orderBy('nombre_ambiente')
+            ->get(['id_ambiente', 'nombre_ambiente', 'capacidad'])
+            ->map(fn (Ambiente $ambiente) => [
+                'id_ambiente' => $ambiente->id_ambiente,
+                'nombre_ambiente' => $ambiente->nombre_ambiente,
+                'capacidad' => $ambiente->capacidad,
+                'disponible' => ! in_array($ambiente->id_ambiente, $ocupados, true),
+            ])
+            ->values();
+
+        return response()->json(['ambientes' => $ambientes]);
     }
 
     public function store(StoreExamenRequest $request)

@@ -125,6 +125,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
         Route::get('/examenes/crear', [ExamenController::class, 'create'])->name('examenes.create');
+        // Consultar ambientes libres/ocupados para una ventana de tiempo (formulario registro/edición).
+        Route::get('/examenes/disponibilidad', [ExamenController::class, 'disponibilidad'])->name('examenes.disponibilidad');
         // Página de edición: comparte el mismo formulario que el registro, precargado con el examen.
         Route::get('/examenes/{examen}/editar', [ExamenController::class, 'edit'])->name('examenes.edit');
         Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');

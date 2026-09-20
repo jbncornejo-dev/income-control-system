@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
@@ -32,6 +32,105 @@ const ambientesSeleccionados = computed(() =>
     props.ambientes.filter((a) => form.id_ambientes.includes(a.id_ambiente))
 );
 
+// --- Disponibilidad de ambientes para el horario elegido ---
+// Estado de cada ambiente: {id: true|false}. undefined = aún sin consultar.
+const disponibilidad = ref({});
+const verificandoDisponibilidad = ref(false);
+const mostrarSoloLibres = ref(false);
+const avisoSeleccion = ref('');
+let temporizadorDisponibilidad = null;
+
+function estaOcupado(idAmbiente) {
+    return disponibilidad.value[idAmbiente] === false;
+}
+
+function estaLibre(idAmbiente) {
+    return disponibilidad.value[idAmbiente] === true;
+}
+
+// Con "solo disponibles" activo se ocultan los ambientes ocupados del grid.
+const ambientesVisibles = computed(() => {
+    if (!mostrarSoloLibres.value) return props.ambientes;
+
+    return props.ambientes.filter((ambiente) => disponibilidad.value[ambiente.id_ambiente] !== false);
+});
+
+function solicitarDisponibilidad() {
+    if (!form.fecha || !form.hora_inicio || !form.duracion_minutos) {
+        disponibilidad.value = {};
+        verificandoDisponibilidad.value = false;
+        return;
+    }
+
+    verificandoDisponibilidad.value = true;
+
+    const params = new URLSearchParams({
+        fecha: form.fecha,
+        hora_inicio: form.hora_inicio,
+        duracion_minutos: String(form.duracion_minutos),
+    });
+
+    // En edición se excluye el propio examen para que su ambiente actual no
+    // aparezca ocupado por sí mismo.
+    if (esEdicion.value) {
+        params.set('excluir_examen', String(props.examen.id_examen));
+    }
+
+    fetch(`/examenes/disponibilidad?${params.toString()}`)
+        .then((respuesta) => {
+            if (!respuesta.ok) throw new Error('No se pudo consultar la disponibilidad');
+            return respuesta.json();
+        })
+        .then((datos) => {
+            const mapa = {};
+            for (const ambiente of datos.ambientes) {
+                mapa[ambiente.id_ambiente] = ambiente.disponible;
+            }
+            disponibilidad.value = mapa;
+
+            // Si algún ambiente seleccionado quedó ocupado en este horario, se quita solo.
+            const habiaOcupadosSeleccionados = form.id_ambientes.some((id) => mapa[id] === false);
+            if (habiaOcupadosSeleccionados) {
+                form.id_ambientes = form.id_ambientes.filter((id) => mapa[id] !== false);
+                form.clearErrors('id_ambientes');
+                avisoSeleccion.value = 'Se quitaron de la selección ambientes que están ocupados en ese horario.';
+            }
+        })
+        .catch(() => {
+            // Si la consulta falla, se conserva el último estado conocido y
+            // el backend seguirá validando al guardar.
+        })
+        .finally(() => {
+            verificandoDisponibilidad.value = false;
+        });
+}
+
+function programarDisponibilidad() {
+    avisoSeleccion.value = '';
+    clearTimeout(temporizadorDisponibilidad);
+    temporizadorDisponibilidad = setTimeout(solicitarDisponibilidad, 350);
+}
+
+watch(
+    () => [form.fecha, form.hora_inicio, form.duracion_minutos],
+    programarDisponibilidad
+);
+
+onMounted(programarDisponibilidad);
+
+onUnmounted(() => clearTimeout(temporizadorDisponibilidad));
+
+function toggleAmbiente(idAmbiente) {
+    if (estaOcupado(idAmbiente)) return;
+
+    if (form.id_ambientes.includes(idAmbiente)) {
+        form.id_ambientes = form.id_ambientes.filter((id) => id !== idAmbiente);
+    } else {
+        form.id_ambientes = [...form.id_ambientes, idAmbiente];
+    }
+    form.clearErrors('id_ambientes');
+}
+
 // Hora de fin estimada: hora de inicio + duración (solo lectura, se recalcula en vivo).
 const horaFin = computed(() => {
     if (!form.hora_inicio || !form.duracion_minutos) return '—';
@@ -43,15 +142,6 @@ const horaFin = computed(() => {
 
     return `${horas}:${minutos}`;
 });
-
-function toggleAmbiente(idAmbiente) {
-    if (form.id_ambientes.includes(idAmbiente)) {
-        form.id_ambientes = form.id_ambientes.filter((id) => id !== idAmbiente);
-    } else {
-        form.id_ambientes = [...form.id_ambientes, idAmbiente];
-    }
-    form.clearErrors('id_ambientes');
-}
 
 function guardar() {
     if (form.processing) return;
@@ -156,8 +246,10 @@ function guardar() {
 
                         <div class="form-group">
                             <span class="form-label">Hora de finalización</span>
-                            <div class="form-input form-input--readonly" aria-live="polite">{{ horaFin }}</div>
-                            <p class="help-text">Se calcula automáticamente con la hora de inicio y la duración.</p>
+                            <div class="hora-fin-display" aria-live="polite">
+                                <span class="hora-fin-icon">⏱</span>
+                                <span>{{ horaFin }}</span>
+                            </div>
                         </div>
                     </div>
 
@@ -181,27 +273,50 @@ function guardar() {
                     <!-- Ambientes -->
                     <div class="form-group">
                         <span class="form-label">Ambientes <span class="required">*</span></span>
-                        <p class="help-text">Selecciona uno o más ambientes del examen.</p>
 
-                        <div v-if="ambientes.length > 0" class="ambiente-grid">
+                        <div v-if="ambientes.length > 0" class="ambiente-toolbar">
+                            <label class="toggle-libres">
+                                <input
+                                    type="checkbox"
+                                    v-model="mostrarSoloLibres"
+                                    :disabled="form.processing"
+                                />
+                                <span>Mostrar solo disponibles</span>
+                            </label>
+                            <span v-if="verificandoDisponibilidad" class="disponibilidad-aviso" aria-live="polite">
+                                Verificando disponibilidad…
+                            </span>
+                        </div>
+
+                        <p v-if="avisoSeleccion" class="disponibilidad-aviso" aria-live="polite">{{ avisoSeleccion }}</p>
+
+                        <div v-if="ambientesVisibles.length > 0" class="ambiente-grid">
                             <label
-                                v-for="ambiente in ambientes"
+                                v-for="ambiente in ambientesVisibles"
                                 :key="ambiente.id_ambiente"
                                 class="ambiente-item"
-                                :class="{ 'ambiente-item--selected': form.id_ambientes.includes(ambiente.id_ambiente) }"
+                                :class="{
+                                    'ambiente-item--selected': form.id_ambientes.includes(ambiente.id_ambiente),
+                                    'ambiente-item--libre': estaLibre(ambiente.id_ambiente),
+                                    'ambiente-item--ocupado': estaOcupado(ambiente.id_ambiente),
+                                }"
                             >
                                 <input
                                     type="checkbox"
                                     :checked="form.id_ambientes.includes(ambiente.id_ambiente)"
                                     :value="ambiente.id_ambiente"
-                                    :disabled="form.processing"
+                                    :disabled="form.processing || estaOcupado(ambiente.id_ambiente)"
                                     @change="toggleAmbiente(ambiente.id_ambiente)"
                                 />
                                 <span class="ambiente-name">{{ ambiente.nombre_ambiente }}</span>
-                                <span class="ambiente-capacity">{{ ambiente.capacidad }} pers.</span>
+                                <span v-if="estaOcupado(ambiente.id_ambiente)" class="ambiente-ocupado-tag">Ocupado</span>
+                                <span v-else class="ambiente-capacity">{{ ambiente.capacidad }} pers.</span>
                             </label>
                         </div>
-                        <p v-else class="help-text">No hay ambientes registrados. Crea uno desde el módulo Ambientes.</p>
+                        <p v-if="ambientes.length > 0 && ambientesVisibles.length === 0" class="help-text">
+                            No hay ambientes disponibles en ese horario.
+                        </p>
+                        <p v-else-if="ambientes.length === 0" class="help-text">No hay ambientes registrados. Crea uno desde el módulo Ambientes.</p>
                         <p v-if="form.errors.id_ambientes" class="error-msg">{{ form.errors.id_ambientes }}</p>
                     </div>
 
@@ -295,16 +410,56 @@ textarea.form-input { resize: vertical; }
     border-style: dashed;
 }
 
+/* Hora de finalización: dato calculado, se muestra como etiqueta informativa */
+.hora-fin-display {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.4375rem 0.875rem;
+    border-radius: 9999px;
+    background-color: #eef2f7;
+    color: var(--color-primary);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.hora-fin-icon { font-size: 0.8125rem; line-height: 1; }
+
 .input-error { border-color: #d32f2f !important; }
 
 .error-msg { color: #d32f2f; font-size: 0.75rem; margin-top: 0.25rem; }
 .help-text { color: #6b7280; font-size: 0.75rem; margin-top: 0.25rem; }
 
 /* Selección de ambientes */
+.ambiente-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.toggle-libres {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.disponibilidad-aviso {
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    margin-top: 0.125rem;
+}
+
 .ambiente-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 0.5rem;
+    margin-top: 0.25rem;
 }
 
 .ambiente-item {
@@ -324,10 +479,33 @@ textarea.form-input { resize: vertical; }
     border-color: var(--color-primary);
 }
 
+.ambiente-item--libre {
+    background-color: #f0fdf4;
+    border-color: #86efac;
+}
+
+.ambiente-item--ocupado {
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
 .ambiente-item input { cursor: pointer; }
+.ambiente-item--ocupado input { cursor: not-allowed; }
 
 .ambiente-name { font-size: 0.875rem; color: #374151; flex: 1; }
 .ambiente-capacity { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
+
+.ambiente-ocupado-tag {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #b91c1c;
+    background-color: #fee2e2;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    white-space: nowrap;
+}
 
 /* Acciones */
 .form-actions {
