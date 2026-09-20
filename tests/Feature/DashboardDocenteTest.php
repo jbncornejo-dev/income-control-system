@@ -132,7 +132,7 @@ class DashboardDocenteTest extends TestCase
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
             'fecha' => now()->toDateString(),
-            'hora_inicio' => now()->subHour()->toTimeString(),
+            'hora_inicio' => '00:00:00',
             'duracion_minutos' => 90,
         ]);
 
