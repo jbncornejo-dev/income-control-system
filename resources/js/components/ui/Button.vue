@@ -25,7 +25,8 @@ const variantClass = computed(() => {
         primary: 'btn-primary',
         action: 'btn-action',
         delete: 'btn-action-delete',
-        outline: 'btn-outline-white'
+        outline: 'btn-outline-white',
+        danger: 'btn-danger'
     };
     return variants[props.variant] || 'btn-primary';
 });
@@ -94,5 +95,16 @@ const variantClass = computed(() => {
 .btn-outline-white:hover {
     background-color: var(--text-white);
     color: var(--color-primary);
+}
+
+.btn-danger {
+    background-color: var(--color-danger);
+    color: var(--text-white, #ffffff);
+    border: 1px solid var(--color-danger);
+}
+
+.btn-danger:hover {
+    background-color: var(--color-danger-hover);
+    border-color: var(--color-danger-hover);
 }
 </style>

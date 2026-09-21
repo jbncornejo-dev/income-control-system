@@ -94,7 +94,7 @@ class ExamenController extends Controller
                         ->values()
                         ->all());
                 }
-
+                $examen->setAttribute('examenes_ambientes', $examen->examenesAmbientes);
                 // El detalle de grupos ya se expone en "grupos"; no se repite anidado.
                 $examen->asignatura?->makeHidden('grupos');
 
@@ -114,15 +114,12 @@ class ExamenController extends Controller
             ]);
         }
 
-        // Determinamos la vista según el rol del usuario autenticado
-        $vista = auth()->user()->rol->nombre_rol === 'docente'
-            ? 'Docente/Examenes/Index'
-            : 'Admin/Examenes/Index';
-
-        // Retornamos la vista de Inertia correspondiente
-        return Inertia::render($vista, [
+        // Retornamos la vista unificada de Inertia para ambos roles
+        return Inertia::render('Admin/Examenes/Index', [
             'examenes' => $examenes,
             'filters' => $filtrosVista,
+            // Agregamos esta línea para enviar la confirmación a Vue
+            'esAdmin' => auth()->user()->rol->nombre_rol === 'administrador',
         ]);
     }
 

@@ -18,27 +18,28 @@ const props = defineProps({
 
             <!-- Fila de Tarjetas de Estadísticas -->
             <div class="stats-grid">
-                <div class="stat-card" style="border-top-color: #3b82f6;">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Estudiantes</span>
                     <span class="stat-value">{{ stats.estudiantes }}</span>
                     <span class="stat-desc">registrados</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #ef4444;">
+                <div class="stat-card" style="border-top-color: var(--color-danger);">
                     <span class="stat-label">Exámenes</span>
                     <span class="stat-value">{{ stats.examenes }}</span>
                     <span class="stat-desc">programados</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #9ca3af;">
+                <!-- Para las demás, puedes usar primary o crear variables secundarias en tu tokens.css -->
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Asignaturas</span>
                     <span class="stat-value">{{ stats.asignaturas }}</span>
                     <span class="stat-desc">activas</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #a855f7;">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Ambientes</span>
                     <span class="stat-value">{{ stats.ambientes }}</span>
                     <span class="stat-desc">habilitados</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #b45309;">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Usuarios</span>
                     <span class="stat-value">{{ stats.usuarios }}</span>
                     <span class="stat-desc">personal</span>
@@ -129,15 +130,15 @@ const props = defineProps({
 /* Contenedor principal */
 .panel-container {
     padding: 2rem;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-color: #f3f4f6;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif);
+    background-color: var(--bg-main, #f3f4f6);
     min-height: 100vh;
 }
 
 .panel-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--color-primary);
     margin-bottom: 1.5rem;
     text-transform: uppercase;
 }
@@ -155,7 +156,7 @@ const props = defineProps({
     border-radius: 0.5rem;
     padding: 1.5rem;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border-top: 4px solid #ccc;
+    border-top: 4px solid var(--color-primary);
     display: flex;
     flex-direction: column;
 }
@@ -164,6 +165,7 @@ const props = defineProps({
     font-size: 0.875rem;
     color: #6b7280;
     font-weight: 600;
+    text-transform: uppercase;
 }
 
 .stat-value {
@@ -189,8 +191,9 @@ const props = defineProps({
 .content-box {
     background: #ffffff;
     border-radius: 0.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border: 1px solid #e5e7eb;
     padding: 1.5rem;
+    overflow-x: auto;
 }
 
 .box-header {
@@ -210,12 +213,17 @@ const props = defineProps({
 }
 
 .link-action {
-    color: #3b82f6;
+    color: var(--color-primary);
     font-size: 0.875rem;
     text-decoration: none;
+    font-weight: 600;
 }
 
-/* Estilos de Tabla */
+.link-action:hover {
+    text-decoration: underline;
+}
+
+/* Estilos de Tabla Estandarizados */
 .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -223,28 +231,30 @@ const props = defineProps({
 }
 
 .data-table th {
+    background-color: #f9fafb;
     text-align: left;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    padding: 0.75rem 0;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #6b7280;
     border-bottom: 1px solid #e5e7eb;
+    text-transform: uppercase;
 }
 
 .data-table td {
-    padding: 1rem 0;
-    color: #4b5563;
+    padding: 1rem;
     border-bottom: 1px solid #f3f4f6;
+    color: #374151;
+    vertical-align: middle;
 }
 
 .status-badge {
-    background-color: #eff6ff;
-    color: #2563eb;
+    background-color: #f9fafb;
+    color: var(--color-primary);
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 600;
-    border: 1px solid #bfdbfe;
+    border: 1px solid var(--color-primary);
 }
 
 /* Estilos de Accesos Rápidos */
@@ -264,11 +274,13 @@ const props = defineProps({
     text-decoration: none;
     color: #374151;
     font-size: 0.875rem;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .qa-item:hover {
     background-color: #f9fafb;
+    border-color: var(--color-primary);
+    transform: translateX(4px);
 }
 
 .qa-meta {

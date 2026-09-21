@@ -1,41 +1,41 @@
 <template>
   <AuthenticatedLayout>
-    <div class="student-list-container">
-      <h1 class="page-title">Estudiantes</h1>
+    <div class="panel-container">
+      <h1 class="panel-title">ESTUDIANTES</h1>
 
-      <div class="toolbar">
+      <div class="action-bar">
         <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, nombres o apellidos..." />
-        <div class="toolbar-actions">
+        <div class="action-controls">
           <Button variant="action" @click="abrirModalCsv">Importar CSV</Button>
           <Button variant="primary" @click="abrirModalCrear">Añadir Estudiante</Button>
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-container">
         <table class="data-table">
           <thead>
             <tr>
-              <th>Código Univ.</th>
-              <th>Documento Identidad</th>
-              <th>Nombres</th>
-              <th>Apellidos</th>
-              <th>Acciones</th>
+              <th>ESTUDIANTE</th>
+              <th>CÓDIGO UNIV.</th>
+              <th>DOCUMENTO IDENTIDAD</th>
+              <th class="actions-col">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="student in students" :key="student.id">
-              <!-- Campos canónicos del backend (tabla `estudiante`) -->
+              <td class="name-cell">
+                <div class="avatar">{{ getInitial(student.nombres) }}</div>
+                <span>{{ student.nombres }} {{ student.apellidos }}</span>
+              </td>
               <td>{{ student.codigo_universitario }}</td>
               <td>{{ student.documento_identidad }}</td>
-              <td>{{ student.nombres }}</td>
-              <td>{{ student.apellidos }}</td>
-              <td>
+              <td class="actions-cell">
                 <Button variant="action" @click="abrirModalEditar(student)">Editar</Button>
                 <Button variant="delete" @click="confirmarEliminar(student)">Eliminar</Button>
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td colspan="5" class="empty-cell">
+              <td colspan="4" class="empty-state">
                 {{ searchQuery
                   ? 'No se encontraron resultados para la búsqueda.'
                   : 'No hay estudiantes registrados.' }}
@@ -585,24 +585,16 @@ const construirCsv = (filas) => {
 
   return lineas.join('\n');
 };
+
+// Función auxiliar para obtener la inicial del nombre para el avatar
+const getInitial = (name) => {
+    return name ? name.charAt(0).toUpperCase() : '?';
+};
 </script>
 
 <style scoped>
-.page-title {
-  color: var(--color-primary);
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  margin: 0 0 1.5rem;
-}
 .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
-.toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 /* El buscador ocupa el espacio disponible y queda alineado verticalmente con los botones */
-.student-list-container :deep(.search-wrapper) {
-  margin-bottom: 0;
-  max-width: 420px;
-  flex: 1;
-}
 
 .btn-peligro { background-color: #dc3545; }
 .btn-peligro:hover:not(:disabled) { background-color: #b02a37; }
@@ -630,11 +622,6 @@ const construirCsv = (filas) => {
 }
 .confirm-content { display: flex; flex-direction: column; gap: 6px; }
 .confirm-content strong { color: #b3261e; }
-.table-responsive { background: var(--color-white); border-radius: var(--radius-md); box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow-x: auto; }
-.data-table { width: 100%; border-collapse: collapse; font-family: var(--font-main); }
-.data-table th, .data-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
-.data-table th { background-color: #f8f9fa; color: var(--color-text-main); font-weight: bold; }
-.empty-cell { text-align: center; color: #6c757d; padding: 24px 15px; }
 .flash-success { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 .flash-error { background: #fdecea; color: #b3261e; border: 1px solid #f5c2b9; padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; }
 
@@ -749,5 +736,115 @@ const construirCsv = (filas) => {
 }
 .btn-peligro:hover:not(:disabled) {
   background-color: #b02a37 !important;
+}
+
+/* Contenedor principal */
+.panel-container {
+    padding: 2rem;
+    background-color: #f3f4f6;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+}
+
+.panel-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+}
+
+/* Barra de Acciones */
+.action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.action-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.panel-container :deep(.search-wrapper) {
+    flex: 1;
+    max-width: 600px;
+    margin-bottom: 0;
+}
+
+/* Tabla de Datos */
+.table-container {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+
+.data-table th {
+    background-color: #f9fafb;
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 1px solid #e5e7eb;
+    text-transform: uppercase;
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    color: #374151;
+    vertical-align: middle;
+}
+
+/* Celdas específicas */
+.name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background-color: #1e1b4b;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+    min-width: 180px;
+}
+
+.actions-col {
+    text-align: center !important;
+}
+
+.empty-state {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem !important;
 }
 </style>

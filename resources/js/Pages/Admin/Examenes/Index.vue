@@ -1,15 +1,17 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Modal from '@/components/ui/Modal.vue';
+import Button from '@/components/ui/Button.vue';
 
 const toast = useToastStore();
 
 const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
     filters: Object,
+    esAdmin: Boolean
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
@@ -201,13 +203,14 @@ const claseBotonConfirmacion = computed(() => {
                             >
                         </div>
                         <div class="search-actions">
-                            <button type="submit" class="btn-primary" :disabled="cargando">Buscar</button>
-                            <button type="button" class="btn-cancel" :disabled="cargando" @click="limpiar">Limpiar</button>
+                            <Button type="submit" variant="primary" class="btn-toolbar" :disabled="cargando">Buscar</Button>
+                            <Button type="button" variant="action" class="btn-toolbar" :disabled="cargando" @click="limpiar">Limpiar</Button>
                         </div>
-                    </form>
-
-                    <Link href="/examenes/crear" class="btn-primary btn-create">+ Registrar Examen</Link>
-                </div>
+                        </form>
+                        <Button as="a" variant="primary" class="btn-create" @click.prevent="router.visit('/examenes/crear')">
+                            + Registrar Examen
+                        </Button>
+                    </div>
 
                 <div class="filter-row">
                     <label class="filter-field">
@@ -227,22 +230,21 @@ const claseBotonConfirmacion = computed(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
-                            <th>DOCENTE</th>
+                            <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
                             <th>HORA FIN</th>
                             <th>AMBIENTES</th>
                             <th>ESTADO</th>
-                            <th class="actions-col"></th>
+                            <th class="actions-col">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr v-for="examen in examenes.data" :key="examen.id_examen">
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
-                            <td>{{ examen.docentes?.join(', ') || 'N/D' }}</td>
-
+                            <td v-if="esAdmin">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
                             <td>
                                 <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
@@ -276,27 +278,26 @@ const claseBotonConfirmacion = computed(() => {
                             </td>
                             
                             <td class="actions-cell">
-                                <button class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</button>
-                                <button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" class="btn-action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</button>
+                                <Button variant="action" @click="router.visit(`/examenes/${examen.id_examen}/habilitaciones`)">Ver</Button>
+                                <Button v-if="examen.estado_actual !== 'cancelado' && examen.estado_actual !== 'finalizado'" variant="action" @click="router.visit(`/examenes/${examen.id_examen}/editar`)">Editar</Button>
 
-                                <!-- Suspendido: se puede reanudar (o anular si sigue en curso). -->
                                 <template v-if="examen.estado === 'suspendido'">
-                                    <button class="btn-action btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</button>
-                                    <button v-if="examen.estado_actual !== 'finalizado'" class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                    <Button variant="action" class="btn-reanudar" @click="abrirConfirmacion(examen, 'reanudar')">Reanudar</Button>
+                                    <Button v-if="examen.estado_actual !== 'finalizado'" variant="action" class="btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</Button>
                                 </template>
 
-                                <!-- Anulado: definitivo, no se puede reanudar. -->
                                 <template v-else-if="examen.estado !== 'cancelado' && examen.estado_actual !== 'finalizado'">
-                                    <button v-if="examen.estado_actual === 'en_curso'" class="btn-action btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</button>
-                                    <button class="btn-action btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</button>
+                                    <Button v-if="examen.estado_actual === 'en_curso'" variant="action" class="btn-suspender" @click="abrirConfirmacion(examen, 'suspender')">Suspender</Button>
+                                    <Button variant="action" class="btn-anular" @click="abrirConfirmacion(examen, 'anular')">Anular</Button>
                                 </template>
 
-                                <button class="btn-action btn-delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</button>
+                                <!-- Exclusivo del Admin (Si está presente en Docente, ignora) -->
+                                <Button v-if="esAdmin" variant="delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</Button>
                             </td>
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td colspan="9" class="empty-state">
+                            <td :colspan="esAdmin ? 9 : 8" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>
@@ -324,8 +325,8 @@ const claseBotonConfirmacion = computed(() => {
         <Modal :open="confirmacion.abierta" :title="confirmacion.titulo" @close="cerrarConfirmacion">
             <p class="modal-desc">{{ confirmacion.descripcion }}</p>
             <template #footer>
-                <button class="btn-action" @click="cerrarConfirmacion">Cancelar</button>
-                <button class="btn-action" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</button>
+                <Button variant="action" class="btn-modal" @click="cerrarConfirmacion">Cancelar</Button>
+                <Button variant="primary" class="btn-modal" :class="claseBotonConfirmacion" @click="confirmarAccion">{{ confirmacion.boton }}</Button>
             </template>
         </Modal>
     </AuthenticatedLayout>
@@ -363,14 +364,6 @@ const claseBotonConfirmacion = computed(() => {
     justify-content: space-between;
     gap: 1rem;
     flex-wrap: wrap;
-}
-
-.btn-create {
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    white-space: nowrap;
 }
 
 /* Fila del buscador (lupa + botones) */
@@ -441,22 +434,13 @@ const claseBotonConfirmacion = computed(() => {
     box-sizing: border-box;
 }
 
-.btn-primary {
-    background-color: #1e1b4b; 
-    color: white;
-    padding: 0.5rem 1.5rem;
-    border: none;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    cursor: pointer;
-}
-
 /* Tabla de Datos */
 .table-container {
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
-    overflow: hidden;
+    overflow-x: auto; /* Permite visualizar las columnas completas */
+    width: 100%;
 }
 
 .data-table {
@@ -468,15 +452,17 @@ const claseBotonConfirmacion = computed(() => {
 .data-table th {
     background-color: #f9fafb;
     text-align: left;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.85rem; /* Ajustado para ganar espacio */
     font-weight: 600;
     color: #6b7280;
     border-bottom: 1px solid #e5e7eb;
     text-transform: uppercase;
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .data-table td {
-    padding: 1rem;
+    padding: 0.75rem 0.85rem;
     border-bottom: 1px solid #f3f4f6;
     color: #374151;
     vertical-align: middle;
@@ -484,7 +470,7 @@ const claseBotonConfirmacion = computed(() => {
 
 /* Tipografías específicas de celdas */
 .col-asignatura {
-    color: #1e1b4b; /* Azul oscuro característico */
+    color: var(--color-primary); /* Azul oscuro característico */
     font-weight: 600;
 }
 
@@ -582,61 +568,48 @@ const claseBotonConfirmacion = computed(() => {
 }
 
 /* Botones de Acción (Ver, Eliminar) */
+.actions-col {
+    text-align: center !important;
+    min-width: 220px;
+}
+
 .actions-cell {
     display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
-}
-
-.btn-action {
-    background: transparent;
-    border: 1px solid #d1d5db;
-    padding: 0.25rem 0.75rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    color: #374151;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-action:hover {
-    background-color: #f9fafb;
-}
-
-.btn-delete {
-    color: #ef4444;
-    border-color: #fca5a5;
-}
-
-.btn-delete:hover {
-    background-color: #fef2f2;
+    gap: 0.4rem;
+    justify-content: left;
+    align-items: center;
+    white-space: nowrap;
+    min-width: 220px;
 }
 
 .btn-anular {
-    color: #b91c1c;
-    border-color: #fca5a5;
+    background-color: var(--color-danger) !important; /* Usar variable global */
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-anular:hover {
-    background-color: #fef2f2;
+    background-color: var(--color-danger-hover) !important;
 }
 
 .btn-suspender {
-    color: #b45309;
-    border-color: #fcd34d;
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-suspender:hover {
-    background-color: #fffbeb;
+    background-color: #d97706 !important;
 }
 
 .btn-reanudar {
-    color: #15803d;
-    border-color: #86efac;
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-reanudar:hover {
-    background-color: #f0fdf4;
+    background-color: #059669 !important;
 }
 
 /* Pie de Tabla */
@@ -655,22 +628,6 @@ const claseBotonConfirmacion = computed(() => {
 }
 
 /* Botones y estados deshabilitados */
-.btn-cancel {
-    padding: 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    color: #374151;
-    background-color: white;
-    cursor: pointer;
-}
-
-.btn-cancel:hover {
-    background-color: #f9fafb;
-}
-
-.btn-primary:disabled,
-.btn-cancel:disabled,
 .search-input:disabled,
 .filter-input:disabled {
     opacity: 0.6;
@@ -688,27 +645,44 @@ const claseBotonConfirmacion = computed(() => {
     background-color: #ffffff;
 }
 
-.btn-page {
-    background-color: #1e1b4b;
-    color: white;
-    border: none;
-    padding: 0.4rem 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.8rem;
-    cursor: pointer;
-}
-
-.btn-page:hover:not(:disabled) {
-    opacity: 0.85;
-}
-
-.btn-page:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-
 .page-info {
     font-size: 0.8rem;
     color: #6b7280;
+}
+
+/* Estandarización geométrica global */
+.btn-toolbar,
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+/* Mantenemos los colores semánticos locales, pero añadimos !important 
+   para sobreescribir el color azul base de variant="primary" */
+.btn-anular {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-anular:hover {
+    background-color: #b02a37 !important;
+}
+
+.btn-suspender {
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-suspender:hover {
+    background-color: #d97706 !important;
+}
+
+.btn-reanudar {
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+.btn-reanudar:hover {
+    background-color: #059669 !important;
 }
 </style>

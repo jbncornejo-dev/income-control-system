@@ -51,14 +51,12 @@ class HabilitacionController extends Controller
         }
 
         // 6. Retornamos la vista de Inertia
-        $vista = $request->user()->rol->nombre_rol === 'docente'
-            ? 'Docente/Habilitaciones/Index'
-            : 'Admin/Habilitaciones/Index';
-
-        return Inertia::render($vista, [
+        return Inertia::render('Admin/Habilitaciones/Index', [
             'examen' => $examen,
             'habilitaciones' => $habilitaciones,
             'stats' => $stats,
+            // Pasamos esAdmin por si necesitamos ocultar algún botón específico más adelante
+            'esAdmin' => $request->user()->rol->nombre_rol === 'administrador',
         ]);
     }
 
