@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Ambiente;
+use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
 use App\Models\Rol;
@@ -16,6 +17,7 @@ class DashboardAdminTest extends TestCase
     use RefreshDatabase;
 
     protected $adminUser;
+
     protected $docenteUser;
 
     protected function setUp(): void
@@ -62,29 +64,31 @@ class DashboardAdminTest extends TestCase
                 'documento_identidad' => "7000$i",
             ]);
         }
-        
+
         // Examen depends on Asignatura, let's just insert bypassing validation or create asignatura
-        $asignatura = \App\Models\Asignatura::create(['nombre_asignatura' => 'Test']);
+        $asignatura = Asignatura::create(['nombre_asignatura' => 'Test']);
+        $periodo = $this->crearPeriodo('2026', 1);
         for ($i = 0; $i < 2; $i++) {
             Examen::create([
                 'id_asignatura' => $asignatura->id_asignatura,
+                'id_periodo' => $periodo->id_periodo,
                 'fecha' => '2026-01-01',
                 'hora_inicio' => '10:00:00',
                 'duracion_minutos' => 90,
             ]);
         }
-        
+
         for ($i = 0; $i < 4; $i++) {
             Ambiente::create([
                 'nombre_ambiente' => "Ambiente $i",
-                'capacidad' => 30
+                'capacidad' => 30,
             ]);
         }
-        
+
         User::factory()->count(3)->create(['id_rol' => Rol::where('nombre_rol', 'docente')->first()->id_rol]);
 
         // Total users = 2 from setUp + 3 new = 5
-        
+
         $this->actingAs($this->adminUser)
             ->get(route('admin.dashboard'))
             ->assertStatus(200)

@@ -13,8 +13,10 @@ use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
+use App\Models\Periodo;
 use Carbon\Carbon;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -27,9 +29,10 @@ class ExamenController extends Controller
         $esDocente = auth()->user()->rol->nombre_rol === 'docente';
 
         $query = Examen::query()
-            ->select(['id_examen', 'id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
+            ->select(['id_examen', 'id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->with([
                 'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
+                'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'semestre']),
                 'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             ]);
 
@@ -64,6 +67,10 @@ class ExamenController extends Controller
 
         if (isset($filtros['fecha'])) {
             $query->where('fecha', $filtros['fecha']);
+        }
+
+        if (isset($filtros['id_periodo'])) {
+            $query->where('id_periodo', $filtros['id_periodo']);
         }
 
         if (isset($filtros['hora_inicio'])) {
@@ -103,14 +110,19 @@ class ExamenController extends Controller
 
         $filtrosVista = [
             'asignatura' => $filtros['asignatura'] ?? null,
+            'id_periodo' => $filtros['id_periodo'] ?? null,
             'fecha' => $filtros['fecha'] ?? null,
             'hora_inicio' => $filtros['hora_inicio'] ?? null,
         ];
+
+        // Periodos disponibles para el filtro del listado.
+        $periodos = $this->periodosDisponibles();
 
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
                 'examenes' => $examenes,
                 'filtros' => $filtrosVista,
+                'periodos' => $periodos,
             ]);
         }
 
@@ -118,6 +130,7 @@ class ExamenController extends Controller
         return Inertia::render('Admin/Examenes/Index', [
             'examenes' => $examenes,
             'filters' => $filtrosVista,
+            'periodos' => $periodos,
             // Agregamos esta línea para enviar la confirmación a Vue
             'esAdmin' => auth()->user()->rol->nombre_rol === 'administrador',
         ]);
@@ -141,9 +154,12 @@ class ExamenController extends Controller
             ->orderBy('nombre_ambiente')
             ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
 
+        $periodos = $this->periodosDisponibles();
+
         return Inertia::render('Admin/Examenes/Create', [
             'asignaturas' => $asignaturas,
             'ambientes' => $ambientes,
+            'periodos' => $periodos,
         ]);
     }
 
@@ -181,12 +197,15 @@ class ExamenController extends Controller
             ->orderBy('nombre_ambiente')
             ->get(['id_ambiente', 'nombre_ambiente', 'capacidad']);
 
+        $periodos = $this->periodosDisponibles();
+
         $examen->load(['examenesAmbientes:id_examen_ambiente,id_examen,id_ambiente']);
 
         return Inertia::render('Admin/Examenes/Create', [
             'examen' => $examen,
             'asignaturas' => $asignaturas,
             'ambientes' => $ambientes,
+            'periodos' => $periodos,
         ]);
     }
 
@@ -259,6 +278,7 @@ class ExamenController extends Controller
 
                 $examen = Examen::create([
                     'id_asignatura' => $datos['id_asignatura'],
+                    'id_periodo' => $datos['id_periodo'],
                     'fecha' => $datos['fecha'],
                     'hora_inicio' => $datos['hora_inicio'],
                     'duracion_minutos' => $datos['duracion_minutos'],
@@ -304,9 +324,10 @@ class ExamenController extends Controller
         }
 
         // Mientras un examen está en curso (incluye suspendido) solo se pueden
-        // actualizar las normas generales: fecha, hora, duración, ambientes y
-        // asignatura definen la ventana y el ingreso, por lo que quedan congelados.
-        $camposEstructurales = ['id_asignatura', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
+        // actualizar las normas generales: fecha, hora, duración, ambientes,
+        // asignatura y semestre definen la ventana y el ingreso, por lo que
+        // quedan congelados.
+        $camposEstructurales = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
 
         if ($estadoActual === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
             throw ValidationException::withMessages([
@@ -321,6 +342,7 @@ class ExamenController extends Controller
                 // Horario efectivo: fusiona lo enviado con lo ya existente.
                 $efectivo = [
                     'id_asignatura' => $datos['id_asignatura'] ?? $examen->id_asignatura,
+                    'id_periodo' => $datos['id_periodo'] ?? $examen->id_periodo,
                     'fecha' => $datos['fecha'] ?? $examen->fecha,
                     'hora_inicio' => $datos['hora_inicio'] ?? $examen->hora_inicio,
                     'duracion_minutos' => $datos['duracion_minutos'] ?? $examen->duracion_minutos,
@@ -522,5 +544,18 @@ class ExamenController extends Controller
                 [$datos['hora_inicio']]
             )
             ->exists();
+    }
+
+    /**
+     * Periodos disponibles para elegir o filtrar, de más reciente a más antiguo.
+     *
+     * @return Collection<int, Periodo>
+     */
+    private function periodosDisponibles()
+    {
+        return Periodo::query()
+            ->orderByDesc('gestion')
+            ->orderByDesc('semestre')
+            ->get(['id_periodo', 'gestion', 'semestre', 'fecha_inicio', 'fecha_fin']);
     }
 }

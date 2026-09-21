@@ -36,10 +36,11 @@ class ExamenIndexTest extends TestCase
         return Asignatura::create(['nombre_asignatura' => $nombre.' '.++static::$contador]);
     }
 
-    private function crearExamen(Asignatura $asignatura): Examen
+    private function crearExamen(Asignatura $asignatura, ?int $idPeriodo = null): Examen
     {
         return Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $idPeriodo ?? $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(5)->toDateString(),
             'hora_inicio' => '09:00',
             'duracion_minutos' => 90,
@@ -220,5 +221,68 @@ class ExamenIndexTest extends TestCase
             ->get('/examenes?asignatura=canculo')
             ->assertOk();
         $this->assertSame([], collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
+    }
+
+    public function test_administrador_filtra_examenes_por_periodo(): void
+    {
+        $periodoA = $this->crearPeriodo('2026', 1);
+        $periodoB = $this->crearPeriodo('2026', 2);
+        $examenA = $this->crearExamen($this->crearAsignatura('Cálculo'), $periodoA->id_periodo);
+        $examenB = $this->crearExamen($this->crearAsignatura('Física'), $periodoB->id_periodo);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?id_periodo='.$periodoA->id_periodo)
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$examenA->id_examen],
+            collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
+        );
+        $this->assertNotContains($examenB->id_examen, collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
+    }
+
+    public function test_docente_filtra_por_periodo_solo_dentro_de_sus_examenes(): void
+    {
+        $periodoA = $this->crearPeriodo('2026', 1);
+        $periodoB = $this->crearPeriodo('2026', 2);
+        $asignaturaPropia = $this->crearAsignatura('Cálculo');
+        $examenPropio = $this->crearExamen($asignaturaPropia, $periodoA->id_periodo);
+        $examenOtroPeriodo = $this->crearExamen($asignaturaPropia, $periodoB->id_periodo);
+        $docente = $this->usuario('docente');
+        $this->asignarDocente($docente, $asignaturaPropia);
+
+        $respuesta = $this->actingAs($docente)
+            ->get('/examenes?id_periodo='.$periodoA->id_periodo)
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$examenPropio->id_examen],
+            collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
+        );
+        $this->assertNotContains($examenOtroPeriodo->id_examen, collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
+    }
+
+    public function test_el_listado_incluye_el_nombre_del_periodo(): void
+    {
+        $this->crearExamen($this->crearAsignatura('Cálculo'));
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertSame(
+            'Gestión 2026 · Primer Semestre',
+            $respuesta->json('examenes.data.0.periodo_nombre')
+        );
+    }
+
+    public function test_index_incluye_la_lista_de_periodos_para_el_filtro(): void
+    {
+        $periodo = $this->crearPeriodo('2026', 1);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$periodo->id_periodo],
+            collect($respuesta->json('periodos'))->pluck('id_periodo')->all()
+        );
     }
 }

@@ -11,25 +11,28 @@ const toast = useToastStore();
 const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
     filters: Object,
+    periodos: Array,
     esAdmin: Boolean
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
-// tolerante a acentos y mayúsculas), fecha exacta y hora. La búsqueda se
-// dispara con el botón Buscar; así no se traba la página mientras se escribe.
+// tolerante a acentos y mayúsculas), semestre, fecha exacta y hora. La búsqueda
+// se dispara con el botón Buscar; así no se traba la página mientras se escribe.
 const busqueda = ref(props.filters?.asignatura ?? '');
+const idPeriodo = ref(props.filters?.id_periodo ?? '');
 const fecha = ref(props.filters?.fecha ?? '');
 const horaInicio = ref(props.filters?.hora_inicio ?? '');
 const cargando = ref(false);
 
 // Si llegan filtros desde la URL, el estado vacío lo indica con otro mensaje.
 const hayFiltrosActivos = computed(() =>
-    !!(props.filters?.asignatura || props.filters?.fecha || props.filters?.hora_inicio)
+    !!(props.filters?.asignatura || props.filters?.id_periodo || props.filters?.fecha || props.filters?.hora_inicio)
 );
 
 // Mantiene los inputs en sincronía con la URL al navegar o volver con el historial.
 watch(() => props.filters, (filtros) => {
     busqueda.value = filtros?.asignatura ?? '';
+    idPeriodo.value = filtros?.id_periodo ?? '';
     fecha.value = filtros?.fecha ?? '';
     horaInicio.value = filtros?.hora_inicio ?? '';
 });
@@ -49,6 +52,7 @@ function visitar(url, datos = {}, opciones = {}) {
 function busquedaParams() {
     return {
         asignatura: busqueda.value.trim() || undefined,
+        id_periodo: idPeriodo.value || undefined,
         fecha: fecha.value || undefined,
         hora_inicio: horaInicio.value || undefined,
     };
@@ -65,6 +69,7 @@ function buscar() {
 
 function limpiar() {
     busqueda.value = '';
+    idPeriodo.value = '';
     fecha.value = '';
     horaInicio.value = '';
     visitar('/examenes', {}, {
@@ -214,6 +219,15 @@ const claseBotonConfirmacion = computed(() => {
 
                 <div class="filter-row">
                     <label class="filter-field">
+                        <span class="filter-label">Semestre</span>
+                        <select v-model="idPeriodo" class="filter-input" :disabled="cargando">
+                            <option value="">Todos</option>
+                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="String(periodo.id_periodo)">
+                                {{ periodo.nombre }}
+                            </option>
+                        </select>
+                    </label>
+                    <label class="filter-field">
                         <span class="filter-label">Fecha</span>
                         <input v-model="fecha" type="date" class="filter-input" :disabled="cargando" />
                     </label>
@@ -230,6 +244,7 @@ const claseBotonConfirmacion = computed(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
+                            <th>SEMESTRE</th>
                             <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
                             <th>FECHA</th>
@@ -244,6 +259,7 @@ const claseBotonConfirmacion = computed(() => {
                         <tr v-for="examen in examenes.data" :key="examen.id_examen">
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
+                            <td>{{ examen.periodo_nombre || '—' }}</td>
                             <td v-if="esAdmin">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
                             <td>
@@ -297,7 +313,7 @@ const claseBotonConfirmacion = computed(() => {
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td :colspan="esAdmin ? 9 : 8" class="empty-state">
+                            <td :colspan="esAdmin ? 10 : 9" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>

@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Models\Periodo;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
@@ -15,5 +16,18 @@ abstract class TestCase extends BaseTestCase
         // impide que phpunit.xml fije APP_ENV=testing y que Laravel omita el
         // CSRF en pruebas (runningUnitTests()). Forzamos el entorno de la app.
         $this->app['env'] = 'testing';
+    }
+
+    /**
+     * Crea (o recupera) un periodo/semestre por defecto para las pruebas.
+     * Los exámenes exigen id_periodo NOT NULL, así que los tests que crean
+     * exámenes directamente pueden vincularlos con este helper.
+     */
+    protected function crearPeriodo(string $gestion = '2026', int $semestre = 1): Periodo
+    {
+        return Periodo::firstOrCreate(
+            ['gestion' => $gestion, 'semestre' => $semestre],
+            ['fecha_inicio' => $gestion.'-01-01', 'fecha_fin' => $gestion.'-12-31']
+        );
     }
 }

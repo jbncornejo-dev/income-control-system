@@ -48,6 +48,7 @@ class DashboardDocenteTest extends TestCase
 
         $examenFuturo = Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -79,6 +80,7 @@ class DashboardDocenteTest extends TestCase
         ]);
         $examenDoc1 = Examen::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -93,6 +95,7 @@ class DashboardDocenteTest extends TestCase
         ]);
         $examenDoc2 = Examen::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(3)->toDateString(),
             'hora_inicio' => '11:00:00',
             'duracion_minutos' => 90,
@@ -125,6 +128,7 @@ class DashboardDocenteTest extends TestCase
         // Past exam (yesterday)
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->subDay()->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -133,6 +137,7 @@ class DashboardDocenteTest extends TestCase
         // Past exam (today, but past hour)
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->toDateString(),
             'hora_inicio' => now()->subHour()->toTimeString(),
             'duracion_minutos' => 90,
@@ -141,6 +146,7 @@ class DashboardDocenteTest extends TestCase
         // Future exam
         $futureExamen = Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -175,6 +181,7 @@ class DashboardDocenteTest extends TestCase
         // Examen de asignatura no asignada
         Examen::create([
             'id_asignatura' => $asignaturaNoAsignada->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -198,6 +205,7 @@ class DashboardDocenteTest extends TestCase
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Inglés']);
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -226,6 +234,7 @@ class DashboardDocenteTest extends TestCase
         // Only past exams exist
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->subDay()->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -283,6 +292,7 @@ class DashboardDocenteTest extends TestCase
         ]);
         Examen::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -297,6 +307,7 @@ class DashboardDocenteTest extends TestCase
         ]);
         Examen::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(3)->toDateString(),
             'hora_inicio' => '11:00:00',
             'duracion_minutos' => 90,

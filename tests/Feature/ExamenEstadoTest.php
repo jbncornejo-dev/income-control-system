@@ -52,6 +52,7 @@ class ExamenEstadoTest extends TestCase
 
         return Examen::create(array_merge([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => '2026-09-21',
             'hora_inicio' => '10:00',
             'duracion_minutos' => 90,

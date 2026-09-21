@@ -43,6 +43,7 @@ class ExamenStoreTest extends TestCase
 
         return [
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 90,
@@ -124,6 +125,7 @@ class ExamenStoreTest extends TestCase
 
         $response = $this->actingAs($this->administrador())->post('/examenes', [
             'id_asignatura' => 999,
+            'id_periodo' => 999,
             'fecha' => '10/10/2026',
             'hora_inicio' => '10:00:30',
             'duracion_minutos' => 0,
@@ -132,11 +134,24 @@ class ExamenStoreTest extends TestCase
 
         $response->assertSessionHasErrors([
             'id_asignatura',
+            'id_periodo',
             'fecha',
             'hora_inicio',
             'duracion_minutos',
             'id_ambientes',
         ]);
+    }
+
+    public function test_requiere_un_periodo_para_registrar_un_examen(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $datos = $this->datosValidos();
+        unset($datos['id_periodo']);
+
+        $response = $this->actingAs($this->administrador())->post('/examenes', $datos);
+
+        $response->assertSessionHasErrors('id_periodo');
+        $this->assertDatabaseCount('examen', 0);
     }
 
     public function test_rejects_an_exam_that_overlaps_a_room_booking(): void
@@ -145,6 +160,7 @@ class ExamenStoreTest extends TestCase
         $datos = $this->datosValidos();
         $examen = Examen::create([
             'id_asignatura' => $datos['id_asignatura'],
+            'id_periodo' => $datos['id_periodo'],
             'fecha' => $datos['fecha'],
             'hora_inicio' => '09:30',
             'duracion_minutos' => 90,
@@ -180,6 +196,7 @@ class ExamenStoreTest extends TestCase
 
         $response = $this->actingAs($this->administrador())->post('/examenes', [
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,

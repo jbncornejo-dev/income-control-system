@@ -25,6 +25,7 @@ class IndexExamenRequest extends FormRequest
     {
         return [
             'asignatura' => ['nullable', 'string', 'max:200'],
+            'id_periodo' => ['nullable', 'integer', 'exists:periodo,id_periodo'],
             'fecha' => ['nullable', 'date_format:Y-m-d'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
         ];
@@ -35,6 +36,7 @@ class IndexExamenRequest extends FormRequest
         return [
             'asignatura.string' => 'El nombre de la asignatura debe ser texto.',
             'asignatura.max' => 'El nombre de la asignatura no puede superar los 200 caracteres.',
+            'id_periodo.exists' => 'El semestre seleccionado no existe.',
             'fecha.date_format' => 'La fecha debe tener el formato YYYY-MM-DD.',
             'hora_inicio.date_format' => 'La hora de inicio debe tener el formato HH:MM (24 horas).',
         ];
