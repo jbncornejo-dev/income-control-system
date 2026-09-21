@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Modal from '@/components/ui/Modal.vue';
@@ -11,6 +11,7 @@ const toast = useToastStore();
 const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
     filters: Object,
+    esAdmin: Boolean
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
@@ -229,7 +230,7 @@ const claseBotonConfirmacion = computed(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
-                            <th>DOCENTE</th>
+                            <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
                             <th>FECHA</th>
                             <th>HORA</th>
@@ -243,8 +244,7 @@ const claseBotonConfirmacion = computed(() => {
                         <tr v-for="examen in examenes.data" :key="examen.id_examen">
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
-                            <td>{{ examen.docentes?.join(', ') || 'N/D' }}</td>
-
+                            <td v-if="esAdmin">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
                             <td>
                                 <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
@@ -292,12 +292,12 @@ const claseBotonConfirmacion = computed(() => {
                                 </template>
 
                                 <!-- Exclusivo del Admin (Si está presente en Docente, ignora) -->
-                                <Button variant="delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</Button>
+                                <Button v-if="esAdmin" variant="delete" @click="abrirConfirmacion(examen, 'eliminar')">Eliminar</Button>
                             </td>
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0">
-                            <td colspan="9" class="empty-state">
+                            <td :colspan="esAdmin ? 9 : 8" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>
