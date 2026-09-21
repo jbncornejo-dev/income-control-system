@@ -232,16 +232,13 @@ const claseBotonConfirmacion = computed(() => {
 // Las reglas coinciden con las del backend (cambiarEstado/edit):
 // - Cancelar: solo programado. Anular: solo en curso (o suspendido con ventana activa).
 // - Editar: bloqueado si es terminal (cancelado/anulado) o la ventana ya terminó.
-// - "Ver" solo se incluye cuando se pide (conVer): el menú del clic derecho no
-//   lo incluye porque en escritorio el doble clic sobre la fila ya navega.
+// - "Ver" siempre en el menú ⋮. En el del clic derecho (conVer=false) solo se
+//   agrega cuando no hay ninguna otra acción (p. ej. un examen finalizado o
+//   terminal sin permisos de admin): así el menú nunca queda vacío y feo.
 function construirItemsMenu(examen, { conVer = true } = {}) {
     const esTerminal = examen.estado_actual === 'cancelado' || examen.estado_actual === 'anulado';
     const ventanaFinalizada = examen.estado_horario === 'finalizado';
     const items = [];
-
-    if (conVer) {
-        items.push({ clave: 'ver', etiqueta: 'Ver', icono: 'ver', accion: () => verExamen(examen) });
-    }
 
     if (!esTerminal && !ventanaFinalizada) {
         items.push({ clave: 'editar', etiqueta: 'Editar', icono: 'editar', accion: () => router.visit(`/examenes/${examen.id_examen}/editar`) });
@@ -266,6 +263,12 @@ function construirItemsMenu(examen, { conVer = true } = {}) {
 
     if (props.esAdmin) {
         items.push({ clave: 'eliminar', etiqueta: 'Eliminar', icono: 'eliminar', accion: () => abrirConfirmacion(examen, 'eliminar') });
+    }
+
+    // El menú nunca debe quedar vacío: si no hay ninguna acción aplicable,
+    // "Ver" actúa de respaldo (unshift para que siga siendo la primera opción).
+    if (conVer || items.length === 0) {
+        items.unshift({ clave: 'ver', etiqueta: 'Ver', icono: 'ver', accion: () => verExamen(examen) });
     }
 
     return items;
