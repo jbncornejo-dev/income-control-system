@@ -206,9 +206,9 @@ function eliminar() {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Nombre</th>
-                            <th>Capacidad</th>
-                            <th>Acciones</th>
+                            <th>NOMBRE</th>
+                            <th>CAPACIDAD</th>
+                            <th class="actions-col">ACCIONES</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -216,7 +216,7 @@ function eliminar() {
                             <td class="col-id">{{ ambiente.id_ambiente }}</td>
                             <td>{{ ambiente.nombre_ambiente }}</td>
                             <td><span class="capacity-badge">{{ ambiente.capacidad }} personas</span></td>
-                            <td class="col-actions">
+                            <td class="actions-cell">
                                 <Button variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
                                 <Button variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
                             </td>
@@ -270,7 +270,7 @@ function eliminar() {
             <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
             <template #footer>
                 <Button variant="action" class="btn-modal" @click="modalEliminar = false" :disabled="eliminando">Cancelar</Button>
-                <Button variant="primary" class="btn-modal btn-peligro" @click="eliminar" :disabled="eliminando">
+                <Button variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando">
                     <LoadingSpinner v-if="eliminando" size="small" />
                     <span v-else>Sí, eliminar</span>
                 </Button>
@@ -290,14 +290,6 @@ function eliminar() {
 .filter-field { flex: 1; min-width: 150px; }
 .search-section :deep(.search-wrapper) { margin-bottom: 0; }
 .result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
-.table-container { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; width: 100%; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.data-table th { background-color: var(--color-primary); color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }
-.data-table td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: #f9fafb; }
-.col-id { color: #6b7280; font-size: 0.8rem; width: 60px; }
-.col-actions { display: flex; gap: 8px; }
 .capacity-badge { background: #eff6ff; color: var(--color-primary); padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
 .empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
 .pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px; }
@@ -330,5 +322,69 @@ function eliminar() {
 }
 .btn-peligro:hover:not(:disabled) {
   background-color: #b02a37 !important;
+}
+
+/* Estandarización de Tabla */
+.table-container { 
+    background: white; 
+    border: 1px solid #e5e7eb; 
+    border-radius: 0.5rem; 
+    overflow-x: auto; 
+    width: 100%; 
+}
+
+.data-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.875rem; 
+}
+
+.data-table th { 
+    background-color: #f9fafb; 
+    text-align: left; 
+    padding: 0.75rem 0.85rem; 
+    font-weight: 600; 
+    color: #6b7280; 
+    border-bottom: 1px solid #e5e7eb; 
+    text-transform: uppercase; 
+    font-size: 0.75rem; 
+    white-space: nowrap; 
+}
+
+.data-table td { 
+    padding: 0.75rem 0.85rem; 
+    border-bottom: 1px solid #f3f4f6; 
+    color: #374151; 
+    vertical-align: middle; 
+}
+
+.data-table tr:hover td { 
+    background: #f9fafb; 
+}
+
+.col-id { 
+    color: #6b7280; 
+    font-family: monospace; 
+    font-size: 0.8rem; 
+    width: 60px; 
+}
+
+/* Columna de Acciones Centralizadas */
+.actions-col {
+    text-align: center !important;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+}
+
+/* Estandarización de botones del modal */
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
 }
 </style>

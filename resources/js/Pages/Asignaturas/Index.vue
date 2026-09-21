@@ -32,8 +32,8 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>Nombre</th>
-              <th>Acciones</th>
+              <th>NOMBRE</th>
+              <th class="actions-col">ACCIONES</th>
             </tr>
           </thead>
           <tbody>
@@ -114,7 +114,7 @@
         <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
         <template #footer>
           <Button variant="action" class="btn-modal" @click="cerrarEliminar" :disabled="eliminando">Cancelar</Button>
-          <Button variant="primary" class="btn-modal btn-peligro" @click="eliminar" :disabled="eliminando">
+          <Button variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando">
             <LoadingSpinner v-if="eliminando" size="small" />
             <span v-else>Sí, eliminar</span>
           </Button>
@@ -316,29 +316,6 @@ function eliminar() {
 .filter-field :deep(.search-wrapper) { margin-bottom: 0; }
 .result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
 
-.table-card {
-  background: var(--color-white);
-  border-radius: 8px;
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
-}
-.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.data-table th {
-  background: var(--color-primary);
-  color: var(--color-white);
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 13px;
-  font-weight: 600;
-}
-.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--color-white-soft); color: var(--color-text-main); }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: var(--color-bg-base); }
-.id-cell { color: var(--color-text-secondary); font-size: 13px; width: 80px; }
-.actions-cell { display: flex; gap: 8px; }
-.empty-row { text-align: center; color: var(--color-text-secondary); padding: 32px !important; }
-
-
 .pagination {
   display: flex;
   justify-content: center;
@@ -379,17 +356,72 @@ function eliminar() {
   font-size: 14px !important;
 }
 
-/* Botón destructivo para modales de confirmación */
-.btn-peligro {
-  background-color: #dc3545 !important;
-  color: #ffffff !important;
-}
-.btn-peligro:hover:not(:disabled) {
-  background-color: #b02a37 !important;
-}
-
 /* Evitar que flex junte los botones de la tabla */
 .data-table td :deep(.btn-base) + :deep(.btn-base) {
   margin-left: 8px;
+}
+
+/* Estandarización de Tabla */
+.table-card { 
+    background: white; 
+    border: 1px solid #e5e7eb; 
+    border-radius: 0.5rem; 
+    overflow-x: auto; 
+    width: 100%; 
+}
+
+.data-table { 
+    width: 100%; 
+    border-collapse: collapse; 
+    font-size: 0.875rem; 
+}
+
+.data-table th { 
+    background-color: #f9fafb; 
+    text-align: left; 
+    padding: 0.75rem 0.85rem; 
+    font-weight: 600; 
+    color: #6b7280; 
+    border-bottom: 1px solid #e5e7eb; 
+    text-transform: uppercase; 
+    font-size: 0.75rem; 
+    white-space: nowrap; 
+}
+
+.data-table td { 
+    padding: 0.75rem 0.85rem; 
+    border-bottom: 1px solid #f3f4f6; 
+    color: #374151; 
+    vertical-align: middle; 
+}
+
+.data-table tr:hover td { 
+    background: #f9fafb; 
+}
+
+.id-cell { 
+    color: #6b7280; 
+    font-family: monospace; 
+    font-size: 0.8rem; 
+    width: 60px; 
+}
+
+/* Columna de Acciones Centralizadas */
+.actions-col {
+    text-align: center !important;
+}
+
+.actions-cell {
+    display: flex;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.empty-row { 
+    text-align: center; 
+    color: #6b7280; 
+    padding: 2rem !important; 
 }
 </style>
