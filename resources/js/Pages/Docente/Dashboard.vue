@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link,router } from '@inertiajs/vue3';
+import Button from '@/components/ui/Button.vue';
 
 const props = defineProps({
     stats: Object,
@@ -17,17 +18,17 @@ const props = defineProps({
 
             <!-- Tarjetas de Estadísticas -->
             <div class="stats-grid">
-                <div class="stat-card" style="border-top-color: #1e1b4b;">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Mis exámenes</span>
                     <span class="stat-value">{{ stats.examenes }}</span>
                     <span class="stat-desc">próximos</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #4f46e5;">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Habilitados</span>
                     <span class="stat-value">{{ stats.habilitados }}</span>
                     <span class="stat-desc">estudiantes</span>
                 </div>
-                <div class="stat-card" style="border-top-color: #b91c1c;">
+                <div class="stat-card" style="border-top-color: var(--color-danger);">
                     <span class="stat-label">Inhabilitados</span>
                     <span class="stat-value">{{ stats.inhabilitados }}</span>
                     <span class="stat-desc">requieren revisión</span>
@@ -60,7 +61,9 @@ const props = defineProps({
                                 </p>
                             </div>
                             <!-- Ajusta la ruta del botón según tu enrutamiento -->
-                            <Link :href="`/examenes/${examen.id_examen}`" class="btn-outline">Ver detalle</Link>
+                            <Button variant="action" @click="router.visit(`/examenes/${examen.id_examen}`)">
+                                Ver detalle
+                            </Button>
                         </div>
 
                         <!-- Estado vacío -->
@@ -100,15 +103,15 @@ const props = defineProps({
 /* Contenedor principal */
 .panel-container {
     padding: 2rem;
-    background-color: #f3f4f6;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif);
+    background-color: var(--bg-main, #f3f4f6);
     min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .panel-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--color-primary);
     margin-bottom: 1.5rem;
     text-transform: uppercase;
 }
@@ -125,8 +128,8 @@ const props = defineProps({
     background: #ffffff;
     border-radius: 0.5rem;
     padding: 1.5rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    border-top: 4px solid #ccc;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-top: 4px solid var(--color-primary);
     display: flex;
     flex-direction: column;
 }
@@ -134,7 +137,8 @@ const props = defineProps({
 .stat-label {
     font-size: 0.875rem;
     color: #6b7280;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .stat-value {
@@ -142,7 +146,6 @@ const props = defineProps({
     font-weight: 700;
     color: #111827;
     margin: 0.25rem 0;
-    font-family: Georgia, serif; /* Estilo clásico similar al mockup */
 }
 
 .stat-desc {
@@ -160,7 +163,7 @@ const props = defineProps({
 .content-box {
     background: #ffffff;
     border-radius: 0.5rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    border: 1px solid #e5e7eb;
     padding: 1.5rem;
 }
 
@@ -173,6 +176,8 @@ const props = defineProps({
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
 .box-header h2 {
@@ -183,9 +188,14 @@ const props = defineProps({
 }
 
 .link-action {
-    color: #4f46e5;
+    color: var(--color-primary);
     font-size: 0.875rem;
     text-decoration: none;
+    font-weight: 600;
+}
+
+.link-action:hover {
+    text-decoration: underline;
 }
 
 /* Lista de Exámenes */
@@ -199,7 +209,7 @@ const props = defineProps({
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 3px solid #1e1b4b; /* Detalle de color lateral del mockup */
+    border-left: 3px solid var(--color-primary);
     padding-left: 1rem;
 }
 
@@ -222,25 +232,8 @@ const props = defineProps({
     margin: 0;
 }
 
-.count-hab { color: #1e1b4b; margin-right: 1rem; }
-.count-inhab { color: #b91c1c; }
-
-.btn-outline {
-    border: 1px solid #d1d5db;
-    background: transparent;
-    color: #374151;
-    padding: 0.4rem 1rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-    transition: background 0.2s;
-}
-
-.btn-outline:hover {
-    background: #f9fafb;
-}
+.count-hab { color: var(--color-primary); margin-right: 1rem; }
+.count-inhab { color: var(--color-danger); }
 
 /* Accesos Rápidos */
 .quick-access-list {
@@ -256,11 +249,13 @@ const props = defineProps({
     border-radius: 0.375rem;
     text-decoration: none;
     color: #1f2937;
-    transition: border-color 0.2s;
+    transition: all 0.2s ease;
 }
 
 .qa-item:hover {
-    border-color: #d1d5db;
+    background-color: #f9fafb;
+    border-color: var(--color-primary);
+    transform: translateX(4px);
 }
 
 .qa-content {
