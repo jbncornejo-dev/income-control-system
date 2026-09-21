@@ -452,15 +452,17 @@ const claseBotonConfirmacion = computed(() => {
 .data-table th {
     background-color: #f9fafb;
     text-align: left;
-    padding: 0.75rem 1rem;
+    padding: 0.75rem 0.85rem; /* Ajustado para ganar espacio */
     font-weight: 600;
     color: #6b7280;
     border-bottom: 1px solid #e5e7eb;
     text-transform: uppercase;
+    font-size: 0.75rem;
+    white-space: nowrap;
 }
 
 .data-table td {
-    padding: 1rem;
+    padding: 0.75rem 0.85rem;
     border-bottom: 1px solid #f3f4f6;
     color: #374151;
     vertical-align: middle;
@@ -468,7 +470,7 @@ const claseBotonConfirmacion = computed(() => {
 
 /* Tipografías específicas de celdas */
 .col-asignatura {
-    color: #1e1b4b; /* Azul oscuro característico */
+    color: var(--color-primary); /* Azul oscuro característico */
     font-weight: 600;
 }
 
@@ -566,37 +568,48 @@ const claseBotonConfirmacion = computed(() => {
 }
 
 /* Botones de Acción (Ver, Eliminar) */
+.actions-col {
+    text-align: center !important;
+    min-width: 220px;
+}
+
 .actions-cell {
     display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
+    gap: 0.4rem;
+    justify-content: center;
+    align-items: center;
+    white-space: nowrap;
+    min-width: 220px;
 }
 
 .btn-anular {
-    color: #b91c1c;
-    border-color: #fca5a5;
+    background-color: var(--color-danger) !important; /* Usar variable global */
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-anular:hover {
-    background-color: #fef2f2;
+    background-color: var(--color-danger-hover) !important;
 }
 
 .btn-suspender {
-    color: #b45309;
-    border-color: #fcd34d;
+    background-color: #f59e0b !important;
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-suspender:hover {
-    background-color: #fffbeb;
+    background-color: #d97706 !important;
 }
 
 .btn-reanudar {
-    color: #15803d;
-    border-color: #86efac;
+    background-color: #10b981 !important;
+    color: #ffffff !important;
+    border: none !important;
 }
 
 .btn-reanudar:hover {
-    background-color: #f0fdf4;
+    background-color: #059669 !important;
 }
 
 /* Pie de Tabla */
@@ -642,17 +655,6 @@ const claseBotonConfirmacion = computed(() => {
 .btn-modal {
   padding: 10px 20px !important;
   font-size: 14px !important;
-}
-
-/* El enlace <Link> requiere copiar la estructura base de Button.vue para verse igual */
-.btn-create {
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  transition: opacity 0.2s ease;
-  display: inline-flex;
-  justify-content: center;
 }
 
 /* Mantenemos los colores semánticos locales, pero añadimos !important 
