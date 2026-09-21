@@ -19,7 +19,7 @@ class Examen extends Model
 
     protected $fillable = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
 
-    protected $appends = ['hora_fin', 'estado_actual', 'periodo_codigo'];
+    protected $appends = ['hora_fin', 'estado_actual', 'estado_horario', 'periodo_codigo'];
 
     /**
      * Hora de finalización calculada a partir de la hora de inicio y la duración.
@@ -38,21 +38,45 @@ class Examen extends Model
     }
 
     /**
-     * Estado actual del examen (ciclo de vida).
+     * Estado de gestión del examen (lo que ve el usuario).
      *
-     * - Solo 'cancelado' (anulado) sobreescribe el ciclo: es una decisión
-     *   definitiva e independiente del horario.
-     * - 'suspendido' NO es parte del ciclo de vida: es una pausa temporal
-     *   del registro de ingresos. El examen sigue su curso según el horario
-     *   (programado -> en_curso -> finalizado) y su duración no se altera.
+     * Es el que se muestra en el listado y se usa para los chips de filtro:
+     *
+     * - Las decisiones manuales tienen prioridad:
+     *   - 'cancelado': examen programado que se llama off (nunca ocurrió). Definitivo.
+     *   - 'anulado': examen en curso que se invalida (lo ocurrido no vale). Definitivo.
+     *   - 'suspendido': pausa del registro de ingresos (sigue su ciclo por horario).
+     *   Son estados propios de gestión que NO se mezclan con el ciclo.
+     * - Sin decisión manual, se deriva del horario (ver `estado_horario`):
+     *   programado -> en_curso -> finalizado.
+     *
+     * Nota: 'suspendido' no altera la duración ni el ciclo; para saber en qué
+     * punto del ciclo está un examen suspendido se usa `estado_horario`.
      */
     protected function estadoActual(): Attribute
     {
         return Attribute::get(function (): string {
-            if ($this->estado === 'cancelado') {
-                return 'cancelado';
+            if ($this->estado === 'cancelado' || $this->estado === 'anulado') {
+                return $this->estado;
             }
 
+            if ($this->estado === 'suspendido') {
+                return 'suspendido';
+            }
+
+            return $this->estado_horario;
+        });
+    }
+
+    /**
+     * Estado derivado SOLO del horario (ciclo de vida), sin considerar la
+     * decisión manual: 'programado', 'en_curso' o 'finalizado'. Un examen
+     * suspendido sigue su ciclo por aquí mientras su estado de gestión es
+     * 'suspendido'.
+     */
+    protected function estadoHorario(): Attribute
+    {
+        return Attribute::get(function (): string {
             $inicio = Carbon::parse($this->fecha.' '.$this->hora_inicio);
             $fin = $inicio->copy()->addMinutes((int) $this->duracion_minutos);
 

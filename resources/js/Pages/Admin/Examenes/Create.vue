@@ -19,8 +19,10 @@ const esEdicion = computed(() => !!props.examen);
 
 // En un examen en curso (incluye suspendido) solo se editan las normas generales;
 // los datos estructurales (fecha, hora, duración, ambientes, asignatura) quedan congelados.
+// Se usa `estado_horario` (ciclo según horario): un examen suspendido sigue teniendo
+// su ventana activa, por lo que también queda congelado aunque su estado de gestión sea "Suspendido".
 const soloNormas = computed(() =>
-    esEdicion.value && props.examen?.estado_actual === 'en_curso'
+    esEdicion.value && props.examen?.estado_horario === 'en_curso'
 );
 
 // Fecha mínima seleccionable: hoy (la validación exige que el examen sea futuro).

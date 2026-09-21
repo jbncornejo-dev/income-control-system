@@ -15,6 +15,7 @@ use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
 use App\Models\Periodo;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -28,30 +29,13 @@ class ExamenController extends Controller
         $filtros = $request->validated();
         $esDocente = auth()->user()->rol->nombre_rol === 'docente';
 
-        $query = Examen::query()
-            ->select(['id_examen', 'id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
-            ->with([
-                'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
-                'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'tipo', 'numero']),
-                'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
-            ]);
+        $query = Examen::query();
 
         if ($esDocente) {
             // El docente solo ve los exámenes de las asignaturas que dicta (sus grupos).
             $query->whereHas('asignatura.grupos', function ($subquery) {
                 $subquery->where('grupo.id_usuario', auth()->id());
             });
-
-            // Contexto: solo se cargan los grupos del docente en cada asignatura.
-            $query->with(['asignatura.grupos' => fn ($subquery) => $subquery
-                ->where('id_usuario', auth()->id())
-                ->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo'])]);
-        } else {
-            // Contexto para el administrador: grupos y docentes de cada asignatura.
-            $query->with([
-                'asignatura.grupos' => fn ($subquery) => $subquery->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']),
-                'asignatura.grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
-            ]);
         }
 
         if (isset($filtros['asignatura'])) {
@@ -77,10 +61,43 @@ class ExamenController extends Controller
             $query->where('hora_inicio', $filtros['hora_inicio']);
         }
 
-        $examenes = $query
+        // Conteos por estado para los chips del listado. Se calculan sobre los
+        // mismos filtros de búsqueda pero SIN el filtro de estado: así cada chip
+        // muestra cuántos exámenes quedarían al seleccionarlo.
+        $conteos = $this->conteosPorEstado($query);
+
+        if (isset($filtros['estado'])) {
+            $this->aplicarFiltroEstado($query, $filtros['estado']);
+        }
+
+        // Contexto cargado según el rol y columnas expuestas en el listado.
+        $query
+            ->select(['id_examen', 'id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->orderBy('fecha')
             ->orderBy('hora_inicio')
-            ->orderBy('id_examen')
+            ->orderBy('id_examen');
+
+        // Carga común a ambos roles.
+        $query->with([
+            'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
+            'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'tipo', 'numero']),
+            'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
+        ]);
+
+        if ($esDocente) {
+            // Contexto: solo se cargan los grupos del docente en cada asignatura.
+            $query->with(['asignatura.grupos' => fn ($subquery) => $subquery
+                ->where('id_usuario', auth()->id())
+                ->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo'])]);
+        } else {
+            // Contexto para el administrador: grupos y docentes de cada asignatura.
+            $query->with([
+                'asignatura.grupos' => fn ($subquery) => $subquery->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']),
+                'asignatura.grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
+            ]);
+        }
+
+        $examenes = $query
             ->paginate(15)
             ->appends($filtros)
             ->through(function (Examen $examen) use ($esDocente) {
@@ -113,6 +130,7 @@ class ExamenController extends Controller
             'id_periodo' => $filtros['id_periodo'] ?? null,
             'fecha' => $filtros['fecha'] ?? null,
             'hora_inicio' => $filtros['hora_inicio'] ?? null,
+            'estado' => $filtros['estado'] ?? null,
         ];
 
         // Periodos disponibles para el filtro del listado.
@@ -123,6 +141,7 @@ class ExamenController extends Controller
                 'examenes' => $examenes,
                 'filtros' => $filtrosVista,
                 'periodos' => $periodos,
+                'conteos' => $conteos,
             ]);
         }
 
@@ -131,6 +150,7 @@ class ExamenController extends Controller
             'examenes' => $examenes,
             'filters' => $filtrosVista,
             'periodos' => $periodos,
+            'conteos' => $conteos,
             // Agregamos esta línea para enviar la confirmación a Vue
             'esAdmin' => auth()->user()->rol->nombre_rol === 'administrador',
         ]);
@@ -178,8 +198,11 @@ class ExamenController extends Controller
             abort(403);
         }
 
-        // Los exámenes anulados o finalizados no pueden editarse.
-        if (in_array($examen->estado_actual, ['cancelado', 'finalizado'], true)) {
+        // Los exámenes cancelados, anulados o finalizados no pueden editarse. "Finalizado"
+        // se determina por el horario (estado_horario), no por el estado de
+        // gestión: un examen suspendido cuya ventana ya terminó también queda
+        // bloqueado.
+        if (in_array($examen->estado, ['cancelado', 'anulado'], true) || $examen->estado_horario === 'finalizado') {
             abort(403);
         }
 
@@ -314,22 +337,24 @@ class ExamenController extends Controller
      */
     public function update(UpdateExamenRequest $request, Examen $examen)
     {
-        $estadoActual = $examen->estado_actual;
+        // Estado del ciclo según el horario, independiente de la decisión manual.
+        // Si el examen está suspendido, su ventana sigue corriendo bajo el horario.
+        $horario = $examen->estado_horario;
 
-        // Los exámenes anulados o finalizados no pueden editarse.
-        if (in_array($estadoActual, ['cancelado', 'finalizado'], true)) {
+        // Los exámenes cancelados o anulados no pueden editarse.
+        if (in_array($examen->estado, ['cancelado', 'anulado'], true) || $horario === 'finalizado') {
             throw ValidationException::withMessages([
-                'estado' => 'No se puede editar un examen ya anulado o finalizado.',
+                'estado' => 'No se puede editar un examen ya cancelado, anulado o finalizado.',
             ]);
         }
 
-        // Mientras un examen está en curso (incluye suspendido) solo se pueden
-        // actualizar las normas generales: fecha, hora, duración, ambientes,
-        // asignatura y periodo definen la ventana y el ingreso, por lo que
-        // quedan congelados.
+        // Mientras la ventana de ingreso está activa (en curso, incluido
+        // suspendido) solo se pueden actualizar las normas generales: fecha,
+        // hora, duración, ambientes, asignatura y periodo definen la ventana y
+        // el ingreso, por lo que quedan congelados.
         $camposEstructurales = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
 
-        if ($estadoActual === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
+        if ($horario === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
             throw ValidationException::withMessages([
                 'estado' => 'Un examen en curso solo permite editar las normas generales.',
             ]);
@@ -416,16 +441,24 @@ class ExamenController extends Controller
     }
 
     /**
-     * Cambia el estado manual del examen (anular, suspender o reanudar).
+     * Cambia el estado manual del examen (cancelar, anular, suspender o reanudar).
      * Las transiciones automáticas (programado -> en_curso -> finalizado)
      * no se guardan: se derivan del horario en `estado_actual`.
+     *
+     * Semántica de gestión:
+     * - 'cancelar' (-> 'cancelado'): solo un examen programado que aún no empieza.
+     * - 'anular' (-> 'anulado'): solo un examen en curso (o suspendido cuya
+     *   ventana siga activa), para invalidar lo ocurrido.
+     * - 'suspender' (-> 'suspendido'): solo un examen en curso.
+     * - 'reanudar' (-> null): solo un examen suspendido.
      */
     public function cambiarEstado(CambiarEstadoExamenRequest $request, Examen $examen)
     {
         $accion = $request->validated()['accion'];
 
         $nuevoEstado = match ($accion) {
-            'anular' => 'cancelado',
+            'cancelar' => 'cancelado',
+            'anular' => 'anulado',
             'suspender' => 'suspendido',
             'reanudar' => null,
         };
@@ -437,15 +470,35 @@ class ExamenController extends Controller
             ? 'programado'
             : (now()->lt($fin) ? 'en_curso' : 'finalizado');
 
-        // Un examen anulado es definitivo: queda congelado y no admite cambios.
-        if ($examen->estado === 'cancelado') {
+        // Los estados terminales (cancelado/anulado) son definitivos: congelan
+        // el examen y no admiten cambios.
+        if ($examen->estado === 'cancelado' || $examen->estado === 'anulado') {
+            $motivo = $examen->estado === 'cancelado'
+                ? 'El examen ya está cancelado y es definitivo; no se puede modificar.'
+                : 'El examen ya está anulado y es definitivo; no se puede modificar.';
+
+            throw ValidationException::withMessages(['estado' => $motivo]);
+        }
+
+        // Cancelar solo tiene sentido antes de que el examen empiece: un examen
+        // que ya está en marcha se anula, no se cancela.
+        if ($accion === 'cancelar' && $automatico !== 'programado') {
             throw ValidationException::withMessages([
-                'estado' => 'El examen ya está anulado y es definitivo; no se puede modificar.',
+                'estado' => 'Solo se puede cancelar un examen que aún no ha comenzado.',
+            ]);
+        }
+
+        // Anular solo tiene sentido mientras el examen está en curso (o
+        // suspendido con la ventana aún activa): un examen que no ha empezado
+        // se cancela, no se anula.
+        if ($accion === 'anular' && $automatico !== 'en_curso') {
+            throw ValidationException::withMessages([
+                'estado' => 'Solo se puede anular un examen que está en curso.',
             ]);
         }
 
         // Suspender solo tiene sentido mientras el examen está en curso:
-        // un examen que aún no empieza se anula, no se suspende.
+        // un examen que aún no empieza se cancela, no se suspende.
         if ($accion === 'suspender' && $automatico !== 'en_curso') {
             throw ValidationException::withMessages([
                 'estado' => 'Solo se puede suspender un examen que está en curso.',
@@ -454,12 +507,17 @@ class ExamenController extends Controller
 
         if ($nuevoEstado !== null && $automatico === 'finalizado') {
             throw ValidationException::withMessages([
-                'estado' => 'No se puede anular o suspender un examen que ya finalizó.',
+                'estado' => 'No se puede cancelar, anular o suspender un examen que ya finalizó.',
             ]);
         }
 
         if ($nuevoEstado !== null && $examen->estado === $nuevoEstado) {
-            $yaEnEstado = $accion === 'anular' ? 'El examen ya está anulado.' : 'El examen ya está suspendido.';
+            $yaEnEstado = match ($accion) {
+                'cancelar' => 'El examen ya está cancelado.',
+                'anular' => 'El examen ya está anulado.',
+                default => 'El examen ya está suspendido.',
+            };
+
             throw ValidationException::withMessages(['estado' => $yaEnEstado]);
         }
 
@@ -481,6 +539,7 @@ class ExamenController extends Controller
         });
 
         $mensajes = [
+            'cancelar' => 'Examen cancelado correctamente.',
             'anular' => 'Examen anulado correctamente.',
             'suspender' => 'Examen suspendido correctamente.',
             'reanudar' => 'Examen reanudado correctamente.',
@@ -544,6 +603,80 @@ class ExamenController extends Controller
                 [$datos['hora_inicio']]
             )
             ->exists();
+    }
+
+    /**
+     * Conteos por estado para los chips del listado. Se calculan sobre la
+     * misma query de búsqueda (asignatura, periodo, fecha, hora, alcance de
+     * rol) pero sin el filtro de estado, así cada chip refleja cuántos
+     * quedarían al seleccionarlo.
+     *
+     * @return array<string, int>
+     */
+    private function conteosPorEstado(Builder $query): array
+    {
+        // Se embebe el literal directamente (sin placeholders) porque Postgres
+        // exige que la expresión del SELECT y la del GROUP BY sean idénticas
+        // textualmente; los bindings de selectRaw/groupByRaw se inlinean de
+        // forma distinta y rompen esa comparación.
+        $ahora = now()->format('Y-m-d H:i:s');
+        $ahoraLiteral = "'{$ahora}'::timestamp";
+        $inicio = "(fecha::text || ' ' || hora_inicio::text)::timestamp";
+
+        $case = "CASE
+                WHEN estado = 'cancelado' THEN 'cancelado'
+                WHEN estado = 'anulado' THEN 'anulado'
+                WHEN estado = 'suspendido' THEN 'suspendido'
+                WHEN {$inicio} > {$ahoraLiteral} THEN 'programado'
+                WHEN {$inicio} + (duracion_minutos * interval '1 minute') > {$ahoraLiteral} THEN 'en_curso'
+                ELSE 'finalizado'
+            END";
+
+        $filas = (clone $query)
+            ->selectRaw("{$case} AS bucket, COUNT(*) AS total")
+            ->groupByRaw($case)
+            ->get();
+
+        $mapa = [];
+        foreach ($filas as $fila) {
+            $mapa[$fila->bucket] = (int) $fila->total;
+        }
+
+        return array_replace([
+            'programado' => 0,
+            'en_curso' => 0,
+            'finalizado' => 0,
+            'cancelado' => 0,
+            'anulado' => 0,
+            'suspendido' => 0,
+        ], $mapa);
+    }
+
+    /**
+     * Aplica el filtro de estado al listado: los buckets de gestión
+     * (cancelado/anulado/suspendido) se resuelven por la columna `estado`, los
+     * buckets del ciclo (programado/en_curso/finalizado) requieren
+     * comparar el horario con la hora actual.
+     */
+    private function aplicarFiltroEstado(Builder $query, string $estado): void
+    {
+        $ahora = now()->format('Y-m-d H:i:s');
+        $inicio = "(fecha::text || ' ' || hora_inicio::text)::timestamp";
+        $fin = "{$inicio} + (duracion_minutos * interval '1 minute')";
+
+        match ($estado) {
+            'cancelado' => $query->where('estado', 'cancelado'),
+            'anulado' => $query->where('estado', 'anulado'),
+            'suspendido' => $query->where('estado', 'suspendido'),
+            'programado' => $query->whereNull('estado')
+                ->whereRaw("{$inicio} > CAST(? AS timestamp)", [$ahora]),
+            'en_curso' => $query->whereNull('estado')
+                ->whereRaw("{$inicio} <= CAST(? AS timestamp)", [$ahora])
+                ->whereRaw("{$fin} > CAST(? AS timestamp)", [$ahora]),
+            'finalizado' => $query->whereNull('estado')
+                ->whereRaw("{$fin} <= CAST(? AS timestamp)", [$ahora]),
+            default => null,
+        };
     }
 
     /**
