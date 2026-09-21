@@ -262,15 +262,15 @@ class ExamenIndexTest extends TestCase
         $this->assertNotContains($examenOtroPeriodo->id_examen, collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
     }
 
-    public function test_el_listado_incluye_el_nombre_del_periodo(): void
+    public function test_el_listado_incluye_el_codigo_del_periodo(): void
     {
         $this->crearExamen($this->crearAsignatura('Cálculo'));
 
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
 
         $this->assertSame(
-            'Gestión 2026 · Primer Semestre',
-            $respuesta->json('examenes.data.0.periodo_nombre')
+            'I-2026',
+            $respuesta->json('examenes.data.0.periodo_codigo')
         );
     }
 

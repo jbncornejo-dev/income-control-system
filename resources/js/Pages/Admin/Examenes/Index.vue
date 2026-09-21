@@ -16,7 +16,7 @@ const props = defineProps({
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
-// tolerante a acentos y mayúsculas), semestre, fecha exacta y hora. La búsqueda
+// tolerante a acentos y mayúsculas), periodo, fecha exacta y hora. La búsqueda
 // se dispara con el botón Buscar; así no se traba la página mientras se escribe.
 const busqueda = ref(props.filters?.asignatura ?? '');
 const idPeriodo = ref(props.filters?.id_periodo ?? '');
@@ -219,11 +219,11 @@ const claseBotonConfirmacion = computed(() => {
 
                 <div class="filter-row">
                     <label class="filter-field">
-                        <span class="filter-label">Semestre</span>
+                        <span class="filter-label">Periodo</span>
                         <select v-model="idPeriodo" class="filter-input" :disabled="cargando">
                             <option value="">Todos</option>
-                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="String(periodo.id_periodo)">
-                                {{ periodo.nombre }}
+                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="String(periodo.id_periodo)" :title="periodo.nombre">
+                                {{ periodo.codigo }}
                             </option>
                         </select>
                     </label>
@@ -244,7 +244,7 @@ const claseBotonConfirmacion = computed(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
-                            <th>SEMESTRE</th>
+                            <th>PERIODO</th>
                             <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
                             <th>FECHA</th>
@@ -259,7 +259,7 @@ const claseBotonConfirmacion = computed(() => {
                         <tr v-for="examen in examenes.data" :key="examen.id_examen">
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
                             <td class="col-asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
-                            <td>{{ examen.periodo_nombre || '—' }}</td>
+                            <td :title="examen.periodo?.nombre || ''">{{ examen.periodo_codigo || '—' }}</td>
                             <td v-if="esAdmin">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
                             <td>

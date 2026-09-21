@@ -19,14 +19,14 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Crea (o recupera) un periodo/semestre por defecto para las pruebas.
-     * Los exámenes exigen id_periodo NOT NULL, así que los tests que crean
-     * exámenes directamente pueden vincularlos con este helper.
+     * Crea (o recupera) un periodo por defecto para las pruebas. Por defecto un
+     * semestre (tipo 'semestre'); los exámenes exigen id_periodo NOT NULL, así
+     * que los tests que crean exámenes directamente pueden vincularlos con este helper.
      */
-    protected function crearPeriodo(string $gestion = '2026', int $semestre = 1): Periodo
+    protected function crearPeriodo(string $gestion = '2026', int $numero = 1, string $tipo = 'semestre'): Periodo
     {
         return Periodo::firstOrCreate(
-            ['gestion' => $gestion, 'semestre' => $semestre],
+            ['gestion' => $gestion, 'tipo' => $tipo, 'numero' => $numero],
             ['fecha_inicio' => $gestion.'-01-01', 'fecha_fin' => $gestion.'-12-31']
         );
     }

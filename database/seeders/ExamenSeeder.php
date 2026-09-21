@@ -97,7 +97,7 @@ class ExamenSeeder extends Seeder
         foreach ($examenes as $datos) {
             // Periodo sugerido para la fecha del examen: el que contiene la fecha;
             // si queda fuera de rango (p. ej. examen de fin de gestión), el primero
-            // de la gestión correspondiente. Si no existe, se crea el del semestre 1.
+            // de la gestión correspondiente. Si no existe, se crea el del primer periodo.
             $fecha = now()->addDays($datos['dias_desde_hoy'])->toDateString();
             $periodo = $periodos
                 ->where('gestion', $gestion)
@@ -107,10 +107,10 @@ class ExamenSeeder extends Seeder
                     && $p->fecha_fin >= $fecha)
                 ?? $periodos
                     ->where('gestion', $gestion)
-                    ->sortBy('semestre')
+                    ->sortBy('numero')
                     ->first()
                 ?? Periodo::firstOrCreate(
-                    ['gestion' => $gestion, 'semestre' => 1],
+                    ['gestion' => $gestion, 'tipo' => 'semestre', 'numero' => 1],
                     ['fecha_inicio' => $gestion.'-01-01', 'fecha_fin' => $gestion.'-12-31']
                 );
 

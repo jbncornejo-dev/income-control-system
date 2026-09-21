@@ -53,7 +53,8 @@ class ExamenCreateTest extends TestCase
             ->where('ambientes.0.nombre_ambiente', 'Aula 101')
             ->where('periodos.0.id_periodo', $periodo->id_periodo)
             ->where('periodos.0.gestion', '2026')
-            ->where('periodos.0.semestre', 1));
+            ->where('periodos.0.tipo', 'semestre')
+            ->where('periodos.0.numero', 1));
     }
 
     public function test_docente_abre_la_pagina_y_solo_ve_las_asignaturas_que_dicta(): void

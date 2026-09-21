@@ -36,9 +36,9 @@ const form = useForm({
     id_ambientes: (props.examen?.examenes_ambientes ?? []).map((ea) => ea.id_ambiente),
 });
 
-// Sugiere el semestre según la fecha del examen: primero el periodo cuyo rango
+// Sugiere el periodo según la fecha del examen: primero el periodo cuyo rango
 // contiene la fecha y, si no, el de la misma gestión (año). Si el usuario ya
-// eligió un semestre no se sobreescribe.
+// eligió un periodo no se sobreescribe.
 function periodoSugerido(fecha) {
     if (!fecha) return null;
 
@@ -214,11 +214,11 @@ function guardar() {
                     {{ esEdicion
                         ? (soloNormas
                             ? 'El examen está en curso: solo puedes actualizar las normas generales.'
-                            : 'Modifica asignatura, semestre, horario o ambientes de la evaluación.')
-                        : 'Programa una nueva evaluación asignándole asignatura, semestre, horario y ambientes.' }}
+                            : 'Modifica asignatura, periodo, horario o ambientes de la evaluación.')
+                        : 'Programa una nueva evaluación asignándole asignatura, periodo, horario y ambientes.' }}
                 </p>
                 <p v-if="soloNormas" class="form-aviso">
-                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, asignatura y semestre quedan congelados; podrás reajustarlos una vez finalice.
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
@@ -242,9 +242,9 @@ function guardar() {
                         <p v-if="asignaturas.length === 0" class="help-text">No hay asignaturas registradas. Crea una desde el módulo Asignaturas.</p>
                     </div>
 
-                    <!-- Semestre -->
+                    <!-- Periodo -->
                     <div v-if="!soloNormas" class="form-group">
-                        <label for="id_periodo" class="form-label">Semestre <span class="required">*</span></label>
+                        <label for="id_periodo" class="form-label">Periodo <span class="required">*</span></label>
                         <select
                             id="id_periodo"
                             v-model="form.id_periodo"
@@ -253,13 +253,13 @@ function guardar() {
                             :disabled="form.processing"
                             @change="form.clearErrors('id_periodo')"
                         >
-                            <option value="" disabled>Seleccione un semestre...</option>
-                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="periodo.id_periodo">
-                                {{ periodo.nombre }}
+                            <option value="" disabled>Seleccione un periodo...</option>
+                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="periodo.id_periodo" :title="periodo.nombre">
+                                {{ periodo.codigo }}
                             </option>
                         </select>
                         <p v-if="form.errors.id_periodo" class="error-msg">{{ form.errors.id_periodo }}</p>
-                        <p v-if="periodos.length === 0" class="help-text">No hay semestres registrados. Crea el periodo desde el módulo de administración.</p>
+                        <p v-if="periodos.length === 0" class="help-text">No hay periodos registrados. Crea el periodo desde el módulo de administración.</p>
                     </div>
 
                     <!-- Fecha / Hora / Duración -->

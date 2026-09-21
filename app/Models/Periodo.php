@@ -16,28 +16,55 @@ class Periodo extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['gestion', 'semestre', 'fecha_inicio', 'fecha_fin'];
+    protected $fillable = ['gestion', 'tipo', 'numero', 'fecha_inicio', 'fecha_fin'];
 
-    protected $appends = ['nombre'];
+    protected $appends = ['nombre', 'codigo'];
 
     protected function casts(): array
     {
         return [
-            'semestre' => 'integer',
+            'numero' => 'integer',
             'fecha_inicio' => 'date:Y-m-d',
             'fecha_fin' => 'date:Y-m-d',
         ];
     }
 
     /**
-     * Nombre legible del periodo, p. ej. "Gestión 2026 · Segundo Semestre".
+     * Nombre legible del periodo, p. ej. "Gestión 2026 · Primer Semestre".
+     * Pensado para contextos descriptivos (tooltips, módulo de administración).
      */
     protected function nombre(): Attribute
     {
         return Attribute::get(function (): string {
-            $semestres = [1 => 'Primer Semestre', 2 => 'Segundo Semestre'];
+            $nombres = [
+                'semestre' => [1 => 'Primer Semestre', 2 => 'Segundo Semestre', 3 => 'Tercer Semestre', 4 => 'Cuarto Semestre'],
+                'trimestre' => [1 => 'Primer Trimestre', 2 => 'Segundo Trimestre', 3 => 'Tercer Trimestre'],
+                'cuatrimestre' => [1 => 'Primer Cuatrimestre', 2 => 'Segundo Cuatrimestre', 3 => 'Tercer Cuatrimestre'],
+                'bimestre' => [1 => 'Primer Bimestre', 2 => 'Segundo Bimestre', 3 => 'Tercer Bimestre', 4 => 'Cuarto Bimestre', 5 => 'Quinto Bimestre', 6 => 'Sexto Bimestre'],
+            ];
+            $etiqueta = $nombres[$this->tipo][$this->numero] ?? ucfirst((string) $this->tipo).' '.$this->numero;
 
-            return "Gestión {$this->gestion} · ".($semestres[$this->semestre] ?? 'Semestre');
+            return "Gestión {$this->gestion} · {$etiqueta}";
+        });
+    }
+
+    /**
+     * Código compacto del periodo, p. ej. "I-2026" para el primer semestre.
+     * Formato: {periodo}-{gestion}. El semestre usa numeración romana; el resto
+     * de tipos usan el número seguido de la inicial del tipo ("1T-2026").
+     */
+    protected function codigo(): Attribute
+    {
+        return Attribute::get(function (): string {
+            if ($this->tipo === 'semestre') {
+                $romanos = [1 => 'I', 2 => 'II', 3 => 'III', 4 => 'IV', 5 => 'V', 6 => 'VI', 7 => 'VII', 8 => 'VIII', 9 => 'IX', 10 => 'X'];
+
+                return ($romanos[$this->numero] ?? (string) $this->numero).'-'.$this->gestion;
+            }
+
+            $inicial = strtoupper(substr((string) $this->tipo, 0, 1)); // T, C o B
+
+            return $this->numero.$inicial.'-'.$this->gestion;
         });
     }
 

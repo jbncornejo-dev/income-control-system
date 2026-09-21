@@ -19,7 +19,7 @@ class Examen extends Model
 
     protected $fillable = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
 
-    protected $appends = ['hora_fin', 'estado_actual', 'periodo_nombre'];
+    protected $appends = ['hora_fin', 'estado_actual', 'periodo_codigo'];
 
     /**
      * Hora de finalización calculada a partir de la hora de inicio y la duración.
@@ -74,19 +74,19 @@ class Examen extends Model
         return $this->belongsTo(Asignatura::class, 'id_asignatura', 'id_asignatura');
     }
 
-    // Relación de muchos a uno (examen-periodo/semestre)
+    // Relación de muchos a uno (examen-periodo)
     public function periodo()
     {
         return $this->belongsTo(Periodo::class, 'id_periodo', 'id_periodo');
     }
 
     /**
-     * Nombre legible del semestre al que pertenece el examen.
+     * Código compacto del periodo al que pertenece el examen ("I-2026").
      * Requiere la relación "periodo" cargada (o la carga en caliente al acceder).
      */
-    protected function periodoNombre(): Attribute
+    protected function periodoCodigo(): Attribute
     {
-        return Attribute::get(fn (): ?string => $this->periodo?->nombre);
+        return Attribute::get(fn (): ?string => $this->periodo?->codigo);
     }
 
     // Relación de uno a muchos (examen-examen_ambiente)

@@ -90,8 +90,8 @@ class StoreExamenRequest extends FormRequest
         return [
             'id_asignatura.required' => 'La asignatura es obligatoria.',
             'id_asignatura.exists' => 'La asignatura seleccionada no existe.',
-            'id_periodo.required' => 'El semestre es obligatorio.',
-            'id_periodo.exists' => 'El semestre seleccionado no existe.',
+            'id_periodo.required' => 'El periodo es obligatorio.',
+            'id_periodo.exists' => 'El periodo seleccionado no existe.',
             'fecha.required' => 'La fecha del examen es obligatoria.',
             'fecha.date_format' => 'La fecha debe tener el formato AAAA-MM-DD.',
             'fecha.after_or_equal' => 'La fecha del examen no puede estar en el pasado.',

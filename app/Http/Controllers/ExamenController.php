@@ -32,7 +32,7 @@ class ExamenController extends Controller
             ->select(['id_examen', 'id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->with([
                 'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
-                'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'semestre']),
+                'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'tipo', 'numero']),
                 'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             ]);
 
@@ -325,7 +325,7 @@ class ExamenController extends Controller
 
         // Mientras un examen está en curso (incluye suspendido) solo se pueden
         // actualizar las normas generales: fecha, hora, duración, ambientes,
-        // asignatura y semestre definen la ventana y el ingreso, por lo que
+        // asignatura y periodo definen la ventana y el ingreso, por lo que
         // quedan congelados.
         $camposEstructurales = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
 
@@ -555,7 +555,7 @@ class ExamenController extends Controller
     {
         return Periodo::query()
             ->orderByDesc('gestion')
-            ->orderByDesc('semestre')
-            ->get(['id_periodo', 'gestion', 'semestre', 'fecha_inicio', 'fecha_fin']);
+            ->orderByDesc('numero')
+            ->get(['id_periodo', 'gestion', 'tipo', 'numero', 'fecha_inicio', 'fecha_fin']);
     }
 }
