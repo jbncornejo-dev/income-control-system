@@ -9,7 +9,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import { useToastStore } from '@/stores/useToastStore';
- 
+import Button from '@/components/ui/Button.vue';
+
 const props = defineProps({
     examen: Object,
     habilitaciones: Object,
@@ -175,18 +176,9 @@ function guardarNormas(hab) {
                         class="search-input"
                     >
                     <div class="filter-group">
-                        <button
-                            :class="['filter-btn', filtroActivo === 'todos' ? 'active' : '']"
-                            @click="filtroActivo = 'todos'"
-                        >Todos</button>
-                        <button
-                            :class="['filter-btn', filtroActivo === 'habilitados' ? 'active' : '']"
-                            @click="filtroActivo = 'habilitados'"
-                        >Habilitados</button>
-                        <button
-                            :class="['filter-btn', filtroActivo === 'inhabilitados' ? 'active' : '']"
-                            @click="filtroActivo = 'inhabilitados'"
-                        >Inhabilitados</button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'todos' ? 'active' : '']" @click="filtroActivo = 'todos'">Todos</Button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'habilitados' ? 'active' : '']" @click="filtroActivo = 'habilitados'">Habilitados</Button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'inhabilitados' ? 'active' : '']" @click="filtroActivo = 'inhabilitados'">Inhabilitados</Button>
                     </div>
                 </div>
             </div>
@@ -223,14 +215,14 @@ function guardarNormas(hab) {
                             </td>
                             <td class="col-mono text-purple">&mdash;</td>
                             <td>
-                                <button
-                                    :class="['btn-toggle', hab.estado_habilitado ? 'btn-toggle-red' : 'btn-toggle-gray']"
+                                <Button
+                                    :variant="hab.estado_habilitado ? 'delete' : 'action'"
                                     :disabled="procesando || !!hab.registro_ingreso"
-:title="hab.registro_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
+                                    :title="hab.registro_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
                                     @click="clickToggle(hab)"
                                 >
                                     {{ hab.estado_habilitado ? 'Inhabilitar' : 'Habilitar' }}
-                                </button>
+                                </Button>
                             </td>
                         </tr>
                         <tr v-if="listaFiltrada.length === 0">
@@ -258,16 +250,17 @@ function guardarNormas(hab) {
                 <p v-if="errorMotivo" style="color:#d32f2f; font-size:12px; margin-top:4px;">{{ errorMotivo }}</p>
             </div>
             <template #footer>
-                <button @click="cancelarMotivo" style="background:transparent; border:none; cursor:pointer; color:#6b7280; padding:10px 16px;">
+                <Button variant="action" class="btn-modal" @click="cancelarMotivo">
                     Cancelar
-                </button>
-                <button
+                </Button>
+                <Button 
+                    variant="primary" 
+                    class="btn-modal btn-peligro" 
                     @click="confirmarInhabilitar"
-                    :disabled="procesando || !!hab.registro_ingreso"
-                    style="background:#d32f2f; color:white; border:none; padding:10px 20px; border-radius:6px; font-weight:600; cursor:pointer;"
+                    :disabled="procesando || !!habPendiente?.registro_ingreso"
                 >
                     Confirmar inhabilitación
-                </button>
+                </Button>
             </template>
         </Modal>
  
@@ -294,13 +287,13 @@ function guardarNormas(hab) {
 }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
 .eyebrow { font-size: 0.75rem; color: #9ca3af; letter-spacing: 0.05em; text-transform: uppercase; }
-.exam-title { font-size: 1.75rem; font-weight: 700; color: #1f2937; margin: 0.25rem 0 0 0; font-family: Georgia, serif; }
+.exam-title { font-size: 1.75rem; font-weight: 700; color: #1f2937; margin: 0.25rem 0 0 0; }
 .exam-meta-row { display: flex; gap: 1.5rem; font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem; }
 .exam-meta-row strong { color: #374151; }
 .mono { font-family: monospace; }
 .stats-row { display: flex; gap: 1rem; }
 .stat-box { flex: 1; background-color: #f9fafb; border-radius: 0.375rem; padding: 1rem; text-align: center; border: 1px solid #f3f4f6; }
-.stat-number { display: block; font-size: 1.5rem; font-weight: 700; font-family: Georgia, serif; }
+.stat-number { display: block; font-size: 1.5rem; font-weight: 700; }
 .stat-label { font-size: 0.75rem; color: #9ca3af; }
 .text-blue { color: #1e3a8a; }
 .text-red { color: #b91c1c; }
@@ -323,10 +316,56 @@ function guardarNormas(hab) {
 .badge-hab { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .badge-inhab { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
 .badge-confirmado { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
-.btn-toggle { background: transparent; border: 1px solid #d1d5db; padding: 0.25rem 0.75rem; border-radius: 0.25rem; font-size: 0.75rem; cursor: pointer; font-weight: 500; }
-.btn-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-toggle-red { color: #ef4444; border-color: #fca5a5; }
-.btn-toggle-gray { color: #6b7280; }
 .empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
+/* Estandarización de Modales y Peligro */
+.btn-modal {
+  padding: 10px 20px !important;
+  font-size: 14px !important;
+}
+
+.btn-peligro {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+}
+.btn-peligro:hover:not(:disabled) {
+  background-color: #b02a37 !important;
+}
+
+/* Fix para agrupar botones como solapas (Tabs) */
+.filter-group {
+    display: flex;
+    gap: 0;
+}
+
+/* Modificamos la variante "action" cuando se usa en filtros */
+.filter-btn {
+    border-radius: 0 !important;
+    margin-left: -1px; /* Solapa los bordes adyacentes */
+}
+
+.filter-btn:first-child {
+    border-top-left-radius: 4px !important;
+    border-bottom-left-radius: 4px !important;
+}
+
+.filter-btn:last-child {
+    border-top-right-radius: 4px !important;
+    border-bottom-right-radius: 4px !important;
+}
+
+.filter-btn.active {
+    background-color: var(--color-primary) !important;
+    color: white !important;
+    border-color: var(--color-primary) !important;
+    z-index: 2;
+}
+
+/* Permitir scroll en tablas pequeñas */
+.table-container { 
+    background: white; 
+    border: 1px solid #e5e7eb; 
+    border-radius: 0.5rem; 
+    overflow-x: auto; 
+}
 </style>
  

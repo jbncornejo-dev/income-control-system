@@ -41,4 +41,7 @@
     --radius-md: 8px;
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
     --shadow-input-focus: 0 0 0 3px rgba(29, 54, 83, 0.15);
+
+    --color-danger: #dc3545;
+  --color-danger-hover: #b02a37;
 }
