@@ -60,24 +60,23 @@
 
             <p v-if="loginError" class="form-error global-error" role="alert">{{ loginError }}</p>
 
-            <button type="submit" class="btn-submit" :disabled="loginForm.processing">
+            <Button type="submit" variant="primary" class="btn-submit" :disabled="loginForm.processing">
               <LoadingSpinner v-if="loginForm.processing" size="small" />
               <span v-else>Ingresar</span>
-            </button>
+            </Button>
           </form>
         </div>
 
         <!-- Panel Derecho: Información (Sin opción de crear cuenta) -->
         <div class="info-panel">
-          <h2>Sistema de Ingresos</h2>
-          <p>
-            Plataforma exclusiva para la gestión, validación y control de 
-            ingresos académicos en tiempo real. 
-          </p>
-          <p class="info-subtext">
-            Si requiere acceso y no cuenta con credenciales, por favor 
-            comuníquese con el administrador del sistema.
-          </p>
+          <div class="logos-container">
+            <img src="/images/umss-logo.png" alt="Logotipo UMSS" class="umss-logo" />
+            
+            <div class="dev-container">
+              <span class="dev-text">Desarrollado por</span>
+              <img src="/images/texcorp-logo.png" alt="Logotipo Texcorp" class="texcorp-logo" />
+            </div>
+          </div>
         </div>
 
       </div>
@@ -98,6 +97,7 @@ import { useToastStore } from '@/stores/useToastStore'
 import PublicNavbar from '@/components/ui/PublicNavbar.vue'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import Button from '@/components/ui/Button.vue'
 
 const toastStore = useToastStore()
 const showPassword = ref(false)
@@ -259,18 +259,8 @@ function handleLogin() {
 .btn-submit {
     width: 100%;
     margin-top: 10px;
-    padding: 12px;
-    background-color: var(--color-primary, #1d3653);
-    color: #ffffff;
-    border: none;
-    border-radius: 4px;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.2s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    padding: 12px !important;
+    font-size: 14px !important;
 }
 
 .btn-submit:hover:not(:disabled) {
@@ -298,13 +288,44 @@ function handleLogin() {
 .info-panel {
     flex: 1;
     background-color: var(--color-primary, #1d3653);
-    color: #ffffff;
     padding: 50px 40px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    text-align: center;
+}
+
+.logos-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4rem;
+}
+
+.umss-logo {
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+}
+
+.dev-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.dev-text {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.texcorp-logo {
+    width: 100%;
+    max-width: 160px;
+    height: auto;
 }
 
 .info-panel h2 {
@@ -323,7 +344,7 @@ function handleLogin() {
 .info-subtext {
     font-size: 12px !important;
     opacity: 0.8;
-    margin-top: 20px;
+    margin-top: 2x0px;
 }
 
 /* Footer */
