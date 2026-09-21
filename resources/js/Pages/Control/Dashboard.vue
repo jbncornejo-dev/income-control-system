@@ -28,15 +28,15 @@ const props = defineProps({
 
             <!-- Tarjetas de Estadísticas -->
             <div class="stats-grid">
-                <div class="stat-card border-gray">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">Exámenes hoy</span>
                     <span class="stat-value">{{ stats.hoy }}</span>
                 </div>
-                <div class="stat-card border-blue">
+                <div class="stat-card" style="border-top-color: var(--color-primary);">
                     <span class="stat-label">En curso ahora</span>
                     <span class="stat-value">{{ stats.en_curso }}</span>
                 </div>
-                <div class="stat-card border-red">
+                <div class="stat-card" style="border-top-color: var(--color-danger);">
                     <span class="stat-label">Ingresos registrados</span>
                     <span class="stat-value">{{ stats.ingresos }}</span>
                 </div>
@@ -84,33 +84,33 @@ const props = defineProps({
 </template>
 
 <style scoped>
+/* Contenedor principal */
 .panel-container {
     padding: 2rem;
-    background-color: #f3f4f6;
+    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif);
+    background-color: var(--bg-main, #f3f4f6);
     min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .panel-title {
     font-size: 1.5rem;
     font-weight: 700;
-    color: #1f2937;
+    color: var(--color-primary);
     margin-bottom: 1.5rem;
     text-transform: uppercase;
-    font-family: Georgia, serif;
 }
 
 /* Banner CTA */
 .cta-banner {
     display: flex;
     align-items: center;
-    background-color: #1e1b4b; /* Morado oscuro del mockup */
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--text-white, #ffffff);
     padding: 2rem;
     border-radius: 0.5rem;
     text-decoration: none;
     margin-bottom: 2rem;
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
@@ -140,7 +140,7 @@ const props = defineProps({
 .cta-text p {
     margin: 0;
     font-size: 0.875rem;
-    color: #d1d5db;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /* Estadísticas */
@@ -155,20 +155,17 @@ const props = defineProps({
     background: #ffffff;
     border-radius: 0.5rem;
     padding: 1.5rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    border-top: 3px solid transparent;
+    border-top: 4px solid var(--color-primary);
 }
-
-.border-gray { border-top-color: #6b7280; }
-.border-blue { border-top-color: #1e1b4b; }
-.border-red { border-top-color: #b91c1c; }
 
 .stat-label {
     font-size: 0.875rem;
     color: #6b7280;
-    font-weight: 500;
+    font-weight: 600;
+    text-transform: uppercase;
 }
 
 .stat-value {
@@ -176,7 +173,6 @@ const props = defineProps({
     font-weight: 700;
     color: #111827;
     margin-top: 0.25rem;
-    font-family: Georgia, serif;
 }
 
 /* Tabla */
@@ -184,7 +180,7 @@ const props = defineProps({
     background: white;
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 .table-header {
@@ -194,9 +190,9 @@ const props = defineProps({
 
 .table-header h3 {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: #374151;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1f2937;
 }
 
 .data-table {
@@ -208,7 +204,7 @@ const props = defineProps({
 .data-table th {
     background-color: #f9fafb;
     text-align: left;
-    padding: 0.75rem 1.5rem;
+    padding: 0.75rem 1rem;
     font-weight: 600;
     color: #6b7280;
     border-bottom: 1px solid #e5e7eb;
@@ -216,27 +212,27 @@ const props = defineProps({
 }
 
 .data-table td {
-    padding: 1rem 1.5rem;
+    padding: 1rem;
     border-bottom: 1px solid #f3f4f6;
     vertical-align: middle;
 }
 
 .font-bold { font-weight: 600; color: #1f2937; }
 .text-gray { color: #6b7280; }
-.mono { font-family: monospace; }
+.mono { font-family: monospace; font-size: 0.8rem; }
 
 .badge {
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     display: inline-block;
 }
 
 .badge-curso {
-    background-color: #eff6ff;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
+    background-color: #f9fafb;
+    color: var(--color-primary);
+    border: 1px solid var(--color-primary);
 }
 
 .empty-state {
