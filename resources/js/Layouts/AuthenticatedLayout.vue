@@ -46,8 +46,11 @@ function logout() {
     <!-- NAVEGACIÓN LATERAL -->
     <aside class="sidebar">
       <div class="sidebar-header">
-        <h1>CIE</h1>
-        <span>{{ role ? role.toUpperCase() + ' PANEL' : 'PANEL' }}</span>
+        <img src="/images/umss-logo.png" alt="UMSS Logo" class="sidebar-logo" />
+        <div class="brand-text">
+          <h1>CIE</h1>
+          <span>{{ role ? role.toUpperCase() + ' PANEL' : 'PANEL' }}</span>
+        </div>
       </div>
       <nav class="sidebar-nav">
         <ul>
@@ -121,17 +124,33 @@ function logout() {
 .sidebar-header {
   padding: 30px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-.sidebar-header h1 {
+.sidebar-logo {
+  width: 90px;
+  height: auto;
+  margin-bottom: 15px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.3));
+  transition: transform 0.3s ease;
+}
+
+.sidebar-logo:hover {
+  transform: scale(1.05);
+}
+
+.brand-text h1 {
   font-family: 'Orbitron', sans-serif;
   font-size: 32px;
   font-weight: 700;
-  margin-bottom: 5px;
+  margin: 0 0 5px 0;
   letter-spacing: 2px;
 }
 
-.sidebar-header span {
+.brand-text span {
   font-size: 11px;
   font-weight: 400;
   color: var(--text-muted);
