@@ -576,7 +576,7 @@ const claseBotonConfirmacion = computed(() => {
 .actions-cell {
     display: flex;
     gap: 0.4rem;
-    justify-content: center;
+    justify-content: left;
     align-items: center;
     white-space: nowrap;
     min-width: 220px;
