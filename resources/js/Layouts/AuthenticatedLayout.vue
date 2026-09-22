@@ -107,6 +107,10 @@ function logout() {
       <main class="content-area">
         <slot />
       </main>
+
+      <footer class="app-footer">
+        <p>&copy; 2026 CEI. Desarrollado por Texcorp. Todos los derechos reservados.</p>
+      </footer>
     </div>
     <ToastContainer />
   </div>
@@ -305,5 +309,24 @@ function logout() {
   color: #ef4444; /* Rojo para indicar una acción de salida */
   border-color: #fca5a5;
   background-color: #fef2f2;
+}
+
+/* =========================
+   FOOTER
+   ========================= */
+.app-footer {
+  text-align: center;
+  padding: 15px 30px;
+  background-color: #ffffff;
+  color: var(--text-muted, #7b93ab);
+  font-size: 12px;
+  border-top: 1px solid var(--border-light, #d1d5db);
+  flex-shrink: 0;
+}
+
+.app-footer p {
+  margin: 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 </style>
