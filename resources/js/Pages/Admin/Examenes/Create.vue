@@ -321,7 +321,9 @@ function guardar() {
                                     :disabled="form.processing"
                                     @change="toggleGrupo(grupo.id_grupo)"
                                 />
-                                <span class="ambiente-name">{{ grupo.nombre_grupo }}</span>
+                                <span class="ambiente-name">
+                                    {{ grupo.nombre_grupo }}<span v-if="grupo.usuario?.name" class="ambiente-owner"> — {{ grupo.usuario.name }}</span>
+                                </span>
                             </label>
                         </div>
                         <p v-else-if="form.id_asignatura" class="help-text">
@@ -686,6 +688,7 @@ textarea.form-input { resize: vertical; }
 .ambiente-item--ocupado input { cursor: not-allowed; }
 
 .ambiente-name { font-size: 0.875rem; color: #374151; flex: 1; }
+.ambiente-owner { font-size: 0.75rem; color: #9ca3af; font-weight: 400; }
 .ambiente-capacity { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
 
 .ambiente-ocupado-tag {
