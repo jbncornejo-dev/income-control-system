@@ -38,6 +38,12 @@ class DatabaseSeeder extends Seeder
                 'rol' => 'docente',
             ],
             [
+                'name' => 'Docente de Desarrollo 2',
+                'username' => 'docente2',
+                'email' => 'docente2@example.com',
+                'rol' => 'docente',
+            ],
+            [
                 'name' => 'Personal de Control de Desarrollo',
                 'username' => 'control',
                 'email' => 'control@example.com',

@@ -10,53 +10,67 @@ use Illuminate\Database\Seeder;
 class GrupoSeeder extends Seeder
 {
     /**
-     * Crea las combinaciones de grupos posibles para el docente de desarrollo.
+     * Crea los grupos de los docentes de desarrollo.
      *
-     * La clave única (id_asignatura, nombre_grupo, gestion) permite que un mismo
-     * docente tenga varios grupos en una asignatura (A, B, C...), pero impide que
-     * dos docentes compartan la misma sección en la misma gestión.
+     * Cada grupo pertenece a un único docente (clave única asignatura +
+     * nombre_grupo + gestion). El segundo docente comparte asignaturas con el
+     * primero para que el formulario de exámenes muestre "sección — docente"
+     * y se distinga a quién corresponde cada grupo.
      */
     public function run(): void
     {
-        $docente = User::where('email', 'docente@example.com')->first();
-
-        if ($docente === null) {
-            return;
-        }
-
         $gestion = (string) now()->year;
 
-        // Asignaturas que dicta el docente con sus grupos: todas las combinaciones
-        // permitidas, desde una sola sección hasta tres en la misma asignatura.
-        // Se incluyen también las asignaturas de los exámenes de demostración
-        // (ExamenSeeder) para que todos tengan grupos y sean visibles.
-        $combinaciones = [
-            'Cálculo II' => ['A', 'B'],
-            'Física I' => ['A'],
-            'Programación I' => ['A', 'B'],
-            'Álgebra Lineal' => ['A', 'B', 'C'],
-            'Estadística' => ['A'],
-            'Fisiología' => ['A'],
-            'Anatomía Humana' => ['A'],
-            'Redacción Académica' => ['A'],
+        $docentes = User::whereIn('email', ['docente@example.com', 'docente2@example.com'])
+            ->get()
+            ->keyBy('email');
+
+        // Grupos por docente: combinaciones permitidas — desde una sección hasta
+        // tres en la misma asignatura — y en asignaturas compartidas los grupos
+        // del segundo docente son distintos de los del primero.
+        $porDocente = [
+            'docente@example.com' => [
+                'Cálculo II' => ['A', 'B'],
+                'Física I' => ['A'],
+                'Programación I' => ['A', 'B'],
+                'Álgebra Lineal' => ['A', 'B', 'C'],
+                'Estadística' => ['A'],
+                'Fisiología' => ['A'],
+                'Anatomía Humana' => ['A'],
+                'Redacción Académica' => ['A'],
+            ],
+            'docente2@example.com' => [
+                'Cálculo II' => ['C'],
+                'Física I' => ['B'],
+                'Programación I' => ['C'],
+                'Fisiología' => ['B'],
+            ],
         ];
 
-        foreach ($combinaciones as $nombreAsignatura => $grupos) {
-            $asignatura = Asignatura::where('nombre_asignatura', $nombreAsignatura)->first();
+        foreach ($porDocente as $email => $asignaturas) {
+            $docente = $docentes->get($email);
 
-            if ($asignatura === null) {
+            if ($docente === null) {
                 continue;
             }
 
-            foreach ($grupos as $nombreGrupo) {
-                Grupo::firstOrCreate(
-                    [
-                        'id_asignatura' => $asignatura->id_asignatura,
-                        'nombre_grupo' => $nombreGrupo,
-                        'gestion' => $gestion,
-                    ],
-                    ['id_usuario' => $docente->id]
-                );
+            foreach ($asignaturas as $nombreAsignatura => $grupos) {
+                $asignatura = Asignatura::where('nombre_asignatura', $nombreAsignatura)->first();
+
+                if ($asignatura === null) {
+                    continue;
+                }
+
+                foreach ($grupos as $nombreGrupo) {
+                    Grupo::firstOrCreate(
+                        [
+                            'id_asignatura' => $asignatura->id_asignatura,
+                            'nombre_grupo' => $nombreGrupo,
+                            'gestion' => $gestion,
+                        ],
+                        ['id_usuario' => $docente->id]
+                    );
+                }
             }
         }
     }
