@@ -80,6 +80,7 @@ class DatabaseSeeder extends Seeder
             GrupoSeeder::class,
             EstudianteSeeder::class,
             ExamenSeeder::class,
+            InscripcionSeeder::class,
             HabilitacionSeeder::class,
         ]);
     }

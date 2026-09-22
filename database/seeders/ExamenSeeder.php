@@ -111,15 +111,18 @@ class ExamenSeeder extends Seeder
                 'grupos' => ['A', 'B'],
                 'normas_generales' => 'Segundo parcial. Presentación obligatoria de carnet universitario.',
             ],
-            // Exámenes del segundo docente: sobre sus propios grupos (C/B).
+            // Examen compartido de Programación I: el Examen Final lo rinden los
+            // grupos A/B del primer docente y el C del segundo, en el Auditorio
+            // Central. Es el escenario "compartido" que demuestra el listado
+            // (badges por docente, filtro e ícono "Compartidos").
             [
                 'asignatura' => 'Programación I',
-                'tipo' => 'Primer Parcial',
+                'tipo' => 'Examen Final',
                 'dias_desde_hoy' => 1,
                 'hora_inicio' => '16:30',
                 'duracion_minutos' => 120,
-                'ambientes' => ['Laboratorio 1'],
-                'grupos' => ['C'],
+                'ambientes' => ['Laboratorio 1', 'Auditorio Central'],
+                'grupos' => ['A', 'B', 'C'],
                 'normas_generales' => null,
             ],
             [
