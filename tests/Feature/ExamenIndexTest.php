@@ -298,4 +298,48 @@ class ExamenIndexTest extends TestCase
             collect($respuesta->json('periodos'))->pluck('id_periodo')->all()
         );
     }
+
+    public function test_docente_puede_gestionar_un_examen_cuyos_grupos_le_pertenecen(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docente = $this->usuario('docente');
+        $grupoA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docente, $asignatura, 'B');
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
+
+        $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
+
+        $this->assertTrue($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_docente_no_puede_gestionar_un_examen_compartido_con_otro_docente(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente');
+        $grupoPropio = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoAjeno = $this->asignarDocente($otroDocente, $asignatura, 'C');
+        $examen->grupos()->attach([$grupoPropio->id_grupo, $grupoAjeno->id_grupo]);
+
+        $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
+
+        $this->assertFalse($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_administrador_siempre_puede_gestionar(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docenteA = $this->usuario('docente');
+        $docenteB = $this->usuario('docente');
+        $grupoA = $this->asignarDocente($docenteA, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docenteB, $asignatura, 'B');
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertTrue($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
 }

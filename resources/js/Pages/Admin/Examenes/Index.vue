@@ -238,23 +238,26 @@ const claseBotonConfirmacion = computed(() => {
 function construirItemsMenu(examen, { conVer = true } = {}) {
     const esTerminal = examen.estado_actual === 'cancelado' || examen.estado_actual === 'anulado';
     const ventanaFinalizada = examen.estado_horario === 'finalizado';
+    // Editar estructura y cambiar estado solo si el backend lo permite: el admin
+    // siempre; el docente solo en exámenes cuyos grupos le pertenecen por completo.
+    const puedeGestionar = Boolean(examen.puede_gestionar);
     const items = [];
 
-    if (!esTerminal && !ventanaFinalizada) {
+    if (puedeGestionar && !esTerminal && !ventanaFinalizada) {
         items.push({ clave: 'editar', etiqueta: 'Editar', icono: 'editar', accion: () => router.visit(`/examenes/${examen.id_examen}/editar`) });
     }
 
-    if (examen.estado_actual === 'programado') {
+    if (puedeGestionar && examen.estado_actual === 'programado') {
         items.push({ clave: 'cancelar', etiqueta: 'Cancelar', icono: 'cancelar', accion: () => abrirConfirmacion(examen, 'cancelar') });
     }
 
-    if (examen.estado_actual === 'en_curso') {
+    if (puedeGestionar && examen.estado_actual === 'en_curso') {
         items.push({ clave: 'suspender', etiqueta: 'Suspender', icono: 'suspender', accion: () => abrirConfirmacion(examen, 'suspender') });
         items.push({ clave: 'anular', etiqueta: 'Anular', icono: 'anular', accion: () => abrirConfirmacion(examen, 'anular') });
     }
 
     // Suspendido: siempre se puede reanudar; anular solo con la ventana activa.
-    if (examen.estado === 'suspendido') {
+    if (puedeGestionar && examen.estado === 'suspendido') {
         items.push({ clave: 'reanudar', etiqueta: 'Reanudar', icono: 'reanudar', accion: () => abrirConfirmacion(examen, 'reanudar') });
         if (examen.estado_horario === 'en_curso') {
             items.push({ clave: 'anular', etiqueta: 'Anular', icono: 'anular', accion: () => abrirConfirmacion(examen, 'anular') });
