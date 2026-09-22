@@ -41,7 +41,6 @@ function logout() {
 </script>
 
 <template>
-  
   <div class="app-layout">
     <!-- NAVEGACIÓN LATERAL -->
     <aside class="sidebar">
@@ -66,6 +65,9 @@ function logout() {
           </li>
         </ul>
       </nav>
+      <div class="sidebar-footer">
+          <p>&copy; {{ new Date().getFullYear() }} TextCorp.<br>Todos los derechos reservados.</p>
+      </div>
     </aside>
 
     <!-- ÁREA PRINCIPAL -->
@@ -305,5 +307,18 @@ function logout() {
   color: #ef4444; /* Rojo para indicar una acción de salida */
   border-color: #fca5a5;
   background-color: #fef2f2;
+}
+
+.sidebar-footer {
+    margin-top: auto; /* Empuja el contenedor hacia la base del panel */
+    padding: 1.25rem 1rem;
+    text-align: center;
+}
+
+.sidebar-footer p {
+    font-size: 0.75rem; /* Texto pequeño */
+    color: #9ca3af; /* Gris tenue para que no distraiga */
+    line-height: 1.4;
+    margin: 0;
 }
 </style>
