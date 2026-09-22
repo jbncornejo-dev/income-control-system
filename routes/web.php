@@ -151,6 +151,8 @@ Route::middleware('auth')->group(function () {
             '/habilitaciones/{habilitacion}',
             [HabilitacionController::class, 'update']
         )->name('habilitaciones.update');
+        Route::patch('/examenes/{examen}/habilitaciones', [HabilitacionController::class, 'updateBulk'])
+            ->name('habilitaciones.updateBulk');
     });
 
     Route::get('/access-denied', function () {
