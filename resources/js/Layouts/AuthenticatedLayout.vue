@@ -66,7 +66,7 @@ function logout() {
         </ul>
       </nav>
       <div class="sidebar-footer">
-          <p>&copy; {{ new Date().getFullYear() }} TextCorp.<br>Todos los derechos reservados.</p>
+          <p>&copy; {{ new Date().getFullYear() }} TexCorp.<br>Todos los derechos reservados.</p>
       </div>
     </aside>
 
@@ -331,4 +331,18 @@ function logout() {
   font-weight: 500;
   letter-spacing: 0.5px;
 }
+.topbar { background: linear-gradient(115deg, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0) 85%), linear-gradient(90deg, #1d3653 0%, #1d3653 20%, #2a4f7c 55%, #4d77a3 100%); border-bottom: 2px solid var(--color-active, #a12b33); box-shadow: 0 2px 0 rgba(77, 119, 163, 0.35), 0 6px 20px rgba(15, 34, 56, 0.3); }
+.topbar-section { color: rgba(255, 255, 255, 0.8); font-weight: 700; letter-spacing: 0.1em; font-size: 1rem; }
+.topbar-separator { color: rgba(255, 255, 255, 0.55); }
+.topbar-current { color: #ffffff; font-weight: 700; font-size: 1.15rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.topbar-link { color: #ffffff; font-weight: 600; font-size: 1rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); opacity: 0.9; transition: opacity 0.2s ease; }
+.topbar-link:hover { opacity: 1; }
+.user-name { color: #ffffff; font-weight: 700; font-size: 1rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
+.role-badge { background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.45); font-weight: 700; }
+.btn-logout { background: transparent; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.6); transition: background 0.2s ease, border-color 0.2s ease; }
+.btn-logout:hover { background: var(--color-active, #a12b33); border-color: var(--color-active, #a12b33); color: #ffffff; }
+.nav-link { color: rgba(255, 255, 255, 0.75) !important; font-size: 1.1rem !important; font-weight: 600 !important; letter-spacing: 0.02em; transition: color 0.2s ease; }
+.nav-link:hover, .active .nav-link { color: #ffffff !important; }
+.brand-text span { color: rgba(255, 255, 255, 0.75); }
+.sidebar-footer { color: rgba(255, 255, 255, 0.75); padding: 1rem 1.5rem; text-align: center; font-size: 0.8rem; line-height: 1.5; }
 </style>
