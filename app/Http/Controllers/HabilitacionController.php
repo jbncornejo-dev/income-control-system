@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\Habilitacion;
+use App\Models\Inscripcion;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -14,14 +16,12 @@ class HabilitacionController extends Controller
 {
     public function index(Request $request, Examen $examen)
     {
-        // El docente solo accede a las habilitaciones de exámenes cuyos grupos
-        // le pertenezcan por completo: si el examen cubre grupos de varios
-        // docentes lo gestiona el administrador y ningún docente lo ve íntegro.
-        if ($request->user()->rol->nombre_rol === 'docente'
-            && ! $examen->perteneceIntegramenteA($request->user()->id)
-        ) {
-            abort(403);
-        }
+        // Gestión segmentada de habilitaciones:
+        // - El administrador ve a todos los estudiantes del examen.
+        // - El docente ve únicamente a los estudiantes inscritos en sus propios
+        //   grupos (aunque el examen sea compartido con otros docentes, cada
+        //   docente solo gestiona lo suyo).
+        $esDocente = $request->user()->rol->nombre_rol === 'docente';
 
         // 1. Cargamos las relaciones del examen necesarias para la vista
         $examen->load(['asignatura', 'examenesAmbientes.ambiente']);
@@ -30,6 +30,16 @@ class HabilitacionController extends Controller
         $query = Habilitacion::query()
             ->with('estudiante')
             ->where('id_examen', $examen->id_examen);
+
+        if ($esDocente) {
+            $query->whereHas(
+                'estudiante.inscripciones',
+                fn ($subquery) => $subquery->whereIn(
+                    'inscripcion.id_grupo',
+                    $this->gruposDelExamenSegunUsuario($examen, $request->user()->id)
+                )
+            );
+        }
 
         // 3. Calculamos las estadísticas clonando la consulta (evita interferir con la paginación)
         $stats = [
@@ -60,12 +70,25 @@ class HabilitacionController extends Controller
 
     public function update(Request $request, Habilitacion $habilitacion)
     {
-        // Igual criterio que el índice: el docente solo gestiona habilitaciones
-        // de exámenes que le pertenecen por completo.
-        if ($request->user()->rol->nombre_rol === 'docente'
-            && ! $habilitacion->examen->perteneceIntegramenteA($request->user()->id)
-        ) {
-            abort(403);
+        // Gestión segmentada: el docente solo gestiona habilitaciones de
+        // estudiantes inscritos en sus propios grupos del examen.
+        if ($request->user()->rol->nombre_rol === 'docente') {
+            $habilitacion->loadMissing('examen');
+
+            $puedeGestionarla = Inscripcion::query()
+                ->where('id_estudiante', $habilitacion->id_estudiante)
+                ->whereIn(
+                    'id_grupo',
+                    $this->gruposDelExamenSegunUsuario(
+                        $habilitacion->examen,
+                        $request->user()->id
+                    )
+                )
+                ->exists();
+
+            if (! $puedeGestionarla) {
+                abort(403);
+            }
         }
 
         $datos = $request->validate([
@@ -130,14 +153,6 @@ class HabilitacionController extends Controller
 
     public function store(Request $request, Examen $examen)
     {
-        // Igual criterio que el índice: el docente solo puede agregar
-        // estudiantes a exámenes cuyos grupos le pertenecen por completo.
-        if ($request->user()->rol->nombre_rol === 'docente'
-            && ! $examen->perteneceIntegramenteA($request->user()->id)
-        ) {
-            abort(403);
-        }
-
         $datos = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
             'student_ids.*' => [
@@ -147,6 +162,25 @@ class HabilitacionController extends Controller
                 'exists:estudiante,id_estudiante',
             ],
         ]);
+
+        // Gestión segmentada: el docente solo puede asociar estudiantes
+        // inscritos en sus propios grupos del examen.
+        if ($request->user()->rol->nombre_rol === 'docente') {
+            $solicitados = array_unique($datos['student_ids']);
+
+            $pertenecen = Inscripcion::query()
+                ->whereIn('id_estudiante', $solicitados)
+                ->whereIn(
+                    'id_grupo',
+                    $this->gruposDelExamenSegunUsuario($examen, $request->user()->id)
+                )
+                ->distinct()
+                ->count('id_estudiante');
+
+            if ($pertenecen !== count($solicitados)) {
+                abort(403);
+            }
+        }
 
         $resultado = DB::transaction(function () use ($datos, $examen) {
             $creados = 0;
@@ -175,5 +209,19 @@ class HabilitacionController extends Controller
             'success',
             "Asociación completada. Nuevos: {$resultado['creados']}, ya existentes: {$resultado['existentes']}."
         );
+    }
+
+    /**
+     * Grupos del examen que pertenecen al usuario: intersección entre los
+     * grupos que rinden el examen y los que dicta el docente. Es la base de
+     * la gestión segmentada de habilitaciones.
+     *
+     * @return Collection<int, int>
+     */
+    private function gruposDelExamenSegunUsuario(Examen $examen, int $idUsuario)
+    {
+        return $examen->grupos()
+            ->where('grupo.id_usuario', $idUsuario)
+            ->pluck('grupo.id_grupo');
     }
 }

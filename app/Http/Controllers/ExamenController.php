@@ -111,6 +111,14 @@ class ExamenController extends Controller
                         ->all());
                 }
 
+                // ¿El usuario puede gestionar (editar/cambiar estado) el examen?
+                // El administrador siempre; el docente solo si todos los grupos
+                // del examen le pertenecen. Lo usa el front para no ofrecer
+                // acciones que el backend rechazaría con 403.
+                $examen->setAttribute('puede_gestionar', $esDocente
+                    ? $this->docenteGestionaExamen($grupos, auth()->id())
+                    : true);
+
                 // Se reemplaza la relación (colección de modelos) por la
                 // proyección plana de nombres de grupo que consume el listado.
                 $examen->setRelation('grupos', $grupos
@@ -851,6 +859,19 @@ class ExamenController extends Controller
                 ->whereRaw("{$fin} <= CAST(? AS timestamp)", [$ahora]),
             default => null,
         };
+    }
+
+    /**
+     * ¿El docente es el responsable completo del examen? Es la condición para
+     * que pueda editar su estructura o cambiar su estado: si el examen cubre
+     * grupos de varios docentes, lo gestiona el administrador.
+     *
+     * @param  Collection<int, Grupo>  $grupos
+     */
+    private function docenteGestionaExamen(Collection $grupos, int $idUsuario): bool
+    {
+        return $grupos->isNotEmpty()
+            && $grupos->every(fn (Grupo $grupo) => (int) $grupo->id_usuario === $idUsuario);
     }
 
     /**
