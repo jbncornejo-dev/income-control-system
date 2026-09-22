@@ -28,11 +28,17 @@ class GrupoSeeder extends Seeder
 
         // Asignaturas que dicta el docente con sus grupos: todas las combinaciones
         // permitidas, desde una sola sección hasta tres en la misma asignatura.
+        // Se incluyen también las asignaturas de los exámenes de demostración
+        // (ExamenSeeder) para que todos tengan grupos y sean visibles.
         $combinaciones = [
             'Cálculo II' => ['A', 'B'],
             'Física I' => ['A'],
             'Programación I' => ['A', 'B'],
             'Álgebra Lineal' => ['A', 'B', 'C'],
+            'Estadística' => ['A'],
+            'Fisiología' => ['A'],
+            'Anatomía Humana' => ['A'],
+            'Redacción Académica' => ['A'],
         ];
 
         foreach ($combinaciones as $nombreAsignatura => $grupos) {

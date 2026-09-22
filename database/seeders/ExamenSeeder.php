@@ -6,6 +6,7 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Grupo;
 use App\Models\Periodo;
 use Illuminate\Database\Seeder;
 
@@ -92,6 +93,11 @@ class ExamenSeeder extends Seeder
             ],
         ];
 
+        // Grupos por asignatura: cada examen seedeado se vincula a todos los
+        // grupos de su asignatura para que sea visible en el listado y en el
+        // dashboard del docente (el acceso se filtra por el pivot examen_grupo).
+        $gruposPorAsignatura = Grupo::all()->groupBy('id_asignatura');
+
         $gestion = (string) now()->year;
 
         foreach ($examenes as $datos) {
@@ -132,6 +138,14 @@ class ExamenSeeder extends Seeder
                     'id_examen' => $examen->id_examen,
                     'id_ambiente' => $ambientes[$nombreAmbiente],
                 ]);
+            }
+
+            // Vincula los grupos de la asignatura (sync idempotente): sin esto
+            // el examen queda fuera del filtro por grupos que usa el listado.
+            $grupos = $gruposPorAsignatura->get($examen->id_asignatura, collect());
+
+            if ($grupos->isNotEmpty()) {
+                $examen->grupos()->sync($grupos->pluck('id_grupo')->all());
             }
         }
     }
