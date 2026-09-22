@@ -41,7 +41,6 @@ function logout() {
 </script>
 
 <template>
-  
   <div class="app-layout">
     <!-- NAVEGACIÓN LATERAL -->
     <aside class="sidebar">
@@ -66,6 +65,9 @@ function logout() {
           </li>
         </ul>
       </nav>
+      <div class="sidebar-footer">
+          <p>&copy; {{ new Date().getFullYear() }} TextCorp.<br>Todos los derechos reservados.</p>
+      </div>
     </aside>
 
     <!-- ÁREA PRINCIPAL -->
