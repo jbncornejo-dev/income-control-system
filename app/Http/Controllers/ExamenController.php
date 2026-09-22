@@ -16,6 +16,7 @@ use App\Models\Grupo;
 use App\Models\Habilitacion;
 use App\Models\Inscripcion;
 use App\Models\Periodo;
+use App\Models\TipoExamen;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
@@ -57,6 +58,10 @@ class ExamenController extends Controller
 
         if (isset($filtros['id_periodo'])) {
             $query->where('id_periodo', $filtros['id_periodo']);
+        }
+
+        if (isset($filtros['id_tipo_examen'])) {
+            $query->where('id_tipo_examen', $filtros['id_tipo_examen']);
         }
 
         if (isset($filtros['hora_inicio'])) {
@@ -133,19 +138,22 @@ class ExamenController extends Controller
         $filtrosVista = [
             'asignatura' => $filtros['asignatura'] ?? null,
             'id_periodo' => $filtros['id_periodo'] ?? null,
+            'id_tipo_examen' => $filtros['id_tipo_examen'] ?? null,
             'fecha' => $filtros['fecha'] ?? null,
             'hora_inicio' => $filtros['hora_inicio'] ?? null,
             'estado' => $filtros['estado'] ?? null,
         ];
 
-        // Periodos disponibles para el filtro del listado.
+        // Periodos y tipos de examen disponibles para el filtro del listado.
         $periodos = $this->periodosDisponibles();
+        $tipos = $this->tiposDisponibles();
 
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
                 'examenes' => $examenes,
                 'filtros' => $filtrosVista,
                 'periodos' => $periodos,
+                'tipos' => $tipos,
                 'conteos' => $conteos,
             ]);
         }
@@ -155,6 +163,7 @@ class ExamenController extends Controller
             'examenes' => $examenes,
             'filters' => $filtrosVista,
             'periodos' => $periodos,
+            'tipos' => $tipos,
             'conteos' => $conteos,
             // Agregamos esta línea para enviar la confirmación a Vue
             'esAdmin' => auth()->user()->rol->nombre_rol === 'administrador',
@@ -872,6 +881,20 @@ class ExamenController extends Controller
     {
         return $grupos->isNotEmpty()
             && $grupos->every(fn (Grupo $grupo) => (int) $grupo->id_usuario === $idUsuario);
+    }
+
+    /**
+     * Tipos de examen disponibles para el filtro del listado, ordenados por
+     * nombre. Se incluyen también los inactivos para poder filtrar exámenes
+     * históricos que conservan tipos ya desactivados del catálogo.
+     *
+     * @return Collection<int, TipoExamen>
+     */
+    private function tiposDisponibles()
+    {
+        return TipoExamen::query()
+            ->orderBy('nombre')
+            ->get(['id_tipo_examen', 'nombre', 'codigo']);
     }
 
     /**

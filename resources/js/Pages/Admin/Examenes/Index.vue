@@ -12,15 +12,18 @@ const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
     filters: Object,
     periodos: Array,
+    tipos: Array,
     conteos: Object,
     esAdmin: Boolean
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
-// tolerante a acentos y mayúsculas), periodo, fecha exacta, hora y estado.
-// La búsqueda se dispara con el botón Buscar; así no se traba la página mientras se escribe.
+// tolerante a acentos y mayúsculas), periodo, tipo de examen, fecha exacta,
+// hora y estado. La búsqueda se dispara con el botón Buscar; así no se traba
+// la página mientras se escribe.
 const busqueda = ref(props.filters?.asignatura ?? '');
 const idPeriodo = ref(props.filters?.id_periodo ?? '');
+const idTipo = ref(props.filters?.id_tipo_examen ?? '');
 const fecha = ref(props.filters?.fecha ?? '');
 const horaInicio = ref(props.filters?.hora_inicio ?? '');
 const estado = ref(props.filters?.estado ?? '');
@@ -28,7 +31,7 @@ const cargando = ref(false);
 
 // Si llegan filtros desde la URL, el estado vacío lo indica con otro mensaje.
 const hayFiltrosActivos = computed(() =>
-    !!(props.filters?.asignatura || props.filters?.id_periodo || props.filters?.fecha || props.filters?.hora_inicio || props.filters?.estado)
+    !!(props.filters?.asignatura || props.filters?.id_periodo || props.filters?.id_tipo_examen || props.filters?.fecha || props.filters?.hora_inicio || props.filters?.estado)
 );
 
 // Pestañas de estado: atajos de filtro sobre la misma lista (no vistas
@@ -62,6 +65,7 @@ function seleccionarChip(key) {
 watch(() => props.filters, (filtros) => {
     busqueda.value = filtros?.asignatura ?? '';
     idPeriodo.value = filtros?.id_periodo ?? '';
+    idTipo.value = filtros?.id_tipo_examen ?? '';
     fecha.value = filtros?.fecha ?? '';
     horaInicio.value = filtros?.hora_inicio ?? '';
     estado.value = filtros?.estado ?? '';
@@ -83,6 +87,7 @@ function busquedaParams() {
     return {
         asignatura: busqueda.value.trim() || undefined,
         id_periodo: idPeriodo.value || undefined,
+        id_tipo_examen: idTipo.value || undefined,
         fecha: fecha.value || undefined,
         hora_inicio: horaInicio.value || undefined,
         estado: estado.value || undefined,
@@ -101,6 +106,7 @@ function buscar() {
 function limpiar() {
     busqueda.value = '';
     idPeriodo.value = '';
+    idTipo.value = '';
     fecha.value = '';
     horaInicio.value = '';
     estado.value = '';
@@ -438,6 +444,15 @@ onBeforeUnmount(() => {
                         </select>
                     </label>
                     <label class="filter-field">
+                        <span class="filter-label">Tipo</span>
+                        <select v-model="idTipo" class="filter-input" :disabled="cargando">
+                            <option value="">Todos</option>
+                            <option v-for="tipo in tipos" :key="tipo.id_tipo_examen" :value="String(tipo.id_tipo_examen)" :title="tipo.codigo">
+                                {{ tipo.nombre }}
+                            </option>
+                        </select>
+                    </label>
+                    <label class="filter-field">
                         <span class="filter-label">Fecha</span>
                         <input v-model="fecha" type="date" class="filter-input" :disabled="cargando" />
                     </label>
@@ -454,6 +469,7 @@ onBeforeUnmount(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
+                            <th>TIPO</th>
                             <th>PERIODO</th>
                             <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
@@ -478,6 +494,10 @@ onBeforeUnmount(() => {
                         >
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
                             <td class="col-asignatura" data-label="Asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
+                            <td data-label="Tipo">
+                                <span v-if="examen.tipo">{{ examen.tipo.nombre }}</span>
+                                <span v-else class="text-muted">Sin tipo</span>
+                            </td>
                             <td data-label="Periodo" :title="examen.periodo?.nombre || ''">{{ examen.periodo_codigo || '—' }}</td>
                             <td v-if="esAdmin" data-label="Docente">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
@@ -525,7 +545,7 @@ onBeforeUnmount(() => {
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0" class="empty-row">
-                            <td :colspan="esAdmin ? 9 : 8" class="empty-state">
+                            <td :colspan="esAdmin ? 10 : 9" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>
