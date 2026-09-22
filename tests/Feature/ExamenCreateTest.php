@@ -67,6 +67,9 @@ class ExamenCreateTest extends TestCase
             ->where('asignaturas.0.nombre_asignatura', 'Cálculo I')
             ->where('asignaturas.0.grupos.0.id_grupo', $grupo->id_grupo)
             ->where('asignaturas.0.grupos.0.nombre_grupo', 'A')
+            // El grupo expone el docente dueño: el admin elige los grupos sabiendo a quién corresponden.
+            ->where('asignaturas.0.grupos.0.id_usuario', $grupo->id_usuario)
+            ->where('asignaturas.0.grupos.0.usuario.name', 'Docente A')
             ->where('ambientes.0.id_ambiente', $ambiente->id_ambiente)
             ->where('ambientes.0.nombre_ambiente', 'Aula 101')
             ->where('periodos.0.id_periodo', $periodo->id_periodo)

@@ -169,6 +169,9 @@ class ExamenController extends Controller
             })
             ->with(['grupos' => function ($query) use ($esDocente) {
                 $query->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']);
+                // Docente dueño de cada grupo: el admin elige grupos informado
+                // (responsable del examen = dueños de los grupos seleccionados).
+                $query->with(['usuario:id,name']);
 
                 if ($esDocente) {
                     $query->where('id_usuario', auth()->id());
@@ -220,6 +223,9 @@ class ExamenController extends Controller
             })
             ->with(['grupos' => function ($query) use ($esDocente) {
                 $query->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']);
+                // Docente dueño de cada grupo: el admin elige grupos informado
+                // (responsable del examen = dueños de los grupos seleccionados).
+                $query->with(['usuario:id,name']);
 
                 if ($esDocente) {
                     $query->where('id_usuario', auth()->id());
