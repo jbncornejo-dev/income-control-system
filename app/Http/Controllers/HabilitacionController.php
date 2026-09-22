@@ -16,7 +16,12 @@ class HabilitacionController extends Controller
 {
     public function index(Request $request, Examen $examen)
     {
-        $this->autorizarExamen($request, $examen);
+        // El docente solo accede a las habilitaciones de exámenes que cubren alguno de sus grupos.
+        if ($request->user()->rol->nombre_rol === 'docente'
+            && ! $examen->grupos()->where('grupo.id_usuario', $request->user()->id)->exists()
+        ) {
+            abort(403);
+        }
 
         $filtros = $request->validate([
             'estado' => ['nullable', Rule::in(['todos', 'habilitados', 'inhabilitados'])],

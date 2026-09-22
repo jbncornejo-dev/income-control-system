@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Models\Examen;
-use App\Models\Grupo;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,15 +16,12 @@ class CambiarEstadoExamenRequest extends FormRequest
             return true;
         }
 
-        // El docente solo puede cambiar el estado de exámenes de asignaturas que dicta.
+        // El docente solo puede cambiar el estado de exámenes que cubren alguno de sus grupos.
         if ($rol === 'docente') {
             $examen = $this->route('examen');
 
             return $examen instanceof Examen
-                && Grupo::query()
-                    ->where('id_usuario', $this->user()->id)
-                    ->where('id_asignatura', $examen->id_asignatura)
-                    ->exists();
+                && $examen->grupos()->where('grupo.id_usuario', $this->user()->id)->exists();
         }
 
         return false;

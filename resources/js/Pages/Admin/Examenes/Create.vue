@@ -36,7 +36,38 @@ const form = useForm({
     duracion_minutos: props.examen?.duracion_minutos ?? 90,
     normas_generales: props.examen?.normas_generales ?? '',
     id_ambientes: (props.examen?.examenes_ambientes ?? []).map((ea) => ea.id_ambiente),
+    id_grupos: (props.examen?.grupos ?? []).map((g) => g.id_grupo),
 });
+
+// Grupos disponibles para la asignatura elegida. Cada asignatura llega del
+// backend con sus grupos (para el docente, solo los suyos).
+const gruposAsignatura = computed(() => {
+    const asignatura = props.asignaturas.find((a) => a.id_asignatura === form.id_asignatura);
+    return asignatura?.grupos ?? [];
+});
+
+// Al elegir otra asignatura se preseleccionan todos sus grupos (el docente
+// desmarca los que rendirán un examen aparte). En edición la elección inicial
+// conserva los grupos ya asociados al examen.
+watch(
+    () => form.id_asignatura,
+    (valor, anterior) => {
+        if (!valor || valor === anterior) return;
+
+        const asignatura = props.asignaturas.find((a) => a.id_asignatura === valor);
+        form.id_grupos = (asignatura?.grupos ?? []).map((g) => g.id_grupo);
+        form.clearErrors('id_grupos');
+    }
+);
+
+function toggleGrupo(idGrupo) {
+    if (form.id_grupos.includes(idGrupo)) {
+        form.id_grupos = form.id_grupos.filter((id) => id !== idGrupo);
+    } else {
+        form.id_grupos = [...form.id_grupos, idGrupo];
+    }
+    form.clearErrors('id_grupos');
+}
 
 // Sugiere el periodo según la fecha del examen: primero el periodo cuyo rango
 // contiene la fecha y, si no, el de la misma gestión (año). Si el usuario ya
@@ -220,7 +251,7 @@ function guardar() {
                         : 'Programa una nueva evaluación asignándole asignatura, periodo, horario y ambientes.' }}
                 </p>
                 <p v-if="soloNormas" class="form-aviso">
-                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, grupos, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
@@ -242,6 +273,41 @@ function guardar() {
                         </select>
                         <p v-if="form.errors.id_asignatura" class="error-msg">{{ form.errors.id_asignatura }}</p>
                         <p v-if="asignaturas.length === 0" class="help-text">No hay asignaturas registradas. Crea una desde el módulo Asignaturas.</p>
+                    </div>
+
+                    <!-- Grupos que rinden el examen -->
+                    <div v-if="!soloNormas" class="form-group">
+                        <span class="form-label">Grupos que rinden el examen <span class="required">*</span></span>
+                        <p class="help-text">
+                            Marca los grupos de la asignatura que presentan este examen. Si tus grupos avanzan
+                            a distinto ritmo, crea exámenes separados: cada grupo (o conjunto de grupos al mismo
+                            ritmo) con su propia fecha.
+                        </p>
+
+                        <div v-if="gruposAsignatura.length > 0" class="ambiente-grid">
+                            <label
+                                v-for="grupo in gruposAsignatura"
+                                :key="grupo.id_grupo"
+                                class="ambiente-item"
+                                :class="{ 'ambiente-item--selected': form.id_grupos.includes(grupo.id_grupo) }"
+                            >
+                                <input
+                                    type="checkbox"
+                                    :checked="form.id_grupos.includes(grupo.id_grupo)"
+                                    :value="grupo.id_grupo"
+                                    :disabled="form.processing"
+                                    @change="toggleGrupo(grupo.id_grupo)"
+                                />
+                                <span class="ambiente-name">{{ grupo.nombre_grupo }}</span>
+                            </label>
+                        </div>
+                        <p v-else-if="form.id_asignatura" class="help-text">
+                            No hay grupos registrados para esta asignatura.
+                        </p>
+                        <p v-else class="help-text">
+                            Selecciona primero una asignatura para marcar sus grupos.
+                        </p>
+                        <p v-if="form.errors.id_grupos" class="error-msg">{{ form.errors.id_grupos }}</p>
                     </div>
 
                     <!-- Periodo -->

@@ -7,6 +7,7 @@ use App\Models\Examen;
 use App\Models\Grupo;
 use App\Models\Rol;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -39,7 +40,7 @@ class DashboardDocenteTest extends TestCase
     {
         // Caso 1 — Docente con próximos exámenes
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Matemáticas']);
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $asignatura->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
@@ -53,6 +54,7 @@ class DashboardDocenteTest extends TestCase
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
         ]);
+        $examenFuturo->grupos()->attach($grupo->id_grupo);
 
         $this->actingAs($this->docenteUser)
             ->get(route('docente.dashboard'))
@@ -72,7 +74,7 @@ class DashboardDocenteTest extends TestCase
     {
         // Caso 2 — Exclusividad por docente
         $asignaturaDoc1 = Asignatura::create(['nombre_asignatura' => 'Física']);
-        Grupo::create([
+        $grupoDoc1 = Grupo::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
@@ -85,9 +87,10 @@ class DashboardDocenteTest extends TestCase
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
         ]);
+        $examenDoc1->grupos()->attach($grupoDoc1->id_grupo);
 
         $asignaturaDoc2 = Asignatura::create(['nombre_asignatura' => 'Química']);
-        Grupo::create([
+        $grupoDoc2 = Grupo::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
             'id_usuario' => $this->docenteUser2->id,
             'gestion' => '2026',
@@ -100,6 +103,7 @@ class DashboardDocenteTest extends TestCase
             'hora_inicio' => '11:00:00',
             'duracion_minutos' => 90,
         ]);
+        $examenDoc2->grupos()->attach($grupoDoc2->id_grupo);
 
         $this->actingAs($this->docenteUser)
             ->get(route('docente.dashboard'))
@@ -115,12 +119,12 @@ class DashboardDocenteTest extends TestCase
     /** @test */
     public function it_excludes_past_exams()
     {
-        \Carbon\Carbon::setTestNow('2026-09-22 12:00:00');
+        Carbon::setTestNow('2026-09-22 12:00:00');
 
         // Caso 3 — Exámenes pasados
         // Caso 7 — Fecha y hora
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Biología']);
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $asignatura->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
@@ -153,6 +157,7 @@ class DashboardDocenteTest extends TestCase
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
         ]);
+        $futureExamen->grupos()->attach($grupo->id_grupo);
 
         $this->actingAs($this->docenteUser)
             ->get(route('docente.dashboard'))
@@ -286,34 +291,36 @@ class DashboardDocenteTest extends TestCase
         // Caso 10 — Manipulación de parámetros
         // Endpoint receives no parameters, we should verify that adding ?user_id=X doesn't change the outcome
         $asignaturaDoc1 = Asignatura::create(['nombre_asignatura' => 'Arte']);
-        Grupo::create([
+        $grupoDoc1 = Grupo::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
             'id_usuario' => $this->docenteUser->id,
             'gestion' => '2026',
             'nombre_grupo' => 'G1',
         ]);
-        Examen::create([
+        $examenDoc1 = Examen::create([
             'id_asignatura' => $asignaturaDoc1->id_asignatura,
             'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
         ]);
+        $examenDoc1->grupos()->attach($grupoDoc1->id_grupo);
 
         $asignaturaDoc2 = Asignatura::create(['nombre_asignatura' => 'Música']);
-        Grupo::create([
+        $grupoDoc2 = Grupo::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
             'id_usuario' => $this->docenteUser2->id,
             'gestion' => '2026',
             'nombre_grupo' => 'G2',
         ]);
-        Examen::create([
+        $examenDoc2 = Examen::create([
             'id_asignatura' => $asignaturaDoc2->id_asignatura,
             'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(3)->toDateString(),
             'hora_inicio' => '11:00:00',
             'duracion_minutos' => 90,
         ]);
+        $examenDoc2->grupos()->attach($grupoDoc2->id_grupo);
 
         // Attempt to pass docenteUser2's ID as a parameter to see if it leaks their exams
         $this->actingAs($this->docenteUser)

@@ -13,6 +13,8 @@ use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
+use App\Models\Habilitacion;
+use App\Models\Inscripcion;
 use App\Models\Periodo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -32,8 +34,8 @@ class ExamenController extends Controller
         $query = Examen::query();
 
         if ($esDocente) {
-            // El docente solo ve los exámenes de las asignaturas que dicta (sus grupos).
-            $query->whereHas('asignatura.grupos', function ($subquery) {
+            // El docente solo ve los exámenes que cubren al menos uno de sus grupos.
+            $query->whereHas('grupos', function ($subquery) {
                 $subquery->where('grupo.id_usuario', auth()->id());
             });
         }
@@ -82,18 +84,14 @@ class ExamenController extends Controller
             'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
             'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'tipo', 'numero']),
             'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
+            // Grupos que efectivamente rinden el examen (pivot examen_grupo).
+            'grupos' => fn ($subquery) => $subquery->select(['grupo.id_grupo', 'grupo.id_asignatura', 'grupo.id_usuario', 'grupo.nombre_grupo']),
         ]);
 
-        if ($esDocente) {
-            // Contexto: solo se cargan los grupos del docente en cada asignatura.
-            $query->with(['asignatura.grupos' => fn ($subquery) => $subquery
-                ->where('id_usuario', auth()->id())
-                ->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo'])]);
-        } else {
-            // Contexto para el administrador: grupos y docentes de cada asignatura.
+        if (! $esDocente) {
+            // Contexto para el administrador: docentes de cada grupo del examen.
             $query->with([
-                'asignatura.grupos' => fn ($subquery) => $subquery->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']),
-                'asignatura.grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
+                'grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
             ]);
         }
 
@@ -101,14 +99,7 @@ class ExamenController extends Controller
             ->paginate(15)
             ->appends($filtros)
             ->through(function (Examen $examen) use ($esDocente) {
-                $grupos = $examen->asignatura?->grupos ?? collect();
-
-                // Nombres de grupos como array plano, sin duplicados.
-                $examen->setAttribute('grupos', $grupos
-                    ->pluck('nombre_grupo')
-                    ->unique()
-                    ->values()
-                    ->all());
+                $grupos = $examen->grupos ?? collect();
 
                 if (! $esDocente) {
                     $examen->setAttribute('docentes', $grupos
@@ -118,9 +109,14 @@ class ExamenController extends Controller
                         ->values()
                         ->all());
                 }
+
+                // Se reemplaza la relación (colección de modelos) por la
+                // proyección plana de nombres de grupo que consume el listado.
+                $examen->setRelation('grupos', $grupos
+                    ->pluck('nombre_grupo')
+                    ->unique()
+                    ->values());
                 $examen->setAttribute('examenes_ambientes', $examen->examenesAmbientes);
-                // El detalle de grupos ya se expone en "grupos"; no se repite anidado.
-                $examen->asignatura?->makeHidden('grupos');
 
                 return $examen;
             });
@@ -160,7 +156,9 @@ class ExamenController extends Controller
     {
         $esDocente = auth()->user()->rol->nombre_rol === 'docente';
 
-        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        // El docente solo ve (y puede elegir) las asignaturas que dicta y, dentro
+        // de cada una, únicamente sus propios grupos. El administrador ve todas
+        // las asignaturas con todos sus grupos.
         $asignaturas = Asignatura::query()
             ->orderBy('nombre_asignatura')
             ->when($esDocente, function ($query) {
@@ -168,6 +166,13 @@ class ExamenController extends Controller
                     $subquery->where('id_usuario', auth()->id());
                 });
             })
+            ->with(['grupos' => function ($query) use ($esDocente) {
+                $query->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']);
+
+                if ($esDocente) {
+                    $query->where('id_usuario', auth()->id());
+                }
+            }])
             ->get(['id_asignatura', 'nombre_asignatura']);
 
         $ambientes = Ambiente::query()
@@ -188,12 +193,9 @@ class ExamenController extends Controller
         $usuario = auth()->user();
         $esDocente = $usuario->rol->nombre_rol === 'docente';
 
-        // El docente solo puede abrir la edición de exámenes de las asignaturas que dicta.
+        // El docente solo puede abrir la edición de exámenes que cubren alguno de sus grupos.
         if ($esDocente
-            && ! Grupo::query()
-                ->where('id_usuario', $usuario->id)
-                ->where('id_asignatura', $examen->id_asignatura)
-                ->exists()
+            && ! $examen->grupos()->where('grupo.id_usuario', $usuario->id)->exists()
         ) {
             abort(403);
         }
@@ -206,7 +208,8 @@ class ExamenController extends Controller
             abort(403);
         }
 
-        // El docente solo ve (y puede elegir) las asignaturas que dicta.
+        // El docente solo ve (y puede elegir) las asignaturas que dicta y, dentro
+        // de cada una, únicamente sus propios grupos.
         $asignaturas = Asignatura::query()
             ->orderBy('nombre_asignatura')
             ->when($esDocente, function ($query) {
@@ -214,6 +217,13 @@ class ExamenController extends Controller
                     $subquery->where('id_usuario', auth()->id());
                 });
             })
+            ->with(['grupos' => function ($query) use ($esDocente) {
+                $query->select(['id_grupo', 'id_asignatura', 'id_usuario', 'nombre_grupo']);
+
+                if ($esDocente) {
+                    $query->where('id_usuario', auth()->id());
+                }
+            }])
             ->get(['id_asignatura', 'nombre_asignatura']);
 
         $ambientes = Ambiente::query()
@@ -222,7 +232,15 @@ class ExamenController extends Controller
 
         $periodos = $this->periodosDisponibles();
 
-        $examen->load(['examenesAmbientes:id_examen_ambiente,id_examen,id_ambiente']);
+        $examen->load([
+            'examenesAmbientes:id_examen_ambiente,id_examen,id_ambiente',
+            'grupos' => fn ($query) => $query->select([
+                'grupo.id_grupo',
+                'grupo.id_asignatura',
+                'grupo.id_usuario',
+                'grupo.nombre_grupo',
+            ]),
+        ]);
 
         return Inertia::render('Admin/Examenes/Create', [
             'examen' => $examen,
@@ -280,9 +298,10 @@ class ExamenController extends Controller
     {
         $datos = $request->validated();
 
-        // Orden determinista de ambientes: reduce el riesgo de deadlock entre
-        // altas concurrentes que bloquean las mismas filas en distinto orden.
+        // Orden determinista de ambientes y grupos: reduce el riesgo de deadlock
+        // entre altas concurrentes que bloquean las mismas filas en distinto orden.
         sort($datos['id_ambientes']);
+        sort($datos['id_grupos']);
 
         try {
             DB::transaction(function () use ($datos) {
@@ -293,9 +312,23 @@ class ExamenController extends Controller
                     ->lockForUpdate()
                     ->get();
 
+                // Serializa altas que usan los mismos grupos: un grupo no puede
+                // rendir dos exámenes solapados en el tiempo en el mismo periodo.
+                Grupo::query()
+                    ->whereIn('id_grupo', $datos['id_grupos'])
+                    ->orderBy('id_grupo')
+                    ->lockForUpdate()
+                    ->get();
+
                 if ($this->hayConflictoDeAmbiente($datos, $datos['id_ambientes'])) {
                     throw ValidationException::withMessages([
                         'id_ambientes' => 'Uno o más ambientes ya están ocupados durante ese horario.',
+                    ]);
+                }
+
+                if ($this->hayConflictoDeGrupo($datos, $datos['id_grupos'])) {
+                    throw ValidationException::withMessages([
+                        'id_grupos' => 'Uno o más grupos ya tienen un examen en ese horario.',
                     ]);
                 }
 
@@ -308,18 +341,24 @@ class ExamenController extends Controller
                     'normas_generales' => $datos['normas_generales'] ?? null,
                 ]);
 
+                $examen->grupos()->attach($datos['id_grupos']);
+
                 foreach ($datos['id_ambientes'] as $idAmbiente) {
                     ExamenAmbiente::create([
                         'id_examen' => $examen->id_examen,
                         'id_ambiente' => $idAmbiente,
                     ]);
                 }
+
+                // Las habilitaciones se derivan de los grupos del examen: se
+                // habilitan automáticamente los estudiantes inscritos en ellos.
+                $this->sincronizarHabilitacionesPorGrupos($examen);
             });
         } catch (QueryException $e) {
-            // Deadlock entre registros simultáneos que usan los mismos ambientes.
+            // Deadlock entre registros simultáneos que usan los mismos ambientes o grupos.
             if ($e->getCode() === '40P01') {
                 return back()->withErrors([
-                    'id_ambientes' => 'Se detectó otro registro simultáneo en el mismo ambiente. Inténtalo de nuevo.',
+                    'id_ambientes' => 'Se detectó otro registro simultáneo en el mismo ambiente o grupo. Inténtalo de nuevo.',
                 ])->withInput();
             }
 
@@ -350,9 +389,9 @@ class ExamenController extends Controller
 
         // Mientras la ventana de ingreso está activa (en curso, incluido
         // suspendido) solo se pueden actualizar las normas generales: fecha,
-        // hora, duración, ambientes, asignatura y periodo definen la ventana y
-        // el ingreso, por lo que quedan congelados.
-        $camposEstructurales = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
+        // hora, duración, ambientes, grupos, asignatura y periodo definen la
+        // ventana y el ingreso, por lo que quedan congelados.
+        $camposEstructurales = ['id_asignatura', 'id_periodo', 'id_grupos', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
 
         if ($horario === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
             throw ValidationException::withMessages([
@@ -380,14 +419,27 @@ class ExamenController extends Controller
                     ? $datos['id_ambientes']
                     : $examen->examenesAmbientes()->pluck('id_ambiente')->all();
 
+                $idGrupos = array_key_exists('id_grupos', $datos)
+                    ? $datos['id_grupos']
+                    : $examen->grupos()->pluck('grupo.id_grupo')->all();
+
                 // Orden determinista: reduce el riesgo de deadlock entre ediciones
                 // concurrentes que bloquean las mismas filas en distinto orden.
                 sort($idAmbientes);
+                sort($idGrupos);
 
-                // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
+                // Serializa ediciones que utilizan los mismos ambientes para evitar solapamientos concurrentes.
                 Ambiente::query()
                     ->whereIn('id_ambiente', $idAmbientes)
                     ->orderBy('id_ambiente')
+                    ->lockForUpdate()
+                    ->get();
+
+                // Serializa ediciones que usan los mismos grupos: evita mover un
+                // grupo a un examen que se solape con otro del mismo grupo.
+                Grupo::query()
+                    ->whereIn('id_grupo', $idGrupos)
+                    ->orderBy('id_grupo')
                     ->lockForUpdate()
                     ->get();
 
@@ -406,6 +458,12 @@ class ExamenController extends Controller
                     ]);
                 }
 
+                if ($this->hayConflictoDeGrupo($efectivo, $idGrupos, $examen->id_examen)) {
+                    throw ValidationException::withMessages([
+                        'id_grupos' => 'Uno o más grupos ya tienen un examen en ese horario.',
+                    ]);
+                }
+
                 $examen->update($efectivo);
 
                 if (array_key_exists('id_ambientes', $datos)) {
@@ -417,6 +475,13 @@ class ExamenController extends Controller
                             'id_ambiente' => $idAmbiente,
                         ]);
                     }
+                }
+
+                if (array_key_exists('id_grupos', $datos)) {
+                    // Reemplazo total del vínculo con los grupos que rinden el examen.
+                    $examen->grupos()->sync($datos['id_grupos']);
+                    // Re-deriva habilitaciones de manera aditiva para los grupos nuevos.
+                    $this->sincronizarHabilitacionesPorGrupos($examen);
                 }
             });
         } catch (QueryException $e) {
@@ -603,6 +668,59 @@ class ExamenController extends Controller
                 [$datos['hora_inicio']]
             )
             ->exists();
+    }
+
+    /**
+     * Un grupo no puede rendir dos exámenes con la misma fecha cuya ventana de
+     * horario se solape (p. ej. dos parciales de la misma asignatura en el mismo
+     * periodo deben tener fechas/horas distintas).
+     *
+     * @param  array<string, mixed>  $datos
+     * @param  array<int, int>  $idGrupos
+     */
+    private function hayConflictoDeGrupo(array $datos, array $idGrupos, ?int $idExamenIgnorar = null): bool
+    {
+        return Examen::query()
+            ->when($idExamenIgnorar !== null, function ($query) use ($idExamenIgnorar) {
+                $query->where('id_examen', '!=', $idExamenIgnorar);
+            })
+            ->where('fecha', $datos['fecha'])
+            ->whereHas('grupos', function ($query) use ($idGrupos) {
+                $query->whereIn('grupo.id_grupo', $idGrupos);
+            })
+            ->whereRaw(
+                "hora_inicio < (CAST(? AS time) + (? * interval '1 minute'))",
+                [$datos['hora_inicio'], $datos['duracion_minutos']]
+            )
+            ->whereRaw(
+                "(hora_inicio + (duracion_minutos * interval '1 minute')) > CAST(? AS time)",
+                [$datos['hora_inicio']]
+            )
+            ->exists();
+    }
+
+    /**
+     * Deriva las habilitaciones del examen a partir de sus grupos: habilita
+     * automáticamente a los estudiantes inscritos en dichos grupos. La operación
+     * es aditiva e idempotente (`insertOrIgnore` respeta la restricción única
+     * estudiante+examen y no sobreescribe estados ya ajustados manualmente).
+     * Se inserta por lotes para soportar el volumen de exámenes masivos.
+     */
+    private function sincronizarHabilitacionesPorGrupos(Examen $examen): void
+    {
+        Inscripcion::query()
+            ->whereIn('id_grupo', $examen->grupos()->pluck('grupo.id_grupo'))
+            ->distinct()
+            ->pluck('id_estudiante')
+            ->chunk(500)
+            ->each(function ($idsEstudiantes) use ($examen) {
+                Habilitacion::insertOrIgnore(
+                    $idsEstudiantes->map(fn ($idEstudiante) => [
+                        'id_estudiante' => $idEstudiante,
+                        'id_examen' => $examen->id_examen,
+                    ])->all()
+                );
+            });
     }
 
     /**

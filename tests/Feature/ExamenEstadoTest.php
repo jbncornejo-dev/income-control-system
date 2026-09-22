@@ -364,17 +364,18 @@ class ExamenEstadoTest extends TestCase
         $this->assertDatabaseCount('auditoria_log', 0);
     }
 
-    public function test_docente_puede_cambiar_estado_de_un_examen_de_asignatura_que_dicta(): void
+    public function test_docente_puede_cambiar_estado_de_un_examen_que_cubre_alguna_de_sus_grupos(): void
     {
         $examen = $this->crearExamen(['fecha' => '2026-09-20', 'hora_inicio' => '09:30', 'duracion_minutos' => 120]);
         $docente = $this->usuario('docente');
 
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'B',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $respuesta = $this->actingAs($docente)
             ->patch("/examenes/{$examen->id_examen}/estado", ['accion' => 'suspender']);
@@ -383,7 +384,7 @@ class ExamenEstadoTest extends TestCase
         $this->assertDatabaseHas('examen', ['id_examen' => $examen->id_examen, 'estado' => 'suspendido']);
     }
 
-    public function test_docente_no_puede_cambiar_estado_de_un_examen_que_no_dicta(): void
+    public function test_docente_no_puede_cambiar_estado_de_un_examen_que_no_cubre_ninguna_de_sus_grupos(): void
     {
         $examen = $this->crearExamen(['fecha' => '2026-09-21']);
 

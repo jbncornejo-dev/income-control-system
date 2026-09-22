@@ -206,19 +206,20 @@ class ExamenUpdateTest extends TestCase
         ]);
     }
 
-    public function test_docente_puede_actualizar_un_examen_de_una_asignatura_que_dicta(): void
+    public function test_docente_puede_actualizar_un_examen_que_cubre_alguna_de_sus_grupos(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $creado = $this->crearExamenConAmbiente();
         $examen = $creado['examen'];
 
         $docente = $this->docente();
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'A',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $response = $this->actingAs($docente)->patch(
             "/examenes/{$examen->id_examen}",
@@ -232,7 +233,7 @@ class ExamenUpdateTest extends TestCase
         ]);
     }
 
-    public function test_docente_no_puede_actualizar_un_examen_de_una_asignatura_que_no_dicta(): void
+    public function test_docente_no_puede_actualizar_un_examen_que_no_cubre_ninguna_de_sus_grupos(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $creado = $this->crearExamenConAmbiente();
@@ -257,12 +258,13 @@ class ExamenUpdateTest extends TestCase
         $examen = $creado['examen'];
 
         $docente = $this->docente();
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'A',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $otraAsignatura = Asignatura::create(['nombre_asignatura' => static::siguienteNombreAmbiente().' externa']);
 
