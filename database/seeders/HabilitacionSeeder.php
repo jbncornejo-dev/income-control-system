@@ -39,5 +39,22 @@ class HabilitacionSeeder extends Seeder
                 ]
             );
         }
+
+        // Examen compartido de Programación I (grupos A/B/C, Examen Final):
+        // los 30 estudiantes del demo están habilitados. Cada docente ve su
+        // propio segmento según la matrícula (InscripcionSeeder); el
+        // administrador los ve todos.
+        $examenCompartido = $examenes
+            ->first(fn (Examen $examen) => $examen->asignatura?->nombre_asignatura === 'Programación I'
+                && $examen->grupos()->pluck('grupo.id_usuario')->filter()->unique()->count() > 1);
+
+        if ($examenCompartido) {
+            foreach ($estudiantes as $codigo => $idEstudiante) {
+                Habilitacion::firstOrCreate(
+                    ['id_estudiante' => $idEstudiante, 'id_examen' => $examenCompartido->id_examen],
+                    ['estado_habilitado' => true]
+                );
+            }
+        }
     }
 }
