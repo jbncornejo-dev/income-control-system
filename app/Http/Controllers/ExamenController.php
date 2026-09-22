@@ -74,7 +74,7 @@ class ExamenController extends Controller
 
         // Contexto cargado según el rol y columnas expuestas en el listado.
         $query
-            ->select(['id_examen', 'id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
+            ->select(['id_examen', 'id_asignatura', 'id_periodo', 'id_tipo_examen', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'])
             ->orderBy('fecha')
             ->orderBy('hora_inicio')
             ->orderBy('id_examen');
@@ -83,6 +83,7 @@ class ExamenController extends Controller
         $query->with([
             'asignatura' => fn ($subquery) => $subquery->select(['id_asignatura', 'nombre_asignatura']),
             'periodo' => fn ($subquery) => $subquery->select(['id_periodo', 'gestion', 'tipo', 'numero']),
+            'tipo' => fn ($subquery) => $subquery->select(['id_tipo_examen', 'nombre']),
             'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             // Grupos que efectivamente rinden el examen (pivot examen_grupo).
             'grupos' => fn ($subquery) => $subquery->select(['grupo.id_grupo', 'grupo.id_asignatura', 'grupo.id_usuario', 'grupo.nombre_grupo']),
@@ -297,6 +298,7 @@ class ExamenController extends Controller
     public function store(StoreExamenRequest $request)
     {
         $datos = $request->validated();
+        $idTipo = $datos['id_tipo_examen'] ?? null;
 
         // Orden determinista de ambientes y grupos: reduce el riesgo de deadlock
         // entre altas concurrentes que bloquean las mismas filas en distinto orden.
@@ -304,7 +306,7 @@ class ExamenController extends Controller
         sort($datos['id_grupos']);
 
         try {
-            DB::transaction(function () use ($datos) {
+            DB::transaction(function () use ($datos, $idTipo) {
                 // Serializa altas que utilizan los mismos ambientes para evitar solapamientos concurrentes.
                 Ambiente::query()
                     ->whereIn('id_ambiente', $datos['id_ambientes'])
@@ -332,9 +334,19 @@ class ExamenController extends Controller
                     ]);
                 }
 
+                // Un mismo grupo no puede rendir dos exámenes del mismo tipo en el
+                // mismo periodo (ej. dos "Primer parcial"): cada instancia especial
+                // (segunda instancia, mesa de examen) es un tipo propio.
+                if ($idTipo !== null && $this->hayTipoRepetidoEnGrupos($datos['id_periodo'], $idTipo, $datos['id_grupos'])) {
+                    throw ValidationException::withMessages([
+                        'id_tipo_examen' => 'Uno de los grupos ya tiene un examen de este tipo en el periodo.',
+                    ]);
+                }
+
                 $examen = Examen::create([
                     'id_asignatura' => $datos['id_asignatura'],
                     'id_periodo' => $datos['id_periodo'],
+                    'id_tipo_examen' => $idTipo,
                     'fecha' => $datos['fecha'],
                     'hora_inicio' => $datos['hora_inicio'],
                     'duracion_minutos' => $datos['duracion_minutos'],
@@ -389,9 +401,9 @@ class ExamenController extends Controller
 
         // Mientras la ventana de ingreso está activa (en curso, incluido
         // suspendido) solo se pueden actualizar las normas generales: fecha,
-        // hora, duración, ambientes, grupos, asignatura y periodo definen la
-        // ventana y el ingreso, por lo que quedan congelados.
-        $camposEstructurales = ['id_asignatura', 'id_periodo', 'id_grupos', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
+        // hora, duración, ambientes, grupos, asignatura, periodo y tipo de
+        // examen definen la ventana y el ingreso, por lo que quedan congelados.
+        $camposEstructurales = ['id_asignatura', 'id_periodo', 'id_tipo_examen', 'id_grupos', 'fecha', 'hora_inicio', 'duracion_minutos', 'id_ambientes'];
 
         if ($horario === 'en_curso' && $request->anyFilled(...$camposEstructurales)) {
             throw ValidationException::withMessages([
@@ -401,12 +413,18 @@ class ExamenController extends Controller
 
         $datos = $request->validated();
 
+        // Tipo efectivo: lo enviado o el actual (un PATCH parcial no lo toca).
+        $idTipo = array_key_exists('id_tipo_examen', $datos)
+            ? $datos['id_tipo_examen']
+            : $examen->id_tipo_examen;
+
         try {
-            DB::transaction(function () use ($examen, $datos) {
+            DB::transaction(function () use ($examen, $datos, $idTipo) {
                 // Horario efectivo: fusiona lo enviado con lo ya existente.
                 $efectivo = [
                     'id_asignatura' => $datos['id_asignatura'] ?? $examen->id_asignatura,
                     'id_periodo' => $datos['id_periodo'] ?? $examen->id_periodo,
+                    'id_tipo_examen' => $idTipo,
                     'fecha' => $datos['fecha'] ?? $examen->fecha,
                     'hora_inicio' => $datos['hora_inicio'] ?? $examen->hora_inicio,
                     'duracion_minutos' => $datos['duracion_minutos'] ?? $examen->duracion_minutos,
@@ -461,6 +479,16 @@ class ExamenController extends Controller
                 if ($this->hayConflictoDeGrupo($efectivo, $idGrupos, $examen->id_examen)) {
                     throw ValidationException::withMessages([
                         'id_grupos' => 'Uno o más grupos ya tienen un examen en ese horario.',
+                    ]);
+                }
+
+                // Un mismo grupo no puede rendir dos exámenes del mismo tipo en
+                // el mismo periodo (se excluye el propio examen en edición).
+                if ($idTipo !== null
+                    && $this->hayTipoRepetidoEnGrupos($efectivo['id_periodo'], $idTipo, $idGrupos, $examen->id_examen)
+                ) {
+                    throw ValidationException::withMessages([
+                        'id_tipo_examen' => 'Uno de los grupos ya tiene un examen de este tipo en el periodo.',
                     ]);
                 }
 
@@ -700,6 +728,27 @@ class ExamenController extends Controller
     }
 
     /**
+     * Un grupo no puede rendir dos exámenes del mismo tipo en el mismo periodo:
+     * se rechaza si otro examen (salvo el de la edición actual) comparte algún
+     * grupo, periodo y tipo.
+     *
+     * @param  array<int, int>  $idGrupos
+     */
+    private function hayTipoRepetidoEnGrupos(int $idPeriodo, int $idTipoExamen, array $idGrupos, ?int $idExamenIgnorar = null): bool
+    {
+        return Examen::query()
+            ->when($idExamenIgnorar !== null, function ($query) use ($idExamenIgnorar) {
+                $query->where('id_examen', '!=', $idExamenIgnorar);
+            })
+            ->where('id_periodo', $idPeriodo)
+            ->where('id_tipo_examen', $idTipoExamen)
+            ->whereHas('grupos', function ($query) use ($idGrupos) {
+                $query->whereIn('grupo.id_grupo', $idGrupos);
+            })
+            ->exists();
+    }
+
+    /**
      * Deriva las habilitaciones del examen a partir de sus grupos: habilita
      * automáticamente a los estudiantes inscritos en dichos grupos. La operación
      * es aditiva e idempotente (`insertOrIgnore` respeta la restricción única
@@ -799,12 +848,15 @@ class ExamenController extends Controller
 
     /**
      * Periodos disponibles para elegir o filtrar, de más reciente a más antiguo.
+     * Cada periodo trae su plan de tipos de examen (periodo_tipo_examen) en el
+     * orden definido por el administrador, para el selector del formulario.
      *
      * @return Collection<int, Periodo>
      */
     private function periodosDisponibles()
     {
         return Periodo::query()
+            ->with(['tiposExamen' => fn ($query) => $query->orderBy('periodo_tipo_examen.orden')])
             ->orderByDesc('gestion')
             ->orderByDesc('numero')
             ->get(['id_periodo', 'gestion', 'tipo', 'numero', 'fecha_inicio', 'fecha_fin']);

@@ -73,4 +73,19 @@ class Periodo extends Model
     {
         return $this->hasMany(Examen::class, 'id_periodo', 'id_periodo');
     }
+
+    // Relación de muchos a muchos (periodo-tipo_examen) a través de
+    // periodo_tipo_examen. Es el "plan de evaluación" del periodo: qué tipos de
+    // examen rigen en esa gestión y en qué orden (pivot.orden).
+    public function tiposExamen()
+    {
+        return $this->belongsToMany(
+            TipoExamen::class,
+            'periodo_tipo_examen',
+            'id_periodo',
+            'id_tipo_examen',
+            'id_periodo',
+            'id_tipo_examen'
+        )->withPivot('orden');
+    }
 }

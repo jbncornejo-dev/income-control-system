@@ -31,6 +31,7 @@ const hoy = ref(new Date().toISOString().slice(0, 10));
 const form = useForm({
     id_asignatura: props.examen?.id_asignatura ?? '',
     id_periodo: props.examen?.id_periodo ?? '',
+    id_tipo_examen: props.examen?.id_tipo_examen ?? null,
     fecha: props.examen?.fecha ?? '',
     hora_inicio: props.examen ? String(props.examen.hora_inicio ?? '').slice(0, 5) : '',
     duracion_minutos: props.examen?.duracion_minutos ?? 90,
@@ -88,6 +89,28 @@ watch(
     () => form.fecha,
     (fecha) => {
         if (!form.id_periodo) form.id_periodo = periodoSugerido(fecha) ?? '';
+    }
+);
+
+// Tipos de examen del periodo elegido (plan periodo_tipo_examen), en el orden
+// definido por el administrador. Cada periodo llega del backend con su plan en
+// "tipos_examen".
+const tiposPeriodo = computed(() => {
+    const periodo = props.periodos.find((p) => p.id_periodo === form.id_periodo);
+    return (periodo?.tipos_examen ?? [])
+        .slice()
+        .sort((a, b) => (a.pivot?.orden ?? 0) - (b.pivot?.orden ?? 0));
+});
+
+// Al cambiar el periodo se reinicia el tipo: el plan de otro periodo puede no
+// incluir el tipo elegido, y la validación lo rechazaría.
+watch(
+    () => form.id_periodo,
+    (valor, anterior) => {
+        if (valor && valor !== anterior) {
+            form.id_tipo_examen = null;
+            form.clearErrors('id_tipo_examen');
+        }
     }
 );
 
@@ -251,7 +274,7 @@ function guardar() {
                         : 'Programa una nueva evaluación asignándole asignatura, periodo, horario y ambientes.' }}
                 </p>
                 <p v-if="soloNormas" class="form-aviso">
-                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, grupos, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, grupos, asignatura, periodo y tipo de examen quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
@@ -328,6 +351,30 @@ function guardar() {
                         </select>
                         <p v-if="form.errors.id_periodo" class="error-msg">{{ form.errors.id_periodo }}</p>
                         <p v-if="periodos.length === 0" class="help-text">No hay periodos registrados. Crea el periodo desde el módulo de administración.</p>
+                    </div>
+
+                    <!-- Tipo de examen (del plan definido para el periodo) -->
+                    <div v-if="!soloNormas" class="form-group">
+                        <label for="id_tipo_examen" class="form-label">Tipo de examen <span class="required">*</span></label>
+                        <select
+                            id="id_tipo_examen"
+                            v-model="form.id_tipo_examen"
+                            class="form-input"
+                            :class="{ 'input-error': form.errors.id_tipo_examen }"
+                            :disabled="form.processing"
+                            @change="form.clearErrors('id_tipo_examen')"
+                        >
+                            <option :value="null" disabled>
+                                {{ tiposPeriodo.length ? 'Seleccione el tipo de examen...' : 'El periodo no tiene tipos definidos' }}
+                            </option>
+                            <option v-for="tipo in tiposPeriodo" :key="tipo.id_tipo_examen" :value="tipo.id_tipo_examen">
+                                {{ tipo.nombre }}
+                            </option>
+                        </select>
+                        <p v-if="form.errors.id_tipo_examen" class="error-msg">{{ form.errors.id_tipo_examen }}</p>
+                        <p v-if="tiposPeriodo.length === 0" class="help-text">
+                            El periodo no tiene un plan de tipos definido. Configúralo en el módulo Tipos de Examen para clasificar la evaluación.
+                        </p>
                     </div>
 
                     <!-- Fecha / Hora / Duración -->

@@ -39,7 +39,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+        $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente', 'tipo:id_tipo_examen,nombre'])
             ->withCount([
                 'habilitaciones as hab_count' => function ($query) {
                     $query->where('estado_habilitado', true);

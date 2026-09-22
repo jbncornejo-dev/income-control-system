@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTipoExamenEnPeriodo;
 use App\Models\Examen;
 use App\Models\Grupo;
 use Carbon\Carbon;
@@ -10,6 +11,8 @@ use Illuminate\Validation\Validator;
 
 class UpdateExamenRequest extends FormRequest
 {
+    use ValidatesTipoExamenEnPeriodo;
+
     public function authorize(): bool
     {
         $rol = $this->user()?->rol?->nombre_rol;
@@ -47,6 +50,7 @@ class UpdateExamenRequest extends FormRequest
         return [
             'id_asignatura' => ['sometimes', 'integer', 'exists:asignatura,id_asignatura'],
             'id_periodo' => ['sometimes', 'integer', 'exists:periodo,id_periodo'],
+            'id_tipo_examen' => ['sometimes', 'nullable', 'integer', 'exists:tipo_examen,id_tipo_examen'],
             'fecha' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'hora_inicio' => ['sometimes', 'nullable', 'date_format:H:i'],
             'duracion_minutos' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:720'],
@@ -121,6 +125,14 @@ class UpdateExamenRequest extends FormRequest
                 }
             }
 
+            // El tipo de examen (solo si se envía en el PATCH parcial) debe venir del
+            // plan definido para el periodo efectivo del examen.
+            if ($this->exists('id_tipo_examen')) {
+                $examen = $this->route('examen');
+                $idPeriodo = $this->input('id_periodo') ?? $examen->id_periodo;
+                $this->validarTipoContraPlan($validator, (int) $idPeriodo, $this->input('id_tipo_examen'));
+            }
+
             $fecha = $this->input('fecha');
             $hora = $this->input('hora_inicio');
 
@@ -147,6 +159,8 @@ class UpdateExamenRequest extends FormRequest
             'id_asignatura.exists' => 'La asignatura seleccionada no existe.',
             'id_periodo.integer' => 'El periodo es inválido.',
             'id_periodo.exists' => 'El periodo seleccionado no existe.',
+            'id_tipo_examen.integer' => 'El tipo de examen es inválido.',
+            'id_tipo_examen.exists' => 'El tipo de examen seleccionado no existe.',
             'fecha.date_format' => 'La fecha debe tener el formato AAAA-MM-DD.',
             'hora_inicio.date_format' => 'La hora de inicio debe tener el formato HH:MM.',
             'duracion_minutos.integer' => 'La duración debe ser un número entero.',

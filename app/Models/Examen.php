@@ -17,7 +17,7 @@ class Examen extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
+    protected $fillable = ['id_asignatura', 'id_periodo', 'id_tipo_examen', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
 
     protected $appends = ['hora_fin', 'estado_actual', 'estado_horario', 'periodo_codigo'];
 
@@ -96,6 +96,13 @@ class Examen extends Model
     public function asignatura()
     {
         return $this->belongsTo(Asignatura::class, 'id_asignatura', 'id_asignatura');
+    }
+
+    // Relación de muchos a uno (examen-tipo_examen). El nombre visible del
+    // examen se deriva del tipo elegido del catálogo (campo "nombre").
+    public function tipo()
+    {
+        return $this->belongsTo(TipoExamen::class, 'id_tipo_examen', 'id_tipo_examen');
     }
 
     // Relación de muchos a uno (examen-periodo)
