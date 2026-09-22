@@ -2,6 +2,7 @@
 import { useForm } from '@inertiajs/vue3';
 import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
+import SelectInput from '@/components/ui/SelectInput.vue';
 
 const props = defineProps({
     roles: {
