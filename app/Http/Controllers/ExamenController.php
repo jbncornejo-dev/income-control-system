@@ -68,10 +68,19 @@ class ExamenController extends Controller
             $query->where('hora_inicio', $filtros['hora_inicio']);
         }
 
+        if (($filtros['compartido'] ?? null) == '1') {
+            $this->aplicarFiltroCompartido($query);
+        }
+
         // Conteos por estado para los chips del listado. Se calculan sobre los
         // mismos filtros de búsqueda pero SIN el filtro de estado: así cada chip
         // muestra cuántos exámenes quedarían al seleccionarlo.
         $conteos = $this->conteosPorEstado($query);
+
+        // Conteo del chip "Compartidos": exámenes cuyos grupos tienen más de un
+        // docente responsable, sobre los mismos filtros de búsqueda. Aplicar el
+        // filtro de compartidos es idempotente, así el conteo nunca se desvía.
+        $conteos['compartidos'] = $this->conteoCompartidos($query);
 
         if (isset($filtros['estado'])) {
             $this->aplicarFiltroEstado($query, $filtros['estado']);
@@ -92,14 +101,10 @@ class ExamenController extends Controller
             'examenesAmbientes.ambiente' => fn ($subquery) => $subquery->select(['id_ambiente', 'nombre_ambiente']),
             // Grupos que efectivamente rinden el examen (pivot examen_grupo).
             'grupos' => fn ($subquery) => $subquery->select(['grupo.id_grupo', 'grupo.id_asignatura', 'grupo.id_usuario', 'grupo.nombre_grupo']),
+            // Dueño de cada grupo (responsable del examen). Se carga para ambos
+            // roles: sirve para pintar los badges por docente y sus tooltips.
+            'grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
         ]);
-
-        if (! $esDocente) {
-            // Contexto para el administrador: docentes de cada grupo del examen.
-            $query->with([
-                'grupos.usuario' => fn ($subquery) => $subquery->select(['id', 'name']),
-            ]);
-        }
 
         $examenes = $query
             ->paginate(15)
@@ -107,14 +112,35 @@ class ExamenController extends Controller
             ->through(function (Examen $examen) use ($esDocente) {
                 $grupos = $examen->grupos ?? collect();
 
-                if (! $esDocente) {
-                    $examen->setAttribute('docentes', $grupos
-                        ->pluck('usuario.name')
-                        ->filter()
-                        ->unique()
-                        ->values()
-                        ->all());
+                // Docentes responsables de los grupos del examen. Para el docente
+                // autenticado, su nombre queda primero: el front pinta "sus"
+                // grupos con el color por defecto y los ajenos con otros tonos.
+                $docentes = $grupos
+                    ->pluck('usuario.name')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if ($esDocente) {
+                    $nombrePropio = auth()->user()->name;
+                    $docentes = array_values([
+                        ...array_filter($docentes, fn ($nombre) => $nombre === $nombrePropio),
+                        ...array_filter($docentes, fn ($nombre) => $nombre !== $nombrePropio),
+                    ]);
                 }
+
+                $examen->setAttribute('docentes', $docentes);
+
+                // ¿Compartido? Un examen cuyos grupos tienen más de un docente
+                // responsable se distingue visualmente y filtra por "Compartidos".
+                $esCompartido = $grupos
+                    ->pluck('id_usuario')
+                    ->filter()
+                    ->unique()
+                    ->count() > 1;
+
+                $examen->setAttribute('es_compartido', $esCompartido);
 
                 // ¿El usuario puede gestionar (editar/cambiar estado) el examen?
                 // El administrador siempre; el docente solo si todos los grupos
@@ -125,10 +151,15 @@ class ExamenController extends Controller
                     : true);
 
                 // Se reemplaza la relación (colección de modelos) por la
-                // proyección plana de nombres de grupo que consume el listado.
+                // proyección plana que consume el listado: hoy incluye el dueño
+                // de cada grupo para colorear sus badges y los tooltips.
                 $examen->setRelation('grupos', $grupos
-                    ->pluck('nombre_grupo')
-                    ->unique()
+                    ->map(fn (Grupo $grupo) => [
+                        'nombre' => $grupo->nombre_grupo,
+                        'id_docente' => $grupo->id_usuario,
+                        'nombre_docente' => $grupo->usuario?->name,
+                    ])
+                    ->unique('nombre')
                     ->values());
                 $examen->setAttribute('examenes_ambientes', $examen->examenesAmbientes);
 
@@ -139,6 +170,7 @@ class ExamenController extends Controller
             'asignatura' => $filtros['asignatura'] ?? null,
             'id_periodo' => $filtros['id_periodo'] ?? null,
             'id_tipo_examen' => $filtros['id_tipo_examen'] ?? null,
+            'compartido' => $filtros['compartido'] ?? null,
             'fecha' => $filtros['fecha'] ?? null,
             'hora_inicio' => $filtros['hora_inicio'] ?? null,
             'estado' => $filtros['estado'] ?? null,
@@ -868,6 +900,39 @@ class ExamenController extends Controller
                 ->whereRaw("{$fin} <= CAST(? AS timestamp)", [$ahora]),
             default => null,
         };
+    }
+
+    /**
+     * Filtra solo los exámenes compartidos entre dos o más docentes: existen dos
+     * grupos del examen cuyos docentes responsables son distintos.
+     */
+    private function aplicarFiltroCompartido(Builder $query): void
+    {
+        $query->whereExists(function (\Illuminate\Database\Query\Builder $existe) {
+            $existe->selectRaw('1')
+                ->from('examen_grupo as eg_a')
+                ->join('grupo as g_a', 'g_a.id_grupo', '=', 'eg_a.id_grupo')
+                ->whereColumn('eg_a.id_examen', 'examen.id_examen')
+                ->whereExists(function (\Illuminate\Database\Query\Builder $par) {
+                    $par->selectRaw('1')
+                        ->from('examen_grupo as eg_b')
+                        ->join('grupo as g_b', 'g_b.id_grupo', '=', 'eg_b.id_grupo')
+                        ->whereColumn('eg_b.id_examen', 'examen.id_examen')
+                        ->whereColumn('g_a.id_usuario', '<>', 'g_b.id_usuario');
+                });
+        });
+    }
+
+    /**
+     * Conteo de exámenes compartidos para el chip del listado, sobre los mismos
+     * filtros de búsqueda (el filtro de compartidos es idempotente).
+     */
+    private function conteoCompartidos(Builder $query): int
+    {
+        $copia = clone $query;
+        $this->aplicarFiltroCompartido($copia);
+
+        return $copia->count();
     }
 
     /**

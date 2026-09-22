@@ -116,9 +116,20 @@ class ExamenIndexTest extends TestCase
 
         $primerExamen = $respuesta->json('examenes.data.0');
         $this->assertSame($examen->id_examen, $primerExamen['id_examen']);
-        $this->assertEqualsCanonicalizing(['A', 'B'], $primerExamen['grupos']);
-        // El docente no recibe el campo "docentes".
-        $this->assertArrayNotHasKey('docentes', $primerExamen);
+        // Cada grupo llega con su docente dueño (nombre real de la relación).
+        $this->assertEqualsCanonicalizing(
+            ['A', 'B'],
+            collect($primerExamen['grupos'])->pluck('nombre')->all()
+        );
+        $this->assertEqualsCanonicalizing(
+            [$docente->name],
+            collect($primerExamen['grupos'])->pluck('nombre_docente')->unique()->values()->all()
+        );
+        // El docente recibe sus docentes (con su nombre primero) y el flag de
+        // compartido: un examen con dos grupos del mismo docente no es compartido.
+        $this->assertEqualsCanonicalizing([$docente->name], $primerExamen['docentes']);
+        $this->assertArrayHasKey('es_compartido', $primerExamen);
+        $this->assertFalse($primerExamen['es_compartido']);
     }
 
     public function test_administrador_ve_grupos_y_docentes_de_los_grupos_del_examen(): void
@@ -136,11 +147,16 @@ class ExamenIndexTest extends TestCase
 
         $primerExamen = $respuesta->json('examenes.data.0');
         $this->assertSame($examen->id_examen, $primerExamen['id_examen']);
-        $this->assertEqualsCanonicalizing(['A', 'B'], $primerExamen['grupos']);
+        $this->assertEqualsCanonicalizing(
+            ['A', 'B'],
+            collect($primerExamen['grupos'])->pluck('nombre')->all()
+        );
         $this->assertEqualsCanonicalizing(
             [$docenteA->name, $docenteB->name],
             $primerExamen['docentes']
         );
+        // Grupos de docentes distintos => examen compartido.
+        $this->assertTrue($primerExamen['es_compartido']);
     }
 
     public function test_docente_sin_grupos_no_ve_ningun_examen(): void
@@ -385,5 +401,33 @@ class ExamenIndexTest extends TestCase
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
 
         $this->assertSame('Primer parcial', $respuesta->json('examenes.data.0.tipo.nombre'));
+    }
+
+    public function test_chip_compartidos_agrupa_y_filtra_examenes_compartidos(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente');
+        $grupoPropioA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoPropioB = $this->asignarDocente($docente, $asignatura, 'B');
+        $grupoAjeno = $this->asignarDocente($otroDocente, $asignatura, 'C');
+
+        // Propio del docente: dos grupos del mismo docente, no es compartido.
+        $propio = $this->crearExamen($asignatura);
+        $propio->grupos()->attach([$grupoPropioA->id_grupo, $grupoPropioB->id_grupo]);
+
+        // Compartido: mezcla grupos del docente y del otro docente.
+        $compartido = $this->crearExamen($asignatura);
+        $compartido->grupos()->attach([$grupoPropioA->id_grupo, $grupoAjeno->id_grupo]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?compartido=1')
+            ->assertOk();
+
+        $vistos = collect($respuesta->json('examenes.data'))->pluck('id_examen')->all();
+        $this->assertEqualsCanonicalizing([$compartido->id_examen], $vistos);
+        $this->assertNotContains($propio->id_examen, $vistos);
+        // El chip de compartidos muestra el conteo de exámenes compartidos.
+        $this->assertSame(1, $respuesta->json('conteos.compartidos'));
     }
 }

@@ -74,11 +74,13 @@ class DatabaseSeeder extends Seeder
             AmbienteSeeder::class,
             AsignaturaSeeder::class,
             PeriodoSeeder::class,
+            // Los tipos se crean antes que los exámenes: el ExamenSeeder los
+            // referencia (id_tipo_examen) al construir cada examen del demo.
+            TipoExamenSeeder::class,
             GrupoSeeder::class,
             EstudianteSeeder::class,
             ExamenSeeder::class,
             HabilitacionSeeder::class,
-            TipoExamenSeeder::class,
         ]);
     }
 }
