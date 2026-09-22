@@ -6,7 +6,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\PeriodoTipoExamenController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TipoExamenController;
 use App\Http\Controllers\UserController;
 use App\Models\Ambiente;
 use App\Models\Asignatura;
@@ -114,6 +116,15 @@ Route::middleware('auth')->group(function () {
         Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas', [AsignaturaController::class, 'store'])->name('asignaturas.store');
+
+        // Catálogo de tipos de examen (gestionado por el administrador) y plan
+        // de evaluación por periodo: qué tipos rigen en cada gestión y en qué orden.
+        Route::get('/tipos-examen', [TipoExamenController::class, 'index'])->name('tipos-examen.index');
+        Route::post('/tipos-examen', [TipoExamenController::class, 'store'])->name('tipos-examen.store');
+        Route::patch('/tipos-examen/{tipoExamen}', [TipoExamenController::class, 'update'])->name('tipos-examen.update');
+        Route::delete('/tipos-examen/{tipoExamen}', [TipoExamenController::class, 'destroy'])->name('tipos-examen.destroy');
+        // Plan por periodo: PUT con la lista completa [{id_tipo_examen, orden}, ...].
+        Route::put('/periodos/{periodo}/tipos-examen', [PeriodoTipoExamenController::class, 'sync'])->name('periodos.tipos-examen');
 
         Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
         Route::patch('/usuarios/{usuario}/password', [UserController::class, 'updatePassword'])->name('usuarios.password');

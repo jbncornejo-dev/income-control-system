@@ -72,6 +72,7 @@ class DatabaseSeeder extends Seeder
             EstudianteSeeder::class,
             ExamenSeeder::class,
             HabilitacionSeeder::class,
+            TipoExamenSeeder::class,
         ]);
     }
 }

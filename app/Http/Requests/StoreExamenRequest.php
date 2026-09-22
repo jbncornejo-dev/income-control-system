@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Http\Requests\Concerns\ValidatesTipoExamenEnPeriodo;
 use App\Models\Grupo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
@@ -9,6 +10,8 @@ use Illuminate\Validation\Validator;
 
 class StoreExamenRequest extends FormRequest
 {
+    use ValidatesTipoExamenEnPeriodo;
+
     public function authorize(): bool
     {
         return in_array($this->user()?->rol?->nombre_rol, ['administrador', 'docente'], true);
@@ -37,6 +40,7 @@ class StoreExamenRequest extends FormRequest
         return [
             'id_asignatura' => ['required', 'integer', 'exists:asignatura,id_asignatura'],
             'id_periodo' => ['required', 'integer', 'exists:periodo,id_periodo'],
+            'id_tipo_examen' => ['nullable', 'integer', 'exists:tipo_examen,id_tipo_examen'],
             'id_grupos' => ['required', 'array', 'min:1'],
             'id_grupos.*' => ['required', 'integer', 'distinct', 'exists:grupo,id_grupo'],
             'fecha' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
@@ -87,6 +91,9 @@ class StoreExamenRequest extends FormRequest
                 }
             }
 
+            // El tipo de examen debe venir del plan definido para este periodo.
+            $this->validarTipoContraPlan($validator, (int) $this->input('id_periodo'), $this->input('id_tipo_examen'));
+
             $inicio = Carbon::createFromFormat(
                 'Y-m-d H:i',
                 $this->input('fecha').' '.$this->input('hora_inicio')
@@ -111,6 +118,8 @@ class StoreExamenRequest extends FormRequest
             'id_asignatura.exists' => 'La asignatura seleccionada no existe.',
             'id_periodo.required' => 'El periodo es obligatorio.',
             'id_periodo.exists' => 'El periodo seleccionado no existe.',
+            'id_tipo_examen.integer' => 'El tipo de examen es inválido.',
+            'id_tipo_examen.exists' => 'El tipo de examen seleccionado no existe.',
             'fecha.required' => 'La fecha del examen es obligatoria.',
             'fecha.date_format' => 'La fecha debe tener el formato AAAA-MM-DD.',
             'fecha.after_or_equal' => 'La fecha del examen no puede estar en el pasado.',
