@@ -8,6 +8,7 @@ use App\Models\Examen;
 use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
 use App\Models\Periodo;
+use App\Models\TipoExamen;
 use Illuminate\Database\Seeder;
 
 class ExamenSeeder extends Seeder
@@ -17,10 +18,12 @@ class ExamenSeeder extends Seeder
         $asignaturas = Asignatura::pluck('id_asignatura', 'nombre_asignatura');
         $ambientes = Ambiente::pluck('id_ambiente', 'nombre_ambiente');
         $periodos = Periodo::all();
+        $tipos = TipoExamen::pluck('id_tipo_examen', 'nombre');
 
         $examenes = [
             [
                 'asignatura' => 'Cálculo II',
+                'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 0,
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 120,
@@ -30,6 +33,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Física I',
+                'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 0,
                 'hora_inicio' => '10:30',
                 'duracion_minutos' => 90,
@@ -39,6 +43,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Programación I',
+                'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 0,
                 'hora_inicio' => '15:00',
                 'duracion_minutos' => 150,
@@ -48,6 +53,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Álgebra Lineal',
+                'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 1,
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 120,
@@ -57,6 +63,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Estadística',
+                'tipo' => 'Segundo Parcial',
                 'dias_desde_hoy' => 1,
                 'hora_inicio' => '14:00',
                 'duracion_minutos' => 90,
@@ -66,6 +73,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Fisiología',
+                'tipo' => 'Examen Final',
                 'dias_desde_hoy' => 2,
                 'hora_inicio' => '09:00',
                 'duracion_minutos' => 120,
@@ -75,6 +83,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Anatomía Humana',
+                'tipo' => 'Segundo Parcial',
                 'dias_desde_hoy' => 2,
                 'hora_inicio' => '14:30',
                 'duracion_minutos' => 150,
@@ -84,6 +93,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Redacción Académica',
+                'tipo' => 'Examen Final',
                 'dias_desde_hoy' => 3,
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 90,
@@ -93,6 +103,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Cálculo II',
+                'tipo' => 'Segundo Parcial',
                 'dias_desde_hoy' => 3,
                 'hora_inicio' => '16:00',
                 'duracion_minutos' => 120,
@@ -103,6 +114,7 @@ class ExamenSeeder extends Seeder
             // Exámenes del segundo docente: sobre sus propios grupos (C/B).
             [
                 'asignatura' => 'Programación I',
+                'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 1,
                 'hora_inicio' => '16:30',
                 'duracion_minutos' => 120,
@@ -112,6 +124,7 @@ class ExamenSeeder extends Seeder
             ],
             [
                 'asignatura' => 'Cálculo II',
+                'tipo' => 'Segundo Parcial',
                 'dias_desde_hoy' => 2,
                 'hora_inicio' => '11:00',
                 'duracion_minutos' => 90,
@@ -157,6 +170,7 @@ class ExamenSeeder extends Seeder
                 ],
                 [
                     'id_periodo' => $periodo->id_periodo,
+                    'id_tipo_examen' => $tipos[$datos['tipo']] ?? null,
                     'duracion_minutos' => $datos['duracion_minutos'],
                     'normas_generales' => $datos['normas_generales'],
                 ]

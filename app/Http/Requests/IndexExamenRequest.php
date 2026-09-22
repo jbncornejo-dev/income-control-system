@@ -14,7 +14,7 @@ class IndexExamenRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
-        foreach (['asignatura', 'fecha', 'hora_inicio', 'estado'] as $campo) {
+        foreach (['asignatura', 'fecha', 'hora_inicio', 'estado', 'id_tipo_examen'] as $campo) {
             $valor = $this->input($campo);
             if (is_string($valor)) {
                 $this->merge([$campo => trim($valor) === '' ? null : trim($valor)]);
@@ -27,6 +27,7 @@ class IndexExamenRequest extends FormRequest
         return [
             'asignatura' => ['nullable', 'string', 'max:200'],
             'id_periodo' => ['nullable', 'integer', 'exists:periodo,id_periodo'],
+            'id_tipo_examen' => ['nullable', 'integer', 'exists:tipo_examen,id_tipo_examen'],
             'fecha' => ['nullable', 'date_format:Y-m-d'],
             'hora_inicio' => ['nullable', 'date_format:H:i'],
             // Buckets de gestión (cancelado/anulado/suspendido) y del ciclo (programado/en_curso/finalizado).
@@ -40,6 +41,7 @@ class IndexExamenRequest extends FormRequest
             'asignatura.string' => 'El nombre de la asignatura debe ser texto.',
             'asignatura.max' => 'El nombre de la asignatura no puede superar los 200 caracteres.',
             'id_periodo.exists' => 'El periodo seleccionado no existe.',
+            'id_tipo_examen.exists' => 'El tipo de examen seleccionado no existe.',
             'fecha.date_format' => 'La fecha debe tener el formato YYYY-MM-DD.',
             'hora_inicio.date_format' => 'La hora de inicio debe tener el formato HH:MM (24 horas).',
             'estado.in' => 'El estado seleccionado no es válido.',

@@ -6,6 +6,7 @@ use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\Grupo;
 use App\Models\Rol;
+use App\Models\TipoExamen;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -341,5 +342,48 @@ class ExamenIndexTest extends TestCase
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
 
         $this->assertTrue($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_index_incluye_la_lista_de_tipos_para_el_filtro(): void
+    {
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$tipo->id_tipo_examen],
+            collect($respuesta->json('tipos'))->pluck('id_tipo_examen')->all()
+        );
+    }
+
+    public function test_administrador_filtra_examenes_por_tipo_de_examen(): void
+    {
+        $primerParcial = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+        $segundoParcial = TipoExamen::create(['nombre' => 'Segundo parcial', 'codigo' => 'SP']);
+        $examenA = $this->crearExamen($this->crearAsignatura('Cálculo'));
+        $examenB = $this->crearExamen($this->crearAsignatura('Física'));
+        $examenA->update(['id_tipo_examen' => $primerParcial->id_tipo_examen]);
+        $examenB->update(['id_tipo_examen' => $segundoParcial->id_tipo_examen]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?id_tipo_examen='.$primerParcial->id_tipo_examen)
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$examenA->id_examen],
+            collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
+        );
+        $this->assertNotContains($examenB->id_examen, collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
+    }
+
+    public function test_el_listado_incluye_el_nombre_del_tipo_de_examen(): void
+    {
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+        $examen = $this->crearExamen($this->crearAsignatura('Cálculo'));
+        $examen->update(['id_tipo_examen' => $tipo->id_tipo_examen]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertSame('Primer parcial', $respuesta->json('examenes.data.0.tipo.nombre'));
     }
 }
