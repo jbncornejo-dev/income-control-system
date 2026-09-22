@@ -112,6 +112,8 @@ class DashboardDocenteTest extends TestCase
     /** @test */
     public function it_excludes_past_exams()
     {
+        \Carbon\Carbon::setTestNow('2026-09-22 12:00:00');
+
         // Caso 3 — Exámenes pasados
         // Caso 7 — Fecha y hora
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Biología']);
