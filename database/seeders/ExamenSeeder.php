@@ -25,6 +25,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 120,
                 'ambientes' => ['Aula 101', 'Aula 102'],
+                'grupos' => ['A', 'B'],
                 'normas_generales' => 'Calculadora científica permitida, sin apuntes.',
             ],
             [
@@ -33,6 +34,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '10:30',
                 'duracion_minutos' => 90,
                 'ambientes' => ['Aula 103', 'Aula 104'],
+                'grupos' => ['A'],
                 'normas_generales' => null,
             ],
             [
@@ -41,6 +43,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '15:00',
                 'duracion_minutos' => 150,
                 'ambientes' => ['Laboratorio 1'],
+                'grupos' => ['A', 'B'],
                 'normas_generales' => 'Equipo asignado por sorteo. Consulte al personal de control.',
             ],
             [
@@ -49,6 +52,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 120,
                 'ambientes' => ['Aula 201'],
+                'grupos' => ['A', 'B', 'C'],
                 'normas_generales' => null,
             ],
             [
@@ -57,6 +61,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '14:00',
                 'duracion_minutos' => 90,
                 'ambientes' => ['Aula 202', 'Aula 101'],
+                'grupos' => ['A'],
                 'normas_generales' => 'Tablas estadísticas adjuntas al examen.',
             ],
             [
@@ -65,6 +70,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '09:00',
                 'duracion_minutos' => 120,
                 'ambientes' => ['Aula 103', 'Auditorio Central'],
+                'grupos' => ['A'],
                 'normas_generales' => null,
             ],
             [
@@ -73,6 +79,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '14:30',
                 'duracion_minutos' => 150,
                 'ambientes' => ['Aula 104'],
+                'grupos' => ['A'],
                 'normas_generales' => 'Sin dispositivos electrónicos durante la evaluación.',
             ],
             [
@@ -81,6 +88,7 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '08:00',
                 'duracion_minutos' => 90,
                 'ambientes' => ['Auditorio Central', 'Aula 201'],
+                'grupos' => ['A'],
                 'normas_generales' => null,
             ],
             [
@@ -89,13 +97,34 @@ class ExamenSeeder extends Seeder
                 'hora_inicio' => '16:00',
                 'duracion_minutos' => 120,
                 'ambientes' => ['Aula 202'],
+                'grupos' => ['A', 'B'],
                 'normas_generales' => 'Segundo parcial. Presentación obligatoria de carnet universitario.',
+            ],
+            // Exámenes del segundo docente: sobre sus propios grupos (C/B).
+            [
+                'asignatura' => 'Programación I',
+                'dias_desde_hoy' => 1,
+                'hora_inicio' => '16:30',
+                'duracion_minutos' => 120,
+                'ambientes' => ['Laboratorio 1'],
+                'grupos' => ['C'],
+                'normas_generales' => null,
+            ],
+            [
+                'asignatura' => 'Cálculo II',
+                'dias_desde_hoy' => 2,
+                'hora_inicio' => '11:00',
+                'duracion_minutos' => 90,
+                'ambientes' => ['Aula 201'],
+                'grupos' => ['C'],
+                'normas_generales' => null,
             ],
         ];
 
-        // Grupos por asignatura: cada examen seedeado se vincula a todos los
-        // grupos de su asignatura para que sea visible en el listado y en el
-        // dashboard del docente (el acceso se filtra por el pivot examen_grupo).
+        // Grupos por asignatura: cada examen se vincula a los grupos que lo rinden
+        // (listado en "grupos"; si no se indica, a todos los de su asignatura) para
+        // que sea visible en el listado y en el dashboard del docente correspondiente
+        // (el acceso se filtra por el pivot examen_grupo).
         $gruposPorAsignatura = Grupo::all()->groupBy('id_asignatura');
 
         $gestion = (string) now()->year;
@@ -140,9 +169,14 @@ class ExamenSeeder extends Seeder
                 ]);
             }
 
-            // Vincula los grupos de la asignatura (sync idempotente): sin esto
+            // Vincula los grupos del examen (sync idempotente): sin esto
             // el examen queda fuera del filtro por grupos que usa el listado.
-            $grupos = $gruposPorAsignatura->get($examen->id_asignatura, collect());
+            $grupos = $gruposPorAsignatura
+                ->get($examen->id_asignatura, collect())
+                ->when(isset($datos['grupos']), function ($grupos) use ($datos) {
+                    return $grupos->whereIn('nombre_grupo', $datos['grupos']);
+                })
+                ->values();
 
             if ($grupos->isNotEmpty()) {
                 $examen->grupos()->sync($grupos->pluck('id_grupo')->all());
