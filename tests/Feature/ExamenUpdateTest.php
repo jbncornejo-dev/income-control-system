@@ -206,19 +206,20 @@ class ExamenUpdateTest extends TestCase
         ]);
     }
 
-    public function test_docente_puede_actualizar_un_examen_de_una_asignatura_que_dicta(): void
+    public function test_docente_puede_actualizar_un_examen_que_cubre_alguna_de_sus_grupos(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $creado = $this->crearExamenConAmbiente();
         $examen = $creado['examen'];
 
         $docente = $this->docente();
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'A',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $response = $this->actingAs($docente)->patch(
             "/examenes/{$examen->id_examen}",
@@ -232,7 +233,7 @@ class ExamenUpdateTest extends TestCase
         ]);
     }
 
-    public function test_docente_no_puede_actualizar_un_examen_de_una_asignatura_que_no_dicta(): void
+    public function test_docente_no_puede_actualizar_un_examen_que_no_cubre_ninguna_de_sus_grupos(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $creado = $this->crearExamenConAmbiente();
@@ -257,12 +258,13 @@ class ExamenUpdateTest extends TestCase
         $examen = $creado['examen'];
 
         $docente = $this->docente();
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'A',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $otraAsignatura = Asignatura::create(['nombre_asignatura' => static::siguienteNombreAmbiente().' externa']);
 
@@ -330,5 +332,90 @@ class ExamenUpdateTest extends TestCase
         (new ReflectionProperty(PDOException::class, 'code'))->setValue($excepcion, '40P01');
 
         return $excepcion;
+    }
+
+    public function test_rechaza_id_grupos_null_en_la_edicion(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $creado = $this->crearExamenConAmbiente();
+
+        $response = $this->actingAs($this->administrador())->patch(
+            "/examenes/{$creado['examen']->id_examen}",
+            ['id_grupos' => null]
+        );
+
+        $response->assertSessionHasErrors('id_grupos');
+        $this->assertDatabaseHas('examen', ['id_examen' => $creado['examen']->id_examen]);
+    }
+
+    public function test_rechaza_id_ambientes_null_en_la_edicion(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $creado = $this->crearExamenConAmbiente();
+
+        $response = $this->actingAs($this->administrador())->patch(
+            "/examenes/{$creado['examen']->id_examen}",
+            ['id_ambientes' => null]
+        );
+
+        $response->assertSessionHasErrors('id_ambientes');
+    }
+
+    public function test_rechaza_cambiar_la_asignatura_sin_reasignar_los_grupos(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $admin = $this->administrador();
+        $creado = $this->crearExamenConAmbiente();
+
+        $grupo = Grupo::create([
+            'id_asignatura' => $creado['examen']->id_asignatura,
+            'id_usuario' => $admin->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $creado['examen']->grupos()->attach($grupo->id_grupo);
+
+        $otraAsignatura = Asignatura::create(['nombre_asignatura' => static::siguienteNombreAmbiente()]);
+
+        $response = $this->actingAs($admin)->patch(
+            "/examenes/{$creado['examen']->id_examen}",
+            ['id_asignatura' => $otraAsignatura->id_asignatura]
+        );
+
+        // El examen no puede cambiar de asignatura conservando los grupos de la anterior.
+        $response->assertSessionHasErrors('id_grupos');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $creado['examen']->id_examen,
+            'id_asignatura' => $creado['examen']->id_asignatura,
+        ]);
+    }
+
+    public function test_rechaza_mover_el_examen_a_un_periodo_de_otra_gestion(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $admin = $this->administrador();
+        $creado = $this->crearExamenConAmbiente();
+
+        $grupo = Grupo::create([
+            'id_asignatura' => $creado['examen']->id_asignatura,
+            'id_usuario' => $admin->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $creado['examen']->grupos()->attach($grupo->id_grupo);
+
+        $periodoOtraGestion = $this->crearPeriodo('2025');
+
+        $response = $this->actingAs($admin)->patch(
+            "/examenes/{$creado['examen']->id_examen}",
+            ['id_periodo' => $periodoOtraGestion->id_periodo]
+        );
+
+        // Los grupos de 2026 no pueden rendir el examen de la gestión 2025.
+        $response->assertSessionHasErrors('id_grupos');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $creado['examen']->id_examen,
+            'id_periodo' => $creado['examen']->id_periodo,
+        ]);
     }
 }

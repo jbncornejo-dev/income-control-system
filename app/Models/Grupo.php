@@ -10,8 +10,11 @@ class Grupo extends Model
     use HasFactory;
 
     protected $table = 'grupo';
+
     protected $primaryKey = 'id_grupo';
+
     public $timestamps = false;
+
     protected $fillable = ['id_asignatura', 'id_usuario', 'gestion', 'nombre_grupo'];
 
     // Relación de muchos a uno (grupo - asignatura)
@@ -30,5 +33,18 @@ class Grupo extends Model
     public function inscripciones()
     {
         return $this->hasMany(Inscripcion::class, 'id_grupo', 'id_grupo');
+    }
+
+    // Relación de muchos a muchos (grupo-examen) a través de examen_grupo.
+    public function examenes()
+    {
+        return $this->belongsToMany(
+            Examen::class,
+            'examen_grupo',
+            'id_grupo',
+            'id_examen',
+            'id_grupo',
+            'id_examen'
+        );
     }
 }

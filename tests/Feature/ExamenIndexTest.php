@@ -6,6 +6,7 @@ use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\Grupo;
 use App\Models\Rol;
+use App\Models\TipoExamen;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -82,55 +83,80 @@ class ExamenIndexTest extends TestCase
         $this->assertEqualsCanonicalizing([$examenA->id_examen, $examenB->id_examen], $vistos);
     }
 
-    public function test_docente_solo_ve_examenes_de_las_asignaturas_que_dicta(): void
+    public function test_docente_solo_ve_examenes_que_cubren_alguna_de_sus_grupos(): void
     {
         $asignaturaPropia = $this->crearAsignatura('Cálculo');
         $examenPropio = $this->crearExamen($asignaturaPropia);
+        $examenDelMismoCursoSinSuGrupo = $this->crearExamen($asignaturaPropia);
         $examenAjeno = $this->crearExamen($this->crearAsignatura('Física'));
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        // El examen propio cubre el grupo del docente; el otro examen de la misma
+        // asignatura es de otro grupo (avanza a distinto ritmo) y no debe verse.
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         $vistos = $this->idsExamenesVistos($docente);
 
         $this->assertEqualsCanonicalizing([$examenPropio->id_examen], $vistos);
+        $this->assertNotContains($examenDelMismoCursoSinSuGrupo->id_examen, $vistos);
         $this->assertNotContains($examenAjeno->id_examen, $vistos);
     }
 
-    public function test_docente_ve_sus_grupos_como_contexto_en_cada_examen(): void
+    public function test_docente_ve_los_grupos_del_examen_como_contexto(): void
     {
         $asignatura = $this->crearAsignatura('Cálculo');
         $examen = $this->crearExamen($asignatura);
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignatura, 'A');
-        $this->asignarDocente($docente, $asignatura, 'B');
+        $grupoA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docente, $asignatura, 'B');
+        // El examen solo cubre los grupos que efectivamente lo rinden.
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
 
         $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
 
         $primerExamen = $respuesta->json('examenes.data.0');
         $this->assertSame($examen->id_examen, $primerExamen['id_examen']);
-        $this->assertEqualsCanonicalizing(['A', 'B'], $primerExamen['grupos']);
-        // El docente no recibe el campo "docentes".
-        $this->assertArrayNotHasKey('docentes', $primerExamen);
+        // Cada grupo llega con su docente dueño (nombre real de la relación).
+        $this->assertEqualsCanonicalizing(
+            ['A', 'B'],
+            collect($primerExamen['grupos'])->pluck('nombre')->all()
+        );
+        $this->assertEqualsCanonicalizing(
+            [$docente->name],
+            collect($primerExamen['grupos'])->pluck('nombre_docente')->unique()->values()->all()
+        );
+        // El docente recibe sus docentes (con su nombre primero) y el flag de
+        // compartido: un examen con dos grupos del mismo docente no es compartido.
+        $this->assertEqualsCanonicalizing([$docente->name], $primerExamen['docentes']);
+        $this->assertArrayHasKey('es_compartido', $primerExamen);
+        $this->assertFalse($primerExamen['es_compartido']);
     }
 
-    public function test_administrador_ve_grupos_y_docentes_de_la_asignatura(): void
+    public function test_administrador_ve_grupos_y_docentes_de_los_grupos_del_examen(): void
     {
         $asignatura = $this->crearAsignatura('Cálculo');
         $examen = $this->crearExamen($asignatura);
         $docenteA = $this->usuario('docente');
         $docenteB = $this->usuario('docente');
-        $this->asignarDocente($docenteA, $asignatura, 'A');
-        $this->asignarDocente($docenteB, $asignatura, 'B');
+        $grupoA = $this->asignarDocente($docenteA, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docenteB, $asignatura, 'B');
+        // El examen cubre ambos grupos, dictados por docentes distintos.
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
 
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
 
         $primerExamen = $respuesta->json('examenes.data.0');
         $this->assertSame($examen->id_examen, $primerExamen['id_examen']);
-        $this->assertEqualsCanonicalizing(['A', 'B'], $primerExamen['grupos']);
+        $this->assertEqualsCanonicalizing(
+            ['A', 'B'],
+            collect($primerExamen['grupos'])->pluck('nombre')->all()
+        );
         $this->assertEqualsCanonicalizing(
             [$docenteA->name, $docenteB->name],
             $primerExamen['docentes']
         );
+        // Grupos de docentes distintos => examen compartido.
+        $this->assertTrue($primerExamen['es_compartido']);
     }
 
     public function test_docente_sin_grupos_no_ve_ningun_examen(): void
@@ -151,7 +177,8 @@ class ExamenIndexTest extends TestCase
         $this->crearExamen($asignaturaAjena);
 
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         // Buscando la asignatura que no dicta no debe aparecer ningún examen.
         $respuesta = $this->actingAs($docente)
@@ -249,7 +276,10 @@ class ExamenIndexTest extends TestCase
         $examenPropio = $this->crearExamen($asignaturaPropia, $periodoA->id_periodo);
         $examenOtroPeriodo = $this->crearExamen($asignaturaPropia, $periodoB->id_periodo);
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        // Solo el examen del periodo A cubre el grupo del docente: el otro examen
+        // es de otro grupo (distinto ritmo) y no debe aparecer al filtrar.
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         $respuesta = $this->actingAs($docente)
             ->get('/examenes?id_periodo='.$periodoA->id_periodo)
@@ -284,5 +314,120 @@ class ExamenIndexTest extends TestCase
             [$periodo->id_periodo],
             collect($respuesta->json('periodos'))->pluck('id_periodo')->all()
         );
+    }
+
+    public function test_docente_puede_gestionar_un_examen_cuyos_grupos_le_pertenecen(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docente = $this->usuario('docente');
+        $grupoA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docente, $asignatura, 'B');
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
+
+        $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
+
+        $this->assertTrue($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_docente_no_puede_gestionar_un_examen_compartido_con_otro_docente(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente');
+        $grupoPropio = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoAjeno = $this->asignarDocente($otroDocente, $asignatura, 'C');
+        $examen->grupos()->attach([$grupoPropio->id_grupo, $grupoAjeno->id_grupo]);
+
+        $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
+
+        $this->assertFalse($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_administrador_siempre_puede_gestionar(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $examen = $this->crearExamen($asignatura);
+        $docenteA = $this->usuario('docente');
+        $docenteB = $this->usuario('docente');
+        $grupoA = $this->asignarDocente($docenteA, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docenteB, $asignatura, 'B');
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertTrue($respuesta->json('examenes.data.0.puede_gestionar'));
+    }
+
+    public function test_index_incluye_la_lista_de_tipos_para_el_filtro(): void
+    {
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$tipo->id_tipo_examen],
+            collect($respuesta->json('tipos'))->pluck('id_tipo_examen')->all()
+        );
+    }
+
+    public function test_administrador_filtra_examenes_por_tipo_de_examen(): void
+    {
+        $primerParcial = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+        $segundoParcial = TipoExamen::create(['nombre' => 'Segundo parcial', 'codigo' => 'SP']);
+        $examenA = $this->crearExamen($this->crearAsignatura('Cálculo'));
+        $examenB = $this->crearExamen($this->crearAsignatura('Física'));
+        $examenA->update(['id_tipo_examen' => $primerParcial->id_tipo_examen]);
+        $examenB->update(['id_tipo_examen' => $segundoParcial->id_tipo_examen]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?id_tipo_examen='.$primerParcial->id_tipo_examen)
+            ->assertOk();
+
+        $this->assertEqualsCanonicalizing(
+            [$examenA->id_examen],
+            collect($respuesta->json('examenes.data'))->pluck('id_examen')->all()
+        );
+        $this->assertNotContains($examenB->id_examen, collect($respuesta->json('examenes.data'))->pluck('id_examen')->all());
+    }
+
+    public function test_el_listado_incluye_el_nombre_del_tipo_de_examen(): void
+    {
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'PP']);
+        $examen = $this->crearExamen($this->crearAsignatura('Cálculo'));
+        $examen->update(['id_tipo_examen' => $tipo->id_tipo_examen]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
+
+        $this->assertSame('Primer parcial', $respuesta->json('examenes.data.0.tipo.nombre'));
+    }
+
+    public function test_chip_compartidos_agrupa_y_filtra_examenes_compartidos(): void
+    {
+        $asignatura = $this->crearAsignatura('Cálculo');
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente');
+        $grupoPropioA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoPropioB = $this->asignarDocente($docente, $asignatura, 'B');
+        $grupoAjeno = $this->asignarDocente($otroDocente, $asignatura, 'C');
+
+        // Propio del docente: dos grupos del mismo docente, no es compartido.
+        $propio = $this->crearExamen($asignatura);
+        $propio->grupos()->attach([$grupoPropioA->id_grupo, $grupoPropioB->id_grupo]);
+
+        // Compartido: mezcla grupos del docente y del otro docente.
+        $compartido = $this->crearExamen($asignatura);
+        $compartido->grupos()->attach([$grupoPropioA->id_grupo, $grupoAjeno->id_grupo]);
+
+        $respuesta = $this->actingAs($this->usuario('administrador'))
+            ->get('/examenes?compartido=1')
+            ->assertOk();
+
+        $vistos = collect($respuesta->json('examenes.data'))->pluck('id_examen')->all();
+        $this->assertEqualsCanonicalizing([$compartido->id_examen], $vistos);
+        $this->assertNotContains($propio->id_examen, $vistos);
+        // El chip de compartidos muestra el conteo de exámenes compartidos.
+        $this->assertSame(1, $respuesta->json('conteos.compartidos'));
     }
 }

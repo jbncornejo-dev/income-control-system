@@ -1,6 +1,6 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Modal from '@/components/ui/Modal.vue';
@@ -8,27 +8,36 @@ import Button from '@/components/ui/Button.vue';
 
 const toast = useToastStore();
 
+const page = usePage();
+// Nombre del usuario autenticado: el docente identifica así "sus" grupos para
+// pintarlos con el color por defecto en los badges de grupos compartidos.
+const nombreUsuarioActual = page.props.auth?.user?.name ?? '';
+
 const props = defineProps({
     examenes: Object, // Objeto paginado de Laravel
     filters: Object,
     periodos: Array,
+    tipos: Array,
     conteos: Object,
     esAdmin: Boolean
 });
 
 // Filtros reales que soporta el backend: asignatura (coincidencia parcial,
-// tolerante a acentos y mayúsculas), periodo, fecha exacta, hora y estado.
-// La búsqueda se dispara con el botón Buscar; así no se traba la página mientras se escribe.
+// tolerante a acentos y mayúsculas), periodo, tipo de examen, fecha exacta,
+// hora, estado y compartidos. La búsqueda se dispara con el botón Buscar;
+// así no se traba la página mientras se escribe.
 const busqueda = ref(props.filters?.asignatura ?? '');
 const idPeriodo = ref(props.filters?.id_periodo ?? '');
+const idTipo = ref(props.filters?.id_tipo_examen ?? '');
 const fecha = ref(props.filters?.fecha ?? '');
 const horaInicio = ref(props.filters?.hora_inicio ?? '');
 const estado = ref(props.filters?.estado ?? '');
+const compartido = ref(props.filters?.compartido === '1');
 const cargando = ref(false);
 
 // Si llegan filtros desde la URL, el estado vacío lo indica con otro mensaje.
 const hayFiltrosActivos = computed(() =>
-    !!(props.filters?.asignatura || props.filters?.id_periodo || props.filters?.fecha || props.filters?.hora_inicio || props.filters?.estado)
+    !!(props.filters?.asignatura || props.filters?.id_periodo || props.filters?.id_tipo_examen || props.filters?.fecha || props.filters?.hora_inicio || props.filters?.estado || props.filters?.compartido)
 );
 
 // Pestañas de estado: atajos de filtro sobre la misma lista (no vistas
@@ -42,6 +51,8 @@ const CHIPS = [
     { key: 'cancelado', etiqueta: 'Cancelados' },
     { key: 'anulado', etiqueta: 'Anulados' },
     { key: 'suspendido', etiqueta: 'Suspendidos' },
+    // Chip de dimensión propia: exámenes cuyos grupos cubren a varios docentes.
+    { key: 'compartidos', etiqueta: 'Compartidos' },
 ];
 
 function conteoChip(key) {
@@ -49,9 +60,22 @@ function conteoChip(key) {
     return props.conteos?.[key] ?? 0;
 }
 
+// Un solo chip activo a la vez: los de estado y el de compartidos son
+// excluyentes entre sí (seleccionar uno desactiva el otro).
+function chipActivo(key) {
+    if (key === 'compartidos') return compartido.value;
+    return (estado.value || '') === (key || '');
+}
+
 function seleccionarChip(key) {
     if (cargando.value) return;
-    estado.value = key;
+    if (key === 'compartidos') {
+        compartido.value = true;
+        estado.value = '';
+    } else {
+        estado.value = key;
+        compartido.value = false;
+    }
     visitar('/examenes', busquedaParams(), {
         replace: true,
         only: ['examenes', 'filters', 'conteos'],
@@ -62,9 +86,11 @@ function seleccionarChip(key) {
 watch(() => props.filters, (filtros) => {
     busqueda.value = filtros?.asignatura ?? '';
     idPeriodo.value = filtros?.id_periodo ?? '';
+    idTipo.value = filtros?.id_tipo_examen ?? '';
     fecha.value = filtros?.fecha ?? '';
     horaInicio.value = filtros?.hora_inicio ?? '';
     estado.value = filtros?.estado ?? '';
+    compartido.value = filtros?.compartido === '1';
 });
 
 function visitar(url, datos = {}, opciones = {}) {
@@ -83,9 +109,11 @@ function busquedaParams() {
     return {
         asignatura: busqueda.value.trim() || undefined,
         id_periodo: idPeriodo.value || undefined,
+        id_tipo_examen: idTipo.value || undefined,
         fecha: fecha.value || undefined,
         hora_inicio: horaInicio.value || undefined,
         estado: estado.value || undefined,
+        compartido: compartido.value ? '1' : undefined,
     };
 }
 
@@ -101,9 +129,11 @@ function buscar() {
 function limpiar() {
     busqueda.value = '';
     idPeriodo.value = '';
+    idTipo.value = '';
     fecha.value = '';
     horaInicio.value = '';
     estado.value = '';
+    compartido.value = false;
     visitar('/examenes', {}, {
         replace: true,
         only: ['examenes', 'filters', 'conteos'],
@@ -127,6 +157,41 @@ const ESTADOS = {
 
 function estadoInfo(estadoActual) {
     return ESTADOS[estadoActual] ?? { clase: 'badge-pendiente', etiqueta: estadoActual ?? 'Sin estado' };
+}
+
+// ---------------------------------------------------------------------------
+// Distinción visual de exámenes compartidos (sin columna extra):
+// - Los badges de grupo se pintan con el color estable del docente dueño
+//   (el backend ordena `docentes` con el nombre del usuario autenticado al
+//   inicio, así "sus" grupos usan el azul por defecto y los ajenos brillan
+//   con otros tonos). El primer color es el azul del badge-grupo actual.
+// - Un examen compartido lleva además un ícono de dos personas junto a la
+//   asignatura, con el detalle de cuántos docentes lo gestionan.
+// ---------------------------------------------------------------------------
+const PALETA_GRUPOS = [
+    { fondo: '#e0f2fe', texto: '#0369a1', borde: '#7dd3fc' }, // azul (por defecto)
+    { fondo: '#fef3c7', texto: '#92400e', borde: '#fcd34d' }, // ámbar
+    { fondo: '#ede9fe', texto: '#5b21b6', borde: '#c4b5fd' }, // violeta
+    { fondo: '#d1fae5', texto: '#065f46', borde: '#6ee7b7' }, // verde
+    { fondo: '#ffe4e6', texto: '#9f1239', borde: '#fda4af' }, // rosa
+    { fondo: '#cffafe', texto: '#155e75', borde: '#67e8f9' }, // cian
+];
+
+function estiloBadgeGrupo(examen, grupo) {
+    const indice = (examen.docentes ?? []).indexOf(grupo.nombre_docente);
+    const color = PALETA_GRUPOS[(indice >= 0 ? indice : 0) % PALETA_GRUPOS.length];
+
+    return { backgroundColor: color.fondo, color: color.texto, borderColor: color.borde };
+}
+
+function tituloGrupo(grupo) {
+    return grupo.nombre_docente ? `Grupo ${grupo.nombre} · ${grupo.nombre_docente}` : `Grupo ${grupo.nombre}`;
+}
+
+function tituloCompartido(examen) {
+    const cantidad = examen.docentes?.length ?? 2;
+
+    return `Examen compartido entre ${cantidad} docentes`;
 }
 
 // Confirmación de acciones manuales (anular/suspender/reanudar/eliminar) mediante
@@ -238,23 +303,26 @@ const claseBotonConfirmacion = computed(() => {
 function construirItemsMenu(examen, { conVer = true } = {}) {
     const esTerminal = examen.estado_actual === 'cancelado' || examen.estado_actual === 'anulado';
     const ventanaFinalizada = examen.estado_horario === 'finalizado';
+    // Editar estructura y cambiar estado solo si el backend lo permite: el admin
+    // siempre; el docente solo en exámenes cuyos grupos le pertenecen por completo.
+    const puedeGestionar = Boolean(examen.puede_gestionar);
     const items = [];
 
-    if (!esTerminal && !ventanaFinalizada) {
+    if (puedeGestionar && !esTerminal && !ventanaFinalizada) {
         items.push({ clave: 'editar', etiqueta: 'Editar', icono: 'editar', accion: () => router.visit(`/examenes/${examen.id_examen}/editar`) });
     }
 
-    if (examen.estado_actual === 'programado') {
+    if (puedeGestionar && examen.estado_actual === 'programado') {
         items.push({ clave: 'cancelar', etiqueta: 'Cancelar', icono: 'cancelar', accion: () => abrirConfirmacion(examen, 'cancelar') });
     }
 
-    if (examen.estado_actual === 'en_curso') {
+    if (puedeGestionar && examen.estado_actual === 'en_curso') {
         items.push({ clave: 'suspender', etiqueta: 'Suspender', icono: 'suspender', accion: () => abrirConfirmacion(examen, 'suspender') });
         items.push({ clave: 'anular', etiqueta: 'Anular', icono: 'anular', accion: () => abrirConfirmacion(examen, 'anular') });
     }
 
     // Suspendido: siempre se puede reanudar; anular solo con la ventana activa.
-    if (examen.estado === 'suspendido') {
+    if (puedeGestionar && examen.estado === 'suspendido') {
         items.push({ clave: 'reanudar', etiqueta: 'Reanudar', icono: 'reanudar', accion: () => abrirConfirmacion(examen, 'reanudar') });
         if (examen.estado_horario === 'en_curso') {
             items.push({ clave: 'anular', etiqueta: 'Anular', icono: 'anular', accion: () => abrirConfirmacion(examen, 'anular') });
@@ -387,7 +455,7 @@ onBeforeUnmount(() => {
                     :key="chip.key || 'todos'"
                     type="button"
                     class="state-tab"
-                    :class="[`state-tab--${chip.key || 'todos'}`, { 'state-tab--active': (estado || '') === (chip.key || '') }]"
+                    :class="[`state-tab--${chip.key || 'todos'}`, { 'state-tab--active': chipActivo(chip.key) }]"
                     :disabled="cargando"
                     @click="seleccionarChip(chip.key)"
                 >
@@ -435,6 +503,15 @@ onBeforeUnmount(() => {
                         </select>
                     </label>
                     <label class="filter-field">
+                        <span class="filter-label">Tipo</span>
+                        <select v-model="idTipo" class="filter-input" :disabled="cargando">
+                            <option value="">Todos</option>
+                            <option v-for="tipo in tipos" :key="tipo.id_tipo_examen" :value="String(tipo.id_tipo_examen)" :title="tipo.codigo">
+                                {{ tipo.nombre }}
+                            </option>
+                        </select>
+                    </label>
+                    <label class="filter-field">
                         <span class="filter-label">Fecha</span>
                         <input v-model="fecha" type="date" class="filter-input" :disabled="cargando" />
                     </label>
@@ -451,6 +528,7 @@ onBeforeUnmount(() => {
                     <thead>
                         <tr>
                             <th>ASIGNATURA</th>
+                            <th>TIPO</th>
                             <th>PERIODO</th>
                             <th v-if="esAdmin">DOCENTE</th>
                             <th>GRUPOS</th>
@@ -474,13 +552,46 @@ onBeforeUnmount(() => {
                             @contextmenu.prevent="abrirMenuContextual($event, examen)"
                         >
                             <!-- Ajusta las propiedades (ej: asignatura.nombre) según tu BD -->
-                            <td class="col-asignatura" data-label="Asignatura">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
+                            <td class="col-asignatura" data-label="Asignatura">
+                                <span class="asignatura-celda">
+                                    <span>{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</span>
+                                    <!-- Ícono sutil de examen compartido entre docentes (sin columna extra). -->
+                                    <svg
+                                        v-if="examen.es_compartido"
+                                        class="icon-compartido"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        role="img"
+                                        :aria-label="tituloCompartido(examen)"
+                                        :title="tituloCompartido(examen)"
+                                    >
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                    </svg>
+                                </span>
+                            </td>
+                            <td data-label="Tipo">
+                                <span v-if="examen.tipo">{{ examen.tipo.nombre }}</span>
+                                <span v-else class="text-muted">Sin tipo</span>
+                            </td>
                             <td data-label="Periodo" :title="examen.periodo?.nombre || ''">{{ examen.periodo_codigo || '—' }}</td>
                             <td v-if="esAdmin" data-label="Docente">{{ examen.docentes?.join(', ') || 'N/D' }}</td>
                             <!-- Grupos de la asignatura -->
                             <td data-label="Grupos">
                                 <span v-if="examen.grupos && examen.grupos.length > 0" class="group-badges">
-                                    <span v-for="grupo in examen.grupos" :key="grupo" class="badge badge-grupo">{{ grupo }}</span>
+                                    <span
+                                        v-for="grupo in examen.grupos"
+                                        :key="grupo.nombre"
+                                        class="badge badge-grupo"
+                                        :style="estiloBadgeGrupo(examen, grupo)"
+                                        :title="tituloGrupo(grupo)"
+                                    >{{ grupo.nombre }}</span>
                                 </span>
                                 <span v-else class="text-muted">—</span>
                             </td>
@@ -522,7 +633,7 @@ onBeforeUnmount(() => {
                         </tr>
                         
                         <tr v-if="!examenes.data || examenes.data.length === 0" class="empty-row">
-                            <td :colspan="esAdmin ? 9 : 8" class="empty-state">
+                            <td :colspan="esAdmin ? 10 : 9" class="empty-state">
                                 {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                             </td>
                         </tr>
@@ -770,6 +881,7 @@ onBeforeUnmount(() => {
 .state-tab--cancelado { --tab-color: #4b5563; --tab-tint: #f3f4f6; }
 .state-tab--anulado { --tab-color: #b91c1c; --tab-tint: #fee2e2; }
 .state-tab--suspendido { --tab-color: #b45309; --tab-tint: #fffbeb; }
+.state-tab--compartidos { --tab-color: #0f766e; --tab-tint: #f0fdfa; }
 
 /* Contador de la pestaña: gris en reposo, del color del estado al estar activa */
 .state-tab-count {
@@ -857,6 +969,21 @@ onBeforeUnmount(() => {
 .col-asignatura {
     color: var(--color-primary); /* Azul oscuro característico */
     font-weight: 600;
+}
+
+/* Contenido de la celda de asignatura: nombre + ícono de compartido en línea */
+.asignatura-celda {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+}
+
+.icon-compartido {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    color: #0f766e;
 }
 
 .text-muted {

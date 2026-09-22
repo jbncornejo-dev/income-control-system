@@ -17,7 +17,7 @@ class Examen extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['id_asignatura', 'id_periodo', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
+    protected $fillable = ['id_asignatura', 'id_periodo', 'id_tipo_examen', 'fecha', 'hora_inicio', 'duracion_minutos', 'normas_generales', 'estado'];
 
     protected $appends = ['hora_fin', 'estado_actual', 'estado_horario', 'periodo_codigo'];
 
@@ -98,6 +98,13 @@ class Examen extends Model
         return $this->belongsTo(Asignatura::class, 'id_asignatura', 'id_asignatura');
     }
 
+    // Relación de muchos a uno (examen-tipo_examen). El nombre visible del
+    // examen se deriva del tipo elegido del catálogo (campo "nombre").
+    public function tipo()
+    {
+        return $this->belongsTo(TipoExamen::class, 'id_tipo_examen', 'id_tipo_examen');
+    }
+
     // Relación de muchos a uno (examen-periodo)
     public function periodo()
     {
@@ -117,6 +124,37 @@ class Examen extends Model
     public function examenesAmbientes()
     {
         return $this->hasMany(ExamenAmbiente::class, 'id_examen', 'id_examen');
+    }
+
+    // Relación de muchos a muchos (examen-grupo) a través de examen_grupo.
+    // Un examen puede cubrir uno o varios grupos; un grupo puede participar en
+    // varios exámenes del periodo (p. ej. parciales con fechas distintas).
+    public function grupos()
+    {
+        return $this->belongsToMany(
+            Grupo::class,
+            'examen_grupo',
+            'id_examen',
+            'id_grupo',
+            'id_examen',
+            'id_grupo'
+        );
+    }
+
+    /**
+     * ¿El examen cubre exclusivamente grupos del usuario indicado?
+     *
+     * El responsable del examen son los dueños de los grupos seleccionados:
+     * un examen con grupos de varios docentes lo gestiona el administrador,
+     * por lo que ningún docente tiene acceso total. Los exámenes sin grupos
+     * no pertenecen a ningún docente.
+     */
+    public function perteneceIntegramenteA(int $idUsuario): bool
+    {
+        $total = $this->grupos()->count();
+
+        return $total > 0
+            && $this->grupos()->where('grupo.id_usuario', $idUsuario)->count() === $total;
     }
 
     // Relación de uno a muchos (examen-habilitacion)

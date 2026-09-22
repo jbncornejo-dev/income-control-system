@@ -31,12 +31,44 @@ const hoy = ref(new Date().toISOString().slice(0, 10));
 const form = useForm({
     id_asignatura: props.examen?.id_asignatura ?? '',
     id_periodo: props.examen?.id_periodo ?? '',
+    id_tipo_examen: props.examen?.id_tipo_examen ?? null,
     fecha: props.examen?.fecha ?? '',
     hora_inicio: props.examen ? String(props.examen.hora_inicio ?? '').slice(0, 5) : '',
     duracion_minutos: props.examen?.duracion_minutos ?? 90,
     normas_generales: props.examen?.normas_generales ?? '',
     id_ambientes: (props.examen?.examenes_ambientes ?? []).map((ea) => ea.id_ambiente),
+    id_grupos: (props.examen?.grupos ?? []).map((g) => g.id_grupo),
 });
+
+// Grupos disponibles para la asignatura elegida. Cada asignatura llega del
+// backend con sus grupos (para el docente, solo los suyos).
+const gruposAsignatura = computed(() => {
+    const asignatura = props.asignaturas.find((a) => a.id_asignatura === form.id_asignatura);
+    return asignatura?.grupos ?? [];
+});
+
+// Al elegir otra asignatura se preseleccionan todos sus grupos (el docente
+// desmarca los que rendirán un examen aparte). En edición la elección inicial
+// conserva los grupos ya asociados al examen.
+watch(
+    () => form.id_asignatura,
+    (valor, anterior) => {
+        if (!valor || valor === anterior) return;
+
+        const asignatura = props.asignaturas.find((a) => a.id_asignatura === valor);
+        form.id_grupos = (asignatura?.grupos ?? []).map((g) => g.id_grupo);
+        form.clearErrors('id_grupos');
+    }
+);
+
+function toggleGrupo(idGrupo) {
+    if (form.id_grupos.includes(idGrupo)) {
+        form.id_grupos = form.id_grupos.filter((id) => id !== idGrupo);
+    } else {
+        form.id_grupos = [...form.id_grupos, idGrupo];
+    }
+    form.clearErrors('id_grupos');
+}
 
 // Sugiere el periodo según la fecha del examen: primero el periodo cuyo rango
 // contiene la fecha y, si no, el de la misma gestión (año). Si el usuario ya
@@ -57,6 +89,28 @@ watch(
     () => form.fecha,
     (fecha) => {
         if (!form.id_periodo) form.id_periodo = periodoSugerido(fecha) ?? '';
+    }
+);
+
+// Tipos de examen del periodo elegido (plan periodo_tipo_examen), en el orden
+// definido por el administrador. Cada periodo llega del backend con su plan en
+// "tipos_examen".
+const tiposPeriodo = computed(() => {
+    const periodo = props.periodos.find((p) => p.id_periodo === form.id_periodo);
+    return (periodo?.tipos_examen ?? [])
+        .slice()
+        .sort((a, b) => (a.pivot?.orden ?? 0) - (b.pivot?.orden ?? 0));
+});
+
+// Al cambiar el periodo se reinicia el tipo: el plan de otro periodo puede no
+// incluir el tipo elegido, y la validación lo rechazaría.
+watch(
+    () => form.id_periodo,
+    (valor, anterior) => {
+        if (valor && valor !== anterior) {
+            form.id_tipo_examen = null;
+            form.clearErrors('id_tipo_examen');
+        }
     }
 );
 
@@ -220,7 +274,7 @@ function guardar() {
                         : 'Programa una nueva evaluación asignándole asignatura, periodo, horario y ambientes.' }}
                 </p>
                 <p v-if="soloNormas" class="form-aviso">
-                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, grupos, asignatura, periodo y tipo de examen quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
@@ -244,6 +298,43 @@ function guardar() {
                         <p v-if="asignaturas.length === 0" class="help-text">No hay asignaturas registradas. Crea una desde el módulo Asignaturas.</p>
                     </div>
 
+                    <!-- Grupos que rinden el examen -->
+                    <div v-if="!soloNormas" class="form-group">
+                        <span class="form-label">Grupos que rinden el examen <span class="required">*</span></span>
+                        <p class="help-text">
+                            Marca los grupos de la asignatura que presentan este examen. Si tus grupos avanzan
+                            a distinto ritmo, crea exámenes separados: cada grupo (o conjunto de grupos al mismo
+                            ritmo) con su propia fecha.
+                        </p>
+
+                        <div v-if="gruposAsignatura.length > 0" class="ambiente-grid">
+                            <label
+                                v-for="grupo in gruposAsignatura"
+                                :key="grupo.id_grupo"
+                                class="ambiente-item"
+                                :class="{ 'ambiente-item--selected': form.id_grupos.includes(grupo.id_grupo) }"
+                            >
+                                <input
+                                    type="checkbox"
+                                    :checked="form.id_grupos.includes(grupo.id_grupo)"
+                                    :value="grupo.id_grupo"
+                                    :disabled="form.processing"
+                                    @change="toggleGrupo(grupo.id_grupo)"
+                                />
+                                <span class="ambiente-name">
+                                    {{ grupo.nombre_grupo }}<span v-if="grupo.usuario?.name" class="ambiente-owner"> — {{ grupo.usuario.name }}</span>
+                                </span>
+                            </label>
+                        </div>
+                        <p v-else-if="form.id_asignatura" class="help-text">
+                            No hay grupos registrados para esta asignatura.
+                        </p>
+                        <p v-else class="help-text">
+                            Selecciona primero una asignatura para marcar sus grupos.
+                        </p>
+                        <p v-if="form.errors.id_grupos" class="error-msg">{{ form.errors.id_grupos }}</p>
+                    </div>
+
                     <!-- Periodo -->
                     <div v-if="!soloNormas" class="form-group">
                         <label for="id_periodo" class="form-label">Periodo <span class="required">*</span></label>
@@ -262,6 +353,30 @@ function guardar() {
                         </select>
                         <p v-if="form.errors.id_periodo" class="error-msg">{{ form.errors.id_periodo }}</p>
                         <p v-if="periodos.length === 0" class="help-text">No hay periodos registrados. Crea el periodo desde el módulo de administración.</p>
+                    </div>
+
+                    <!-- Tipo de examen (del plan definido para el periodo) -->
+                    <div v-if="!soloNormas" class="form-group">
+                        <label for="id_tipo_examen" class="form-label">Tipo de examen <span class="required">*</span></label>
+                        <select
+                            id="id_tipo_examen"
+                            v-model="form.id_tipo_examen"
+                            class="form-input"
+                            :class="{ 'input-error': form.errors.id_tipo_examen }"
+                            :disabled="form.processing"
+                            @change="form.clearErrors('id_tipo_examen')"
+                        >
+                            <option :value="null" disabled>
+                                {{ tiposPeriodo.length ? 'Seleccione el tipo de examen...' : 'El periodo no tiene tipos definidos' }}
+                            </option>
+                            <option v-for="tipo in tiposPeriodo" :key="tipo.id_tipo_examen" :value="tipo.id_tipo_examen">
+                                {{ tipo.nombre }}
+                            </option>
+                        </select>
+                        <p v-if="form.errors.id_tipo_examen" class="error-msg">{{ form.errors.id_tipo_examen }}</p>
+                        <p v-if="tiposPeriodo.length === 0" class="help-text">
+                            El periodo no tiene un plan de tipos definido. Configúralo en el módulo Tipos de Examen para clasificar la evaluación.
+                        </p>
                     </div>
 
                     <!-- Fecha / Hora / Duración -->
@@ -573,6 +688,7 @@ textarea.form-input { resize: vertical; }
 .ambiente-item--ocupado input { cursor: not-allowed; }
 
 .ambiente-name { font-size: 0.875rem; color: #374151; flex: 1; }
+.ambiente-owner { font-size: 0.75rem; color: #9ca3af; font-weight: 400; }
 .ambiente-capacity { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
 
 .ambiente-ocupado-tag {

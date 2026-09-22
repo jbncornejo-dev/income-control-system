@@ -38,6 +38,12 @@ class DatabaseSeeder extends Seeder
                 'rol' => 'docente',
             ],
             [
+                'name' => 'Docente de Desarrollo 2',
+                'username' => 'docente2',
+                'email' => 'docente2@example.com',
+                'rol' => 'docente',
+            ],
+            [
                 'name' => 'Personal de Control de Desarrollo',
                 'username' => 'control',
                 'email' => 'control@example.com',
@@ -68,9 +74,13 @@ class DatabaseSeeder extends Seeder
             AmbienteSeeder::class,
             AsignaturaSeeder::class,
             PeriodoSeeder::class,
+            // Los tipos se crean antes que los exámenes: el ExamenSeeder los
+            // referencia (id_tipo_examen) al construir cada examen del demo.
+            TipoExamenSeeder::class,
             GrupoSeeder::class,
             EstudianteSeeder::class,
             ExamenSeeder::class,
+            InscripcionSeeder::class,
             HabilitacionSeeder::class,
         ]);
     }
