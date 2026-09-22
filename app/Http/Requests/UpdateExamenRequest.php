@@ -18,15 +18,12 @@ class UpdateExamenRequest extends FormRequest
             return true;
         }
 
-        // El docente solo puede editar exámenes de las asignaturas que dicta.
+        // El docente solo puede editar exámenes que cubren alguno de sus grupos.
         if ($rol === 'docente') {
             $examen = $this->route('examen');
 
             return $examen instanceof Examen
-                && Grupo::query()
-                    ->where('id_usuario', $this->user()->id)
-                    ->where('id_asignatura', $examen->id_asignatura)
-                    ->exists();
+                && $examen->grupos()->where('grupo.id_usuario', $this->user()->id)->exists();
         }
 
         return false;
@@ -54,6 +51,8 @@ class UpdateExamenRequest extends FormRequest
             'hora_inicio' => ['sometimes', 'nullable', 'date_format:H:i'],
             'duracion_minutos' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:720'],
             'normas_generales' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'id_grupos' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'id_grupos.*' => ['required', 'integer', 'distinct', 'exists:grupo,id_grupo'],
             'id_ambientes' => ['sometimes', 'nullable', 'array', 'min:1'],
             'id_ambientes.*' => ['required', 'integer', 'distinct', 'exists:ambiente,id_ambiente'],
         ];
@@ -88,6 +87,40 @@ class UpdateExamenRequest extends FormRequest
                 }
             }
 
+            // Los grupos (si se modifican) deben pertenecer a la asignatura
+            // (efectiva) del examen y, en el caso del docente, a sus propios grupos.
+            if ($this->filled('id_grupos')) {
+                $examen = $this->route('examen');
+                $idAsignatura = $this->input('id_asignatura') ?? $examen->id_asignatura;
+                $idGrupos = $this->input('id_grupos');
+
+                $gruposDeLaAsignatura = Grupo::query()
+                    ->whereIn('id_grupo', $idGrupos)
+                    ->where('id_asignatura', $idAsignatura)
+                    ->count();
+
+                if ($gruposDeLaAsignatura !== count(array_unique($idGrupos))) {
+                    $validator->errors()->add(
+                        'id_grupos',
+                        'Todos los grupos seleccionados deben pertenecer a la asignatura del examen.'
+                    );
+                }
+
+                if ($this->user()?->rol?->nombre_rol === 'docente') {
+                    $gruposDelDocente = Grupo::query()
+                        ->whereIn('id_grupo', $idGrupos)
+                        ->where('id_usuario', $this->user()->id)
+                        ->count();
+
+                    if ($gruposDelDocente !== count(array_unique($idGrupos))) {
+                        $validator->errors()->add(
+                            'id_grupos',
+                            'Solo puedes asignar al examen los grupos que dictas.'
+                        );
+                    }
+                }
+            }
+
             $fecha = $this->input('fecha');
             $hora = $this->input('hora_inicio');
 
@@ -119,6 +152,9 @@ class UpdateExamenRequest extends FormRequest
             'duracion_minutos.integer' => 'La duración debe ser un número entero.',
             'duracion_minutos.min' => 'La duración debe ser de al menos 1 minuto.',
             'duracion_minutos.max' => 'La duración no puede superar 720 minutos.',
+            'id_grupos.min' => 'Debe seleccionar al menos un grupo.',
+            'id_grupos.*.exists' => 'Uno de los grupos seleccionados no existe.',
+            'id_grupos.*.distinct' => 'Un grupo no puede seleccionarse más de una vez.',
             'id_ambientes.min' => 'Debe seleccionar al menos un ambiente.',
             'id_ambientes.*.exists' => 'Uno de los ambientes seleccionados no existe.',
             'id_ambientes.*.distinct' => 'Un ambiente no puede seleccionarse más de una vez.',

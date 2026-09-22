@@ -80,18 +80,19 @@ class ExamenEditTest extends TestCase
             ->where('examen.examenes_ambientes.0.id_ambiente', $creado['ambiente']->id_ambiente));
     }
 
-    public function test_docente_abre_la_edicion_de_un_examen_de_una_asignatura_que_dicta(): void
+    public function test_docente_abre_la_edicion_de_un_examen_que_cubre_alguna_de_sus_grupos(): void
     {
         $creado = $this->crearExamenConAmbiente();
         $examen = $creado['examen'];
 
         $docente = $this->usuario('docente');
-        Grupo::create([
+        $grupo = Grupo::create([
             'id_asignatura' => $examen->id_asignatura,
             'id_usuario' => $docente->id,
             'gestion' => '2026',
             'nombre_grupo' => 'A',
         ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
         $respuesta = $this->actingAs($docente)
             ->get("/examenes/{$examen->id_examen}/editar");
@@ -99,6 +100,7 @@ class ExamenEditTest extends TestCase
         $respuesta->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Admin/Examenes/Create')
             ->where('examen.id_examen', $examen->id_examen)
+            ->where('examen.grupos.0.id_grupo', $grupo->id_grupo)
             // El docente solo ve las asignaturas que dicta.
             ->has('asignaturas', 1)
             ->where('asignaturas.0.id_asignatura', $examen->id_asignatura));

@@ -39,34 +39,28 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        // Determinar asignaturas asignadas al docente
-        $asignaturasIds = $user->grupos()->pluck('id_asignatura')->unique();
-
-        if ($asignaturasIds->isEmpty()) {
-            $proximosExamenes = collect();
-        } else {
-            $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
-                ->withCount([
-                    'habilitaciones as hab_count' => function ($query) {
-                        $query->where('estado_habilitado', true);
-                    },
-                    'habilitaciones as inhab_count' => function ($query) {
-                        $query->where('estado_habilitado', false);
-                    },
-                ])
-                ->whereIn('id_asignatura', $asignaturasIds)
-                ->where(function ($query) {
-                    $query->where('fecha', '>', now()->toDateString())
-                          ->orWhere(function ($q) {
-                              $q->where('fecha', '=', now()->toDateString())
-                                ->where('hora_inicio', '>', now()->toTimeString());
-                          });
-                })
-                ->orderBy('fecha', 'asc')
-                ->orderBy('hora_inicio', 'asc')
-                ->take(3)
-                ->get();
-        }
+        $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+            ->withCount([
+                'habilitaciones as hab_count' => function ($query) {
+                    $query->where('estado_habilitado', true);
+                },
+                'habilitaciones as inhab_count' => function ($query) {
+                    $query->where('estado_habilitado', false);
+                },
+            ])
+            // Solo exámenes que cubren al menos uno de los grupos del docente.
+            ->whereHas('grupos', fn ($query) => $query->where('grupo.id_usuario', $user->id))
+            ->where(function ($query) {
+                $query->where('fecha', '>', now()->toDateString())
+                    ->orWhere(function ($q) {
+                        $q->where('fecha', '=', now()->toDateString())
+                            ->where('hora_inicio', '>', now()->toTimeString());
+                    });
+            })
+            ->orderBy('fecha', 'asc')
+            ->orderBy('hora_inicio', 'asc')
+            ->take(3)
+            ->get();
 
         return Inertia::render('Docente/Dashboard', [
             'stats' => [
@@ -84,10 +78,10 @@ class DashboardController extends Controller
     public function control()
     {
         // Definición del intervalo de "fechas inmediatas"
-        // Se define inicialmente como 1 día (hoy y mañana) para que el personal 
+        // Se define inicialmente como 1 día (hoy y mañana) para que el personal
         // pueda prever y preparar los ambientes de los exámenes próximos inmediatos.
-        $diasVisibilidad = 1; 
-        
+        $diasVisibilidad = 1;
+
         $fechaInicio = now()->toDateString();
         $fechaFin = now()->addDays($diasVisibilidad)->toDateString();
 

@@ -82,27 +82,34 @@ class ExamenIndexTest extends TestCase
         $this->assertEqualsCanonicalizing([$examenA->id_examen, $examenB->id_examen], $vistos);
     }
 
-    public function test_docente_solo_ve_examenes_de_las_asignaturas_que_dicta(): void
+    public function test_docente_solo_ve_examenes_que_cubren_alguna_de_sus_grupos(): void
     {
         $asignaturaPropia = $this->crearAsignatura('Cálculo');
         $examenPropio = $this->crearExamen($asignaturaPropia);
+        $examenDelMismoCursoSinSuGrupo = $this->crearExamen($asignaturaPropia);
         $examenAjeno = $this->crearExamen($this->crearAsignatura('Física'));
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        // El examen propio cubre el grupo del docente; el otro examen de la misma
+        // asignatura es de otro grupo (avanza a distinto ritmo) y no debe verse.
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         $vistos = $this->idsExamenesVistos($docente);
 
         $this->assertEqualsCanonicalizing([$examenPropio->id_examen], $vistos);
+        $this->assertNotContains($examenDelMismoCursoSinSuGrupo->id_examen, $vistos);
         $this->assertNotContains($examenAjeno->id_examen, $vistos);
     }
 
-    public function test_docente_ve_sus_grupos_como_contexto_en_cada_examen(): void
+    public function test_docente_ve_los_grupos_del_examen_como_contexto(): void
     {
         $asignatura = $this->crearAsignatura('Cálculo');
         $examen = $this->crearExamen($asignatura);
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignatura, 'A');
-        $this->asignarDocente($docente, $asignatura, 'B');
+        $grupoA = $this->asignarDocente($docente, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docente, $asignatura, 'B');
+        // El examen solo cubre los grupos que efectivamente lo rinden.
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
 
         $respuesta = $this->actingAs($docente)->get('/examenes')->assertOk();
 
@@ -113,14 +120,16 @@ class ExamenIndexTest extends TestCase
         $this->assertArrayNotHasKey('docentes', $primerExamen);
     }
 
-    public function test_administrador_ve_grupos_y_docentes_de_la_asignatura(): void
+    public function test_administrador_ve_grupos_y_docentes_de_los_grupos_del_examen(): void
     {
         $asignatura = $this->crearAsignatura('Cálculo');
         $examen = $this->crearExamen($asignatura);
         $docenteA = $this->usuario('docente');
         $docenteB = $this->usuario('docente');
-        $this->asignarDocente($docenteA, $asignatura, 'A');
-        $this->asignarDocente($docenteB, $asignatura, 'B');
+        $grupoA = $this->asignarDocente($docenteA, $asignatura, 'A');
+        $grupoB = $this->asignarDocente($docenteB, $asignatura, 'B');
+        // El examen cubre ambos grupos, dictados por docentes distintos.
+        $examen->grupos()->attach([$grupoA->id_grupo, $grupoB->id_grupo]);
 
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes')->assertOk();
 
@@ -151,7 +160,8 @@ class ExamenIndexTest extends TestCase
         $this->crearExamen($asignaturaAjena);
 
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         // Buscando la asignatura que no dicta no debe aparecer ningún examen.
         $respuesta = $this->actingAs($docente)
@@ -249,7 +259,10 @@ class ExamenIndexTest extends TestCase
         $examenPropio = $this->crearExamen($asignaturaPropia, $periodoA->id_periodo);
         $examenOtroPeriodo = $this->crearExamen($asignaturaPropia, $periodoB->id_periodo);
         $docente = $this->usuario('docente');
-        $this->asignarDocente($docente, $asignaturaPropia);
+        $grupo = $this->asignarDocente($docente, $asignaturaPropia);
+        // Solo el examen del periodo A cubre el grupo del docente: el otro examen
+        // es de otro grupo (distinto ritmo) y no debe aparecer al filtrar.
+        $examenPropio->grupos()->attach($grupo->id_grupo);
 
         $respuesta = $this->actingAs($docente)
             ->get('/examenes?id_periodo='.$periodoA->id_periodo)

@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditoriaLog;
 use App\Models\Examen;
-use App\Models\Grupo;
 use App\Models\Habilitacion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +14,9 @@ class HabilitacionController extends Controller
 {
     public function index(Request $request, Examen $examen)
     {
-        // El docente solo accede a las habilitaciones de las asignaturas que dicta.
+        // El docente solo accede a las habilitaciones de exámenes que cubren alguno de sus grupos.
         if ($request->user()->rol->nombre_rol === 'docente'
-            && ! Grupo::query()
-                ->where('id_usuario', $request->user()->id)
-                ->where('id_asignatura', $examen->id_asignatura)
-                ->exists()
+            && ! $examen->grupos()->where('grupo.id_usuario', $request->user()->id)->exists()
         ) {
             abort(403);
         }

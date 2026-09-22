@@ -37,6 +37,8 @@ class StoreExamenRequest extends FormRequest
         return [
             'id_asignatura' => ['required', 'integer', 'exists:asignatura,id_asignatura'],
             'id_periodo' => ['required', 'integer', 'exists:periodo,id_periodo'],
+            'id_grupos' => ['required', 'array', 'min:1'],
+            'id_grupos.*' => ['required', 'integer', 'distinct', 'exists:grupo,id_grupo'],
             'fecha' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'hora_inicio' => ['required', 'date_format:H:i'],
             'duracion_minutos' => ['required', 'integer', 'min:1', 'max:720'],
@@ -53,17 +55,34 @@ class StoreExamenRequest extends FormRequest
                 return;
             }
 
-            // El docente solo puede registrar exámenes de las asignaturas que dicta.
-            if ($this->user()?->rol?->nombre_rol === 'docente') {
-                $dicta = Grupo::query()
-                    ->where('id_usuario', $this->user()->id)
-                    ->where('id_asignatura', $this->input('id_asignatura'))
-                    ->exists();
+            $idAsignatura = $this->input('id_asignatura');
+            $idGrupos = $this->input('id_grupos') ?? [];
+            $esDocente = $this->user()?->rol?->nombre_rol === 'docente';
 
-                if (! $dicta) {
+            // Los grupos deben pertenecer a la asignatura del examen.
+            $gruposDeLaAsignatura = Grupo::query()
+                ->whereIn('id_grupo', $idGrupos)
+                ->where('id_asignatura', $idAsignatura)
+                ->count();
+
+            if ($gruposDeLaAsignatura !== count(array_unique($idGrupos))) {
+                $validator->errors()->add(
+                    'id_grupos',
+                    'Todos los grupos seleccionados deben pertenecer a la asignatura del examen.'
+                );
+            }
+
+            // El docente solo puede registrar exámenes de los grupos que dicta.
+            if ($esDocente) {
+                $gruposDelDocente = Grupo::query()
+                    ->whereIn('id_grupo', $idGrupos)
+                    ->where('id_usuario', $this->user()->id)
+                    ->count();
+
+                if ($gruposDelDocente !== count(array_unique($idGrupos))) {
                     $validator->errors()->add(
-                        'id_asignatura',
-                        'Solo puedes registrar exámenes de las asignaturas que dictas.'
+                        'id_grupos',
+                        'Solo puedes registrar exámenes para los grupos que dictas.'
                     );
                 }
             }
@@ -100,6 +119,11 @@ class StoreExamenRequest extends FormRequest
             'duracion_minutos.required' => 'La duración es obligatoria.',
             'duracion_minutos.min' => 'La duración debe ser de al menos 1 minuto.',
             'duracion_minutos.max' => 'La duración no puede superar 720 minutos.',
+            'id_grupos.required' => 'Debe seleccionar al menos un grupo.',
+            'id_grupos.array' => 'Los grupos deben enviarse como lista.',
+            'id_grupos.min' => 'Debe seleccionar al menos un grupo.',
+            'id_grupos.*.exists' => 'Uno de los grupos seleccionados no existe.',
+            'id_grupos.*.distinct' => 'Un grupo no puede seleccionarse más de una vez.',
             'id_ambientes.required' => 'Debe seleccionar al menos un ambiente.',
             'id_ambientes.min' => 'Debe seleccionar al menos un ambiente.',
             'id_ambientes.*.exists' => 'Uno de los ambientes seleccionados no existe.',

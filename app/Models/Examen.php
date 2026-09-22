@@ -119,6 +119,21 @@ class Examen extends Model
         return $this->hasMany(ExamenAmbiente::class, 'id_examen', 'id_examen');
     }
 
+    // Relación de muchos a muchos (examen-grupo) a través de examen_grupo.
+    // Un examen puede cubrir uno o varios grupos; un grupo puede participar en
+    // varios exámenes del periodo (p. ej. parciales con fechas distintas).
+    public function grupos()
+    {
+        return $this->belongsToMany(
+            Grupo::class,
+            'examen_grupo',
+            'id_examen',
+            'id_grupo',
+            'id_examen',
+            'id_grupo'
+        );
+    }
+
     // Relación de uno a muchos (examen-habilitacion)
     public function habilitaciones()
     {
