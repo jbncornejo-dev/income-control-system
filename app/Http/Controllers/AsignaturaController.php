@@ -24,7 +24,7 @@ class AsignaturaController extends Controller
         if (isset($filtros['nombre_asignatura'])) {
             // Escapar los comodines de LIKE para buscar el texto literal del usuario.
             $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['nombre_asignatura']);
-            $query->where('nombre_asignatura', 'ilike', '%'.$nombre.'%');
+            $query->whereRaw('unaccent(nombre_asignatura) ILIKE unaccent(?)', ['%'.$nombre.'%']);
         }
 
         $asignaturas = $query

@@ -25,7 +25,7 @@ class AmbienteController extends Controller
             ]);
 
             $query->where(function ($busqueda) use ($nombre, $capacidad) {
-                $busqueda->where('nombre_ambiente', 'ilike', '%'.$nombre.'%');
+                $busqueda->whereRaw('unaccent(nombre_ambiente) ILIKE unaccent(?)', ['%'.$nombre.'%']);
                 if ($capacidad !== false) {
                     $busqueda->orWhere('capacidad', $capacidad);
                 }
