@@ -1,9 +1,6 @@
 
-
-
-Habilitaciones index · VUE
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
@@ -14,31 +11,64 @@ import Button from '@/components/ui/Button.vue';
 const props = defineProps({
     examen: Object,
     habilitaciones: Object,
-    stats: Object
+    stats: Object,
+    filtros: Object,
+    coincidencias: Number,
+    acciones: Object
 });
  
 const toast = useToastStore();
  
 const listaLocal = ref(props.habilitaciones?.data ?? []);
- 
-const busqueda     = ref('');
-const filtroActivo = ref('todos');
- 
-const listaFiltrada = computed(() => {
-    let lista = listaLocal.value;
-    if (filtroActivo.value === 'habilitados')
-        lista = lista.filter(h => h.estado_habilitado);
-    if (filtroActivo.value === 'inhabilitados')
-        lista = lista.filter(h => !h.estado_habilitado);
-    if (busqueda.value.trim()) {
-        const q = busqueda.value.toLowerCase();
-        lista = lista.filter(h =>
-            getNombreCompleto(h.estudiante).toLowerCase().includes(q) ||
-            h.estudiante?.codigo_universitario?.toLowerCase().includes(q)
-        );
-    }
-    return lista;
+watch(() => props.habilitaciones, value => { listaLocal.value = value?.data ?? []; });
+const busqueda = ref(props.filtros?.busqueda ?? '');
+const filtroActivo = ref(props.filtros?.estado ?? 'todos');
+const modalBloque = ref(false);
+const accionBloque = ref(null);
+const cantidadBloque = computed(() => accionBloque.value === 'habilitar' ? props.acciones?.habilitar ?? 0 : props.acciones?.inhabilitar ?? 0);
+
+function cargarFiltro(estado = filtroActivo.value, termino = busqueda.value) {
+    filtroActivo.value = estado;
+    modalBloque.value = false;
+    router.get(`/examenes/${props.examen.id_examen}/habilitaciones`, {
+        estado,
+        busqueda: termino.trim(),
+    }, { preserveState: true, preserveScroll: true, replace: true });
+}
+let temporizador;
+watch(busqueda, valor => {
+    clearTimeout(temporizador);
+    temporizador = setTimeout(() => cargarFiltro(filtroActivo.value, valor), 350);
 });
+
+function abrirBloque(accion) {
+    accionBloque.value = accion;
+    motivo.value = '';
+    errorMotivo.value = '';
+    modalBloque.value = true;
+}
+
+function confirmarBloque() {
+    if (accionBloque.value === 'inhabilitar' && !motivo.value.trim()) {
+        errorMotivo.value = 'Debe especificar el motivo de la inhabilitación.';
+        return;
+    }
+    procesando.value = true;
+    router.patch(`/examenes/${props.examen.id_examen}/habilitaciones`, {
+        estado_habilitado: accionBloque.value === 'habilitar',
+        motivo_inhabilitacion: accionBloque.value === 'inhabilitar' ? motivo.value.trim() : null,
+        estado: filtroActivo.value,
+        busqueda: busqueda.value.trim(),
+    }, {
+        preserveScroll: true,
+        onSuccess: page => {
+            modalBloque.value = false;
+            toast.success(page.props.flash?.success ?? 'Cambio por bloque completado.');
+        },
+        onError: errores => { errorMotivo.value = errores.motivo_inhabilitacion ?? ''; toast.error(errores.motivo_inhabilitacion ?? 'No se pudo completar el cambio.'); },
+        onFinish: () => { procesando.value = false; },
+    });
+}
  
 const getNombreCompleto = (estudiante) => {
     if (!estudiante) return 'N/D';
@@ -87,11 +117,6 @@ function enviarCambio(hab, nuevoEstado, motivoTexto) {
         preserveState: true,
         preserveScroll: true,
         onSuccess: () => {
-            const item = listaLocal.value.find(h => h.id_habilitacion === hab.id_habilitacion);
-            if (item) {
-                item.estado_habilitado = nuevoEstado;
-                item.motivo_inhabilitacion = motivoTexto;
-            }
             toast.success(nuevoEstado ? 'Estudiante habilitado correctamente.' : 'Estudiante inhabilitado correctamente.');
             habPendiente.value = null;
         },
@@ -176,10 +201,17 @@ function guardarNormas(hab) {
                         class="search-input"
                     >
                     <div class="filter-group">
-                        <Button variant="action" :class="['filter-btn', filtroActivo === 'todos' ? 'active' : '']" @click="filtroActivo = 'todos'">Todos</Button>
-                        <Button variant="action" :class="['filter-btn', filtroActivo === 'habilitados' ? 'active' : '']" @click="filtroActivo = 'habilitados'">Habilitados</Button>
-                        <Button variant="action" :class="['filter-btn', filtroActivo === 'inhabilitados' ? 'active' : '']" @click="filtroActivo = 'inhabilitados'">Inhabilitados</Button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'todos' ? 'active' : '']" @click="cargarFiltro('todos')">Todos</Button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'habilitados' ? 'active' : '']" @click="cargarFiltro('habilitados')">Habilitados</Button>
+                        <Button variant="action" :class="['filter-btn', filtroActivo === 'inhabilitados' ? 'active' : '']" @click="cargarFiltro('inhabilitados')">Inhabilitados</Button>
                     </div>
+                </div>
+            </div>
+            <div v-if="filtroActivo !== 'todos'" class="bulk-bar">
+                <span><strong>{{ coincidencias }}</strong> estudiantes coinciden con el filtro. La acción incluye todas las páginas.</span>
+                <div class="bulk-buttons">
+                    <Button v-if="filtroActivo === 'inhabilitados'" variant="action" class="bulk-action" :disabled="!acciones?.habilitar || procesando" @click="abrirBloque('habilitar')">Habilitar a los {{ acciones?.habilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
+                    <Button v-if="filtroActivo === 'habilitados'" variant="delete" class="bulk-action" :disabled="!acciones?.inhabilitar || procesando" @click="abrirBloque('inhabilitar')">Inhabilitar a los {{ acciones?.inhabilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
                 </div>
             </div>
  
@@ -197,7 +229,7 @@ function guardarNormas(hab) {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="hab in listaFiltrada" :key="hab.id_habilitacion">
+                        <tr v-for="hab in listaLocal" :key="hab.id_habilitacion">
                             <td class="col-mono text-purple">{{ hab.estudiante?.codigo_universitario || 'N/D' }}</td>
                             <td>
                                 <div class="student-name">{{ getNombreCompleto(hab.estudiante) }}</div>
@@ -211,26 +243,31 @@ function guardarNormas(hab) {
                                 </span>
                             </td>
                             <td>
+                                {{ hab.estudiante?.ya_ingreso ? 'Registrado' : 'Pendiente' }}
+                            </td>
+                            <td>
                                 <textarea v-model="hab.normas_particulares" rows="1" style="width:100%; font-size:0.75rem; border:1px solid #d1d5db; border-radius:3px; padding:2px 6px; resize:vertical;" @change="guardarNormas(hab)"></textarea>
                             </td>
-                            <td class="col-mono text-purple">&mdash;</td>
                             <td>
                                 <Button
                                     :variant="hab.estado_habilitado ? 'delete' : 'action'"
-                                    :disabled="procesando || !!hab.registro_ingreso"
-                                    :title="hab.registro_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
+                                    :disabled="procesando || !!hab.estudiante?.ya_ingreso"
+                                    :title="hab.estudiante?.ya_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
                                     @click="clickToggle(hab)"
                                 >
                                     {{ hab.estado_habilitado ? 'Inhabilitar' : 'Habilitar' }}
                                 </Button>
                             </td>
                         </tr>
-                        <tr v-if="listaFiltrada.length === 0">
-                            <td colspan="5" class="empty-state">No hay estudiantes registrados en este examen.</td>
+                        <tr v-if="listaLocal.length === 0">
+                            <td colspan="6" class="empty-state">No hay estudiantes que coincidan con este filtro.</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
+            <nav v-if="habilitaciones?.last_page > 1" class="pagination" aria-label="Páginas de estudiantes">
+                <Link v-for="link in habilitaciones.links" :key="link.label" :href="link.url || '#'" :class="['page-link', { active: link.active, disabled: !link.url }]" preserve-scroll v-html="link.label" />
+            </nav>
         </div>
  
         <!-- Modal motivo inhabilitación -->
@@ -257,10 +294,24 @@ function guardarNormas(hab) {
                     variant="primary" 
                     class="btn-modal btn-peligro" 
                     @click="confirmarInhabilitar"
-                    :disabled="procesando || !!habPendiente?.registro_ingreso"
+                    :disabled="procesando || !!habPendiente?.estudiante?.ya_ingreso"
                 >
                     Confirmar inhabilitación
                 </Button>
+            </template>
+        </Modal>
+
+        <Modal :open="modalBloque" :title="accionBloque === 'habilitar' ? 'Habilitar en bloque' : 'Inhabilitar en bloque'" @close="modalBloque = false">
+            <p>Se {{ accionBloque === 'habilitar' ? 'habilitarán' : 'inhabilitarán' }} <strong>{{ cantidadBloque }}</strong> estudiantes del examen {{ examen.asignatura?.nombre_asignatura }} que coinciden con el filtro y la búsqueda actuales, en todas las páginas.</p>
+            <p>Los estudiantes que ya registraron ingreso quedan excluidos.</p>
+            <div v-if="accionBloque === 'inhabilitar'" class="form-group">
+                <label for="motivo-bloque">Motivo común de inhabilitación *</label>
+                <textarea id="motivo-bloque" v-model="motivo" rows="3" class="bulk-motivo" @input="errorMotivo = ''"></textarea>
+                <p v-if="errorMotivo" class="text-red">{{ errorMotivo }}</p>
+            </div>
+            <template #footer>
+                <Button variant="action" @click="modalBloque = false">Cancelar</Button>
+                <Button :variant="accionBloque === 'habilitar' ? 'action' : 'delete'" class="bulk-action" :disabled="procesando || !cantidadBloque" @click="confirmarBloque"><span v-if="procesando" class="bulk-spinner" aria-hidden="true"></span>{{ procesando ? 'Procesando cambios...' : `Confirmar ${accionBloque} a ${cantidadBloque}` }}</Button>
             </template>
         </Modal>
  
@@ -300,6 +351,21 @@ function guardarNormas(hab) {
 .text-gray { color: #4b5563; }
 .text-purple { color: var(--color-primary); }
 .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
+.bulk-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.9rem 1rem; margin-bottom: 1rem; color: #1f2937; font-size: 0.875rem; }
+.bulk-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.bulk-action { gap: 0.55rem; min-height: 2.7rem; transition: background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease !important; }
+.bulk-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
+.bulk-action:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.bulk-action:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.bulk-spinner { width: 0.9rem; height: 0.9rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: bulk-spin 700ms linear infinite; }
+@keyframes bulk-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .bulk-action { transition: none !important; } .bulk-spinner { animation: none; } }
+.bulk-motivo { display: block; width: 100%; min-height: 5rem; margin-top: 0.4rem; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.4rem; box-sizing: border-box; }
+.pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin-top: 1rem; }
+.page-link { padding: 0.45rem 0.7rem; background: white; border: 1px solid #d1d5db; border-radius: 0.3rem; color: var(--color-primary); text-decoration: none; }
+.page-link.active { background: var(--color-primary); color: white; }
+.page-link.disabled { pointer-events: none; opacity: 0.5; }
+@media (max-width: 720px) { .action-bar, .bulk-bar, .action-bar > div { flex-direction: column; align-items: stretch !important; } .search-input { max-width: none; } .bulk-buttons > * { flex: 1; } .exam-meta-row, .stats-row { flex-wrap: wrap; } }
 .search-input { flex: 1; max-width: 500px; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem; }
 .filter-group { display: flex; border: 1px solid #d1d5db; border-radius: 0.25rem; overflow: hidden; }
 .filter-btn { background: white; border: none; padding: 0.5rem 1rem; font-size: 0.875rem; color: #374151; cursor: pointer; border-right: 1px solid #d1d5db; }
