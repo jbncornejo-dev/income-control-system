@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Http\Requests\Concerns\ValidatesTipoExamenEnPeriodo;
 use App\Models\Examen;
 use App\Models\Grupo;
+use App\Models\Periodo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -21,12 +22,13 @@ class UpdateExamenRequest extends FormRequest
             return true;
         }
 
-        // El docente solo puede editar exámenes que cubren alguno de sus grupos.
+        // El docente solo puede editar exámenes cuyos grupos le pertenecen por
+        // completo (un examen compartido con otros docentes lo gestiona el admin).
         if ($rol === 'docente') {
             $examen = $this->route('examen');
 
             return $examen instanceof Examen
-                && $examen->grupos()->where('grupo.id_usuario', $this->user()->id)->exists();
+                && $examen->perteneceIntegramenteA($this->user()->id);
         }
 
         return false;
@@ -55,9 +57,11 @@ class UpdateExamenRequest extends FormRequest
             'hora_inicio' => ['sometimes', 'nullable', 'date_format:H:i'],
             'duracion_minutos' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:720'],
             'normas_generales' => ['sometimes', 'nullable', 'string', 'max:5000'],
-            'id_grupos' => ['sometimes', 'nullable', 'array', 'min:1'],
+            // `id_grupos`/`id_ambientes` solo se tocan si vienen en el PATCH;
+            // un `null` explícito se rechaza (no se puede vaciar el examen).
+            'id_grupos' => ['sometimes', 'array', 'min:1'],
             'id_grupos.*' => ['required', 'integer', 'distinct', 'exists:grupo,id_grupo'],
-            'id_ambientes' => ['sometimes', 'nullable', 'array', 'min:1'],
+            'id_ambientes' => ['sometimes', 'array', 'min:1'],
             'id_ambientes.*' => ['required', 'integer', 'distinct', 'exists:ambiente,id_ambiente'],
         ];
     }
@@ -91,12 +95,15 @@ class UpdateExamenRequest extends FormRequest
                 }
             }
 
-            // Los grupos (si se modifican) deben pertenecer a la asignatura
-            // (efectiva) del examen y, en el caso del docente, a sus propios grupos.
-            if ($this->filled('id_grupos')) {
+            // La estructura (asignatura, periodo, grupos) se revalida cuando se
+            // modifica cualquiera de sus componentes: los grupos efectivos (los
+            // enviados o los ya vinculados al examen) deben seguir perteneciendo
+            // a la asignatura y a la gestión del periodo efectivos.
+            if ($this->exists('id_grupos') || $this->exists('id_asignatura') || $this->exists('id_periodo')) {
                 $examen = $this->route('examen');
                 $idAsignatura = $this->input('id_asignatura') ?? $examen->id_asignatura;
-                $idGrupos = $this->input('id_grupos');
+                $idPeriodo = $this->input('id_periodo') ?? $examen->id_periodo;
+                $idGrupos = $this->input('id_grupos') ?? $examen->grupos()->pluck('grupo.id_grupo')->all();
 
                 $gruposDeLaAsignatura = Grupo::query()
                     ->whereIn('id_grupo', $idGrupos)
@@ -108,6 +115,23 @@ class UpdateExamenRequest extends FormRequest
                         'id_grupos',
                         'Todos los grupos seleccionados deben pertenecer a la asignatura del examen.'
                     );
+                }
+
+                // La gestión de los grupos debe coincidir con la del periodo.
+                $gestionPeriodo = Periodo::find((int) $idPeriodo)?->gestion;
+
+                if ($gestionPeriodo !== null) {
+                    $gruposDeLaGestion = Grupo::query()
+                        ->whereIn('id_grupo', $idGrupos)
+                        ->where('gestion', $gestionPeriodo)
+                        ->count();
+
+                    if ($gruposDeLaGestion !== count(array_unique($idGrupos))) {
+                        $validator->errors()->add(
+                            'id_grupos',
+                            'Los grupos seleccionados deben pertenecer a la misma gestión que el periodo del examen.'
+                        );
+                    }
                 }
 
                 if ($this->user()?->rol?->nombre_rol === 'docente') {
@@ -125,12 +149,23 @@ class UpdateExamenRequest extends FormRequest
                 }
             }
 
-            // El tipo de examen (solo si se envía en el PATCH parcial) debe venir del
-            // plan definido para el periodo efectivo del examen.
-            if ($this->exists('id_tipo_examen')) {
+            // El tipo de examen debe venir del plan del periodo efectivo. Se
+            // valida tanto cuando se cambia el tipo como cuando se cambia el
+            // periodo (para no mover un examen a un plan que no lo contiene).
+            if ($this->exists('id_tipo_examen') || $this->exists('id_periodo')) {
                 $examen = $this->route('examen');
                 $idPeriodo = $this->input('id_periodo') ?? $examen->id_periodo;
-                $this->validarTipoContraPlan($validator, (int) $idPeriodo, $this->input('id_tipo_examen'));
+                $idTipo = $this->exists('id_tipo_examen')
+                    ? $this->input('id_tipo_examen')
+                    : $examen->id_tipo_examen;
+
+                // Los tipos desactivados no pueden asignarse de nuevo, pero el
+                // examen conserva su tipo histórico aunque el catálogo lo haya
+                // desactivado (no se revalida lo que no cambió).
+                $cambioDeTipo = $this->exists('id_tipo_examen')
+                    && (int) $this->input('id_tipo_examen') !== (int) $examen->id_tipo_examen;
+
+                $this->validarTipoContraPlan($validator, (int) $idPeriodo, $idTipo, $cambioDeTipo);
             }
 
             $fecha = $this->input('fecha');
@@ -167,9 +202,11 @@ class UpdateExamenRequest extends FormRequest
             'duracion_minutos.min' => 'La duración debe ser de al menos 1 minuto.',
             'duracion_minutos.max' => 'La duración no puede superar 720 minutos.',
             'id_grupos.min' => 'Debe seleccionar al menos un grupo.',
+            'id_grupos.array' => 'Los grupos deben enviarse como lista.',
             'id_grupos.*.exists' => 'Uno de los grupos seleccionados no existe.',
             'id_grupos.*.distinct' => 'Un grupo no puede seleccionarse más de una vez.',
             'id_ambientes.min' => 'Debe seleccionar al menos un ambiente.',
+            'id_ambientes.array' => 'Los ambientes deben enviarse como lista.',
             'id_ambientes.*.exists' => 'Uno de los ambientes seleccionados no existe.',
             'id_ambientes.*.distinct' => 'Un ambiente no puede seleccionarse más de una vez.',
         ];

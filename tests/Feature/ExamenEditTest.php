@@ -80,7 +80,7 @@ class ExamenEditTest extends TestCase
             ->where('examen.examenes_ambientes.0.id_ambiente', $creado['ambiente']->id_ambiente));
     }
 
-    public function test_docente_abre_la_edicion_de_un_examen_que_cubre_alguna_de_sus_grupos(): void
+    public function test_docente_abre_la_edicion_de_un_examen_cuyos_grupos_le_pertenecen(): void
     {
         $creado = $this->crearExamenConAmbiente();
         $examen = $creado['examen'];
@@ -112,6 +112,36 @@ class ExamenEditTest extends TestCase
 
         $respuesta = $this->actingAs($this->usuario('docente'))
             ->get("/examenes/{$creado['examen']->id_examen}/editar");
+
+        $respuesta->assertForbidden();
+    }
+
+    public function test_docente_no_puede_editar_un_examen_compartido_con_otro_docente(): void
+    {
+        $creado = $this->crearExamenConAmbiente();
+        $examen = $creado['examen'];
+
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente', '_2');
+
+        $propio = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $ajeno = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $otroDocente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'B',
+        ]);
+        $examen->grupos()->attach([$propio->id_grupo, $ajeno->id_grupo]);
+
+        // Aunque el examen cubre un grupo del docente, no le pertenece por
+        // completo: solo el administrador lo edita.
+        $respuesta = $this->actingAs($docente)
+            ->get("/examenes/{$examen->id_examen}/editar");
 
         $respuesta->assertForbidden();
     }

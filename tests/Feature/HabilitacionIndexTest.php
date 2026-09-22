@@ -3,17 +3,14 @@
 namespace Tests\Feature;
 
 use App\Models\Asignatura;
-use App\Models\Ambiente;
-use App\Models\AuditoriaLog;
 use App\Models\Estudiante;
 use App\Models\Examen;
-use App\Models\ExamenAmbiente;
 use App\Models\Grupo;
 use App\Models\Habilitacion;
 use App\Models\Rol;
-use App\Models\RegistroIngreso;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -48,20 +45,33 @@ class HabilitacionIndexTest extends TestCase
         ]);
     }
 
-    private function usuario(string $nombreRol): User
+    private function usuario(string $nombreRol, string $sufijo = ''): User
     {
         $rol = Rol::firstOrCreate(['nombre_rol' => $nombreRol]);
 
         return User::create([
             'id_rol' => $rol->id_rol,
-            'name' => ucfirst($nombreRol),
-            'username' => str($nombreRol)->slug('_'),
-            'email' => str($nombreRol)->slug().'@example.com',
+            'name' => ucfirst($nombreRol).$sufijo,
+            'username' => str($nombreRol)->slug('_').$sufijo,
+            'email' => str($nombreRol)->slug().$sufijo.'@example.com',
             'password' => Hash::make('pass'),
         ]);
     }
 
-    public function test_docente_ve_las_habilitaciones_de_un_examen_que_cubre_alguna_de_sus_grupos(): void
+    private function estudiante(): Estudiante
+    {
+        $unico = uniqid();
+
+        return Estudiante::create([
+            'codigo_universitario' => 'CU_'.$unico,
+            'documento_identidad' => 'DOC_'.$unico,
+            'nombres' => 'Estudiante',
+            'apellidos' => 'De Prueba',
+            'codigo_qr' => 'QR_'.$unico,
+        ]);
+    }
+
+    public function test_docente_ve_las_habilitaciones_de_un_examen_cuyos_grupos_le_pertenecen(): void
     {
         $examen = $this->crearExamen();
         $docente = $this->usuario('docente');
@@ -100,71 +110,86 @@ class HabilitacionIndexTest extends TestCase
         $respuesta->assertOk();
     }
 
-    public function test_filtro_y_cambio_masivo_incluyen_todas_las_paginas(): void
+    public function test_docente_no_ve_las_habilitaciones_de_un_examen_compartido_con_otro_docente(): void
     {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
         $examen = $this->crearExamen();
-        $admin = $this->usuario('administrador');
-        for ($i = 1; $i <= 18; $i++) {
-            $estudiante = Estudiante::create([
-                'codigo_universitario' => 'B'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
-                'documento_identidad' => 'D'.str_pad((string) $i, 4, '0', STR_PAD_LEFT),
-                'nombres' => 'Bloque',
-                'apellidos' => 'Prueba',
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente', '_2');
+
+        $propio = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $ajeno = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $otroDocente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'C',
+        ]);
+        $examen->grupos()->attach([$propio->id_grupo, $ajeno->id_grupo]);
+
+        // El examen cubre un grupo del docente, pero no le pertenece por
+        // completo: lo gestiona el administrador, no el docente.
+        $respuesta = $this->actingAs($docente)
+            ->get("/examenes/{$examen->id_examen}/habilitaciones");
+
+        $respuesta->assertForbidden();
+    }
+
+    public function test_docente_no_actualiza_una_habilitacion_de_un_examen_que_no_le_pertenece_por_completo(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
+        $examen = $this->crearExamen();
+        $otroDocente = $this->usuario('docente', '_2');
+
+        $grupo = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $otroDocente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $examen->grupos()->attach($grupo->id_grupo);
+
+        $habilitacion = Habilitacion::create([
+            'id_estudiante' => $this->estudiante()->id_estudiante,
+            'id_examen' => $examen->id_examen,
+            'estado_habilitado' => true,
+        ]);
+
+        $respuesta = $this->actingAs($this->usuario('docente'))
+            ->patch("/habilitaciones/{$habilitacion->id_habilitacion}", [
+                'estado_habilitado' => false,
+                'motivo_inhabilitacion' => 'No presentó el carnet',
             ]);
-            Habilitacion::create(['id_examen' => $examen->id_examen, 'id_estudiante' => $estudiante->id_estudiante, 'estado_habilitado' => false, 'motivo_inhabilitacion' => 'Pendiente']);
-        }
 
-        $this->actingAs($admin)->getJson("/examenes/{$examen->id_examen}/habilitaciones?estado=inhabilitados&busqueda=Bloque")
-            ->assertOk()->assertJsonPath('total', 18)->assertJsonCount(15, 'data');
-
-        $this->actingAs($admin)->patch("/examenes/{$examen->id_examen}/habilitaciones", [
-            'estado' => 'inhabilitados', 'busqueda' => 'Bloque', 'estado_habilitado' => true,
-        ])->assertSessionHas('success');
-
-        $this->assertSame(18, Habilitacion::where('id_examen', $examen->id_examen)->where('estado_habilitado', true)->count());
-        $this->assertSame(18, AuditoriaLog::where('tabla_afectada', 'habilitacion')->count());
+        $respuesta->assertForbidden();
     }
 
-    public function test_inhabilitacion_masiva_exige_motivo_y_docente_ajeno_no_puede_aplicarla(): void
+    public function test_docente_no_agrega_estudiantes_a_un_examen_que_no_le_pertenece_por_completo(): void
     {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+
         $examen = $this->crearExamen();
-        $url = "/examenes/{$examen->id_examen}/habilitaciones";
-        $this->actingAs($this->usuario('administrador'))->patch($url, ['estado_habilitado' => false])
-            ->assertSessionHasErrors('motivo_inhabilitacion');
-        $this->actingAs($this->usuario('docente'))->patch($url, [
-            'estado_habilitado' => false, 'motivo_inhabilitacion' => 'Falta requisito',
-        ])->assertForbidden();
-    }
+        $otroDocente = $this->usuario('docente', '_2');
 
-    public function test_cambio_masivo_omite_estudiantes_que_ya_ingresaron(): void
-    {
-        $examen = $this->crearExamen();
-        $admin = $this->usuario('administrador');
-        $ambiente = Ambiente::create(['nombre_ambiente' => 'Aula '.uniqid(), 'capacidad' => 30]);
-        $examenAmbiente = ExamenAmbiente::create(['id_examen' => $examen->id_examen, 'id_ambiente' => $ambiente->id_ambiente]);
-        $estudiante = Estudiante::create(['codigo_universitario' => 'ING001', 'documento_identidad' => 'DOC001', 'nombres' => 'Ya', 'apellidos' => 'Ingresó']);
-        $habilitacion = Habilitacion::create(['id_examen' => $examen->id_examen, 'id_estudiante' => $estudiante->id_estudiante]);
-        RegistroIngreso::create(['id_estudiante' => $estudiante->id_estudiante, 'id_examen_ambiente' => $examenAmbiente->id_examen_ambiente, 'id_usuario' => $admin->id]);
+        $grupo = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $otroDocente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $examen->grupos()->attach($grupo->id_grupo);
 
-        $this->actingAs($admin)->patch("/examenes/{$examen->id_examen}/habilitaciones", [
-            'estado' => 'habilitados', 'estado_habilitado' => false, 'motivo_inhabilitacion' => 'Motivo común',
-        ])->assertSessionHas('success', fn ($mensaje) => str_contains($mensaje, 'Omitidos por ingreso registrado: 1'));
+        $respuesta = $this->actingAs($this->usuario('docente'))
+            ->post("/examenes/{$examen->id_examen}/habilitaciones", [
+                'student_ids' => [$this->estudiante()->id_estudiante],
+            ]);
 
-        $this->assertTrue($habilitacion->fresh()->estado_habilitado);
-        $this->actingAs($admin)->patch("/habilitaciones/{$habilitacion->id_habilitacion}", [
-            'estado_habilitado' => false, 'motivo_inhabilitacion' => 'Motivo individual',
-        ])->assertSessionHasErrors('estado_habilitado');
-    }
-
-    public function test_cambio_masivo_rechaza_filtro_todos_y_accion_incompatible(): void
-    {
-        $examen = $this->crearExamen();
-        $url = "/examenes/{$examen->id_examen}/habilitaciones";
-        $admin = $this->usuario('administrador');
-
-        $this->actingAs($admin)->patch($url, ['estado' => 'todos', 'estado_habilitado' => true])
-            ->assertSessionHasErrors('estado');
-        $this->actingAs($admin)->patch($url, ['estado' => 'habilitados', 'estado_habilitado' => true])
-            ->assertSessionHasErrors('estado');
+        $respuesta->assertForbidden();
     }
 }

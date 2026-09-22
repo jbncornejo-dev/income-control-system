@@ -27,8 +27,11 @@ class TipoExamenSeeder extends Seeder
 
         $tiposCreados = [];
 
+        // El catálogo lo administran los usuarios; el seeder solo aporta los valores
+        // por defecto al crearse el registro, sin pisar renombres o
+        // desactivaciones hechas por el administrador en un db:seed posterior.
         foreach ($tipos as $codigo => $nombre) {
-            $tiposCreados[] = TipoExamen::updateOrCreate(
+            $tiposCreados[] = TipoExamen::firstOrCreate(
                 ['codigo' => $codigo],
                 ['nombre' => $nombre, 'activo' => true]
             );

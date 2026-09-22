@@ -197,9 +197,10 @@ class ExamenController extends Controller
         $usuario = auth()->user();
         $esDocente = $usuario->rol->nombre_rol === 'docente';
 
-        // El docente solo puede abrir la edición de exámenes que cubren alguno de sus grupos.
+        // El docente solo puede abrir la edición de exámenes cuyos grupos le
+        // pertenecen por completo (un examen compartido lo gestiona el admin).
         if ($esDocente
-            && ! $examen->grupos()->where('grupo.id_usuario', $usuario->id)->exists()
+            && ! $examen->perteneceIntegramenteA($usuario->id)
         ) {
             abort(403);
         }
@@ -862,7 +863,11 @@ class ExamenController extends Controller
     private function periodosDisponibles()
     {
         return Periodo::query()
-            ->with(['tiposExamen' => fn ($query) => $query->orderBy('periodo_tipo_examen.orden')])
+            // Solo se ofrece elegir tipos activos (los desactivados se conservan
+            // en exámenes históricos pero no se asignan a exámenes nuevos).
+            ->with(['tiposExamen' => fn ($query) => $query
+                ->where('tipo_examen.activo', true)
+                ->orderBy('periodo_tipo_examen.orden')])
             ->orderByDesc('gestion')
             ->orderByDesc('numero')
             ->get(['id_periodo', 'gestion', 'tipo', 'numero', 'fecha_inicio', 'fecha_fin']);

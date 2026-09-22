@@ -171,8 +171,11 @@ class ExamenSeeder extends Seeder
 
             // Vincula los grupos del examen (sync idempotente): sin esto
             // el examen queda fuera del filtro por grupos que usa el listado.
+            // Se restringe a la gestión en curso: los nombres de grupo se
+            // repiten entre gestiones y un examen no cubre grupos de otra.
             $grupos = $gruposPorAsignatura
                 ->get($examen->id_asignatura, collect())
+                ->where('gestion', $gestion)
                 ->when(isset($datos['grupos']), function ($grupos) use ($datos) {
                     return $grupos->whereIn('nombre_grupo', $datos['grupos']);
                 })

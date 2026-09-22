@@ -16,12 +16,13 @@ class CambiarEstadoExamenRequest extends FormRequest
             return true;
         }
 
-        // El docente solo puede cambiar el estado de exámenes que cubren alguno de sus grupos.
+        // El docente solo puede cambiar el estado de exámenes cuyos grupos le
+        // pertenecen por completo (un examen compartido lo gestiona el admin).
         if ($rol === 'docente') {
             $examen = $this->route('examen');
 
             return $examen instanceof Examen
-                && $examen->grupos()->where('grupo.id_usuario', $this->user()->id)->exists();
+                && $examen->perteneceIntegramenteA($this->user()->id);
         }
 
         return false;

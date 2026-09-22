@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class TipoExamenPlanTest extends TestCase
@@ -328,5 +329,180 @@ class TipoExamenPlanTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('estado');
+    }
+
+    public function test_el_administrador_puede_vaciar_el_plan_de_un_periodo(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $periodo = $this->crearPeriodo();
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'primer_parcial']);
+        $periodo->tiposExamen()->attach($tipo->id_tipo_examen, ['orden' => 1]);
+
+        // Plan completo vacío: el periodo queda sin plan (comportamiento válido).
+        $response = $this->actingAs($this->administrador())
+            ->put("/periodos/{$periodo->id_periodo}/tipos-examen", [
+                'tipos' => [],
+            ]);
+
+        $response->assertSessionHas('success');
+        $this->assertDatabaseMissing('periodo_tipo_examen', [
+            'id_periodo' => $periodo->id_periodo,
+            'id_tipo_examen' => $tipo->id_tipo_examen,
+        ]);
+        $this->assertDatabaseCount('periodo_tipo_examen', 0);
+    }
+
+    public function test_los_grupos_deben_coincidir_con_la_gestion_del_periodo_al_crear(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $datos = $this->datosValidos()['datos'];
+        // Grupos de la gestión 2026, pero el examen se registra en la gestión 2025.
+        $datos['id_periodo'] = $this->crearPeriodo('2025')->id_periodo;
+
+        $response = $this->actingAs($this->administrador())->post('/examenes', $datos);
+
+        $response->assertSessionHasErrors('id_grupos');
+        $this->assertDatabaseCount('examen', 0);
+    }
+
+    public function test_no_se_admite_un_tipo_inactivo_al_crear_examen(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $periodo = $this->crearPeriodo();
+        $inactivo = TipoExamen::create([
+            'nombre' => 'Examen final',
+            'codigo' => 'examen_final',
+            'activo' => false,
+        ]);
+        $periodo->tiposExamen()->attach($inactivo->id_tipo_examen, ['orden' => 1]);
+
+        $datos = array_merge($this->datosValidos()['datos'], ['id_tipo_examen' => $inactivo->id_tipo_examen]);
+
+        $response = $this->actingAs($this->administrador())->post('/examenes', $datos);
+
+        $response->assertSessionHasErrors('id_tipo_examen');
+        $this->assertDatabaseCount('examen', 0);
+    }
+
+    public function test_no_se_admite_cambiar_a_un_tipo_inactivo_al_editar(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $periodo = $this->crearPeriodo();
+        $activo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'primer_parcial']);
+        $inactivo = TipoExamen::create([
+            'nombre' => 'Examen final',
+            'codigo' => 'examen_final',
+            'activo' => false,
+        ]);
+        $periodo->tiposExamen()->attach($activo->id_tipo_examen, ['orden' => 1]);
+        $periodo->tiposExamen()->attach($inactivo->id_tipo_examen, ['orden' => 2]);
+
+        $datos = $this->datosValidos()['datos'];
+        $datos['id_tipo_examen'] = $activo->id_tipo_examen;
+        $this->actingAs($this->administrador())->post('/examenes', $datos)->assertSessionHas('success');
+
+        $examen = Examen::where('id_tipo_examen', $activo->id_tipo_examen)->firstOrFail();
+
+        $response = $this->actingAs($this->administrador())
+            ->patch("/examenes/{$examen->id_examen}", [
+                'id_tipo_examen' => $inactivo->id_tipo_examen,
+            ]);
+
+        $response->assertSessionHasErrors('id_tipo_examen');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $examen->id_examen,
+            'id_tipo_examen' => $activo->id_tipo_examen,
+        ]);
+    }
+
+    public function test_el_examen_conserva_el_tipo_historico_desactivado(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $periodo = $this->crearPeriodo();
+        $tipo = TipoExamen::create([
+            'nombre' => 'Examen final',
+            'codigo' => 'examen_final',
+            'activo' => false,
+        ]);
+        $periodo->tiposExamen()->attach($tipo->id_tipo_examen, ['orden' => 1]);
+
+        // Examen legado creado directamente en la base con el tipo desactivado.
+        $base = $this->datosValidos();
+        $examen = Examen::create([
+            ...$base['datos'],
+            'id_tipo_examen' => $tipo->id_tipo_examen,
+        ]);
+        $examen->grupos()->attach($base['id_grupo']);
+
+        // El form envía el tipo actual (desactivado) sin cambiarlo: se conserva.
+        $response = $this->actingAs($this->administrador())
+            ->patch("/examenes/{$examen->id_examen}", [
+                'id_tipo_examen' => $tipo->id_tipo_examen,
+                'normas_generales' => 'Normas actualizadas',
+            ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $examen->id_examen,
+            'id_tipo_examen' => $tipo->id_tipo_examen,
+            'normas_generales' => 'Normas actualizadas',
+        ]);
+    }
+
+    public function test_al_cambiar_el_periodo_se_valida_el_tipo_existente(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $periodoOrigen = $this->crearPeriodo('2026');
+        $periodoDestino = $this->crearPeriodo('2026', 2);
+
+        $tipo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'primer_parcial']);
+        $otroTipo = TipoExamen::create(['nombre' => 'Examen final', 'codigo' => 'examen_final']);
+        $periodoOrigen->tiposExamen()->attach($tipo->id_tipo_examen, ['orden' => 1]);
+        // El destino tiene plan, pero no contiene el tipo actual del examen.
+        $periodoDestino->tiposExamen()->attach($otroTipo->id_tipo_examen, ['orden' => 1]);
+
+        $base = $this->datosValidos();
+        $examen = Examen::create([
+            ...$base['datos'],
+            'id_periodo' => $periodoOrigen->id_periodo,
+            'id_tipo_examen' => $tipo->id_tipo_examen,
+        ]);
+        $examen->grupos()->attach($base['id_grupo']);
+
+        // PATCH parcial que solo cambia el periodo: el tipo existente debe seguir
+        // siendo válido para el plan del nuevo periodo.
+        $response = $this->actingAs($this->administrador())
+            ->patch("/examenes/{$examen->id_examen}", [
+                'id_periodo' => $periodoDestino->id_periodo,
+            ]);
+
+        $response->assertSessionHasErrors('id_tipo_examen');
+        $this->assertDatabaseHas('examen', [
+            'id_examen' => $examen->id_examen,
+            'id_periodo' => $periodoOrigen->id_periodo,
+        ]);
+    }
+
+    public function test_el_selector_de_tipos_solo_ofrece_tipos_activos(): void
+    {
+        config(['inertia.pages.paths' => [resource_path('js/Pages')]]);
+        config(['inertia.testing.ensure_pages_exist' => false]);
+
+        $periodo = $this->crearPeriodo();
+        $activo = TipoExamen::create(['nombre' => 'Primer parcial', 'codigo' => 'primer_parcial']);
+        $inactivo = TipoExamen::create([
+            'nombre' => 'Examen final',
+            'codigo' => 'examen_final',
+            'activo' => false,
+        ]);
+        $periodo->tiposExamen()->attach($activo->id_tipo_examen, ['orden' => 1]);
+        $periodo->tiposExamen()->attach($inactivo->id_tipo_examen, ['orden' => 2]);
+
+        $response = $this->actingAs($this->administrador())->get('/examenes/crear');
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Examenes/Create')
+            ->has('periodos.0.tipos_examen', 1)
+            ->where('periodos.0.tipos_examen.0.id_tipo_examen', $activo->id_tipo_examen));
     }
 }

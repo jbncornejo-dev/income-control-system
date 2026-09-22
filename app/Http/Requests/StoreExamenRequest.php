@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Http\Requests\Concerns\ValidatesTipoExamenEnPeriodo;
 use App\Models\Grupo;
+use App\Models\Periodo;
 use Carbon\Carbon;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -91,8 +92,26 @@ class StoreExamenRequest extends FormRequest
                 }
             }
 
+            // La gestión de los grupos debe coincidir con la del periodo: un
+            // examen de 2026 no puede rendirse por grupos de otra gestión.
+            $gestionPeriodo = Periodo::find((int) $this->input('id_periodo'))?->gestion;
+
+            if ($gestionPeriodo !== null) {
+                $gruposDeLaGestion = Grupo::query()
+                    ->whereIn('id_grupo', $idGrupos)
+                    ->where('gestion', $gestionPeriodo)
+                    ->count();
+
+                if ($gruposDeLaGestion !== count(array_unique($idGrupos))) {
+                    $validator->errors()->add(
+                        'id_grupos',
+                        'Los grupos seleccionados deben pertenecer a la misma gestión que el periodo del examen.'
+                    );
+                }
+            }
+
             // El tipo de examen debe venir del plan definido para este periodo.
-            $this->validarTipoContraPlan($validator, (int) $this->input('id_periodo'), $this->input('id_tipo_examen'));
+            $this->validarTipoContraPlan($validator, (int) $this->input('id_periodo'), $this->input('id_tipo_examen'), true);
 
             $inicio = Carbon::createFromFormat(
                 'Y-m-d H:i',
