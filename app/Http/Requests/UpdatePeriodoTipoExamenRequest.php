@@ -14,11 +14,13 @@ class UpdatePeriodoTipoExamenRequest extends FormRequest
     /**
      * El front envía el plan completo del periodo, ya ordenado:
      * tipos: [{id_tipo_examen, orden}, ...]. Los tipos no incluidos se quitan.
+     * La lista puede venir vacía: un periodo puede quedar sin plan (validación
+     * de tipos que lo contempla), por eso se usa "present" en vez de "required".
      */
     public function rules(): array
     {
         return [
-            'tipos' => ['required', 'array'],
+            'tipos' => ['present', 'array'],
             'tipos.*.id_tipo_examen' => ['required', 'integer', 'distinct', 'exists:tipo_examen,id_tipo_examen'],
             'tipos.*.orden' => ['required', 'integer', 'min:0', 'max:99'],
         ];
@@ -27,7 +29,7 @@ class UpdatePeriodoTipoExamenRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'tipos.required' => 'Debe indicarse el plan de tipos de examen del periodo.',
+            'tipos.present' => 'Debe indicarse el plan de tipos de examen del periodo.',
             'tipos.array' => 'El plan de tipos debe enviarse como lista.',
             'tipos.*.id_tipo_examen.required' => 'Cada tipo del plan necesita su identificador.',
             'tipos.*.id_tipo_examen.integer' => 'El identificador del tipo debe ser un número.',

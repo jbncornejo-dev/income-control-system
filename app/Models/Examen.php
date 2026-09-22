@@ -141,6 +141,22 @@ class Examen extends Model
         );
     }
 
+    /**
+     * ¿El examen cubre exclusivamente grupos del usuario indicado?
+     *
+     * El responsable del examen son los dueños de los grupos seleccionados:
+     * un examen con grupos de varios docentes lo gestiona el administrador,
+     * por lo que ningún docente tiene acceso total. Los exámenes sin grupos
+     * no pertenecen a ningún docente.
+     */
+    public function perteneceIntegramenteA(int $idUsuario): bool
+    {
+        $total = $this->grupos()->count();
+
+        return $total > 0
+            && $this->grupos()->where('grupo.id_usuario', $idUsuario)->count() === $total;
+    }
+
     // Relación de uno a muchos (examen-habilitacion)
     public function habilitaciones()
     {

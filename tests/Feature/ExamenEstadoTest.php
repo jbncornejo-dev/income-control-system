@@ -394,6 +394,34 @@ class ExamenEstadoTest extends TestCase
         $respuesta->assertForbidden();
     }
 
+    public function test_docente_no_puede_cambiar_estado_de_un_examen_compartido_con_otro_docente(): void
+    {
+        $examen = $this->crearExamen(['fecha' => '2026-09-21']);
+        $docente = $this->usuario('docente');
+        $otroDocente = $this->usuario('docente', '_2');
+
+        $propio = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $docente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'A',
+        ]);
+        $ajeno = Grupo::create([
+            'id_asignatura' => $examen->id_asignatura,
+            'id_usuario' => $otroDocente->id,
+            'gestion' => '2026',
+            'nombre_grupo' => 'C',
+        ]);
+        $examen->grupos()->attach([$propio->id_grupo, $ajeno->id_grupo]);
+
+        // Aunque cubre un grupo del docente, el examen no le pertenece por
+        // completo: solo el administrador cambia su estado.
+        $respuesta = $this->actingAs($docente)
+            ->patch("/examenes/{$examen->id_examen}/estado", ['accion' => 'suspender']);
+
+        $respuesta->assertForbidden();
+    }
+
     public function test_personal_de_control_no_puede_cambiar_el_estado(): void
     {
         $examen = $this->crearExamen(['fecha' => '2026-09-21']);

@@ -14,9 +14,11 @@ class HabilitacionController extends Controller
 {
     public function index(Request $request, Examen $examen)
     {
-        // El docente solo accede a las habilitaciones de exámenes que cubren alguno de sus grupos.
+        // El docente solo accede a las habilitaciones de exámenes cuyos grupos
+        // le pertenezcan por completo: si el examen cubre grupos de varios
+        // docentes lo gestiona el administrador y ningún docente lo ve íntegro.
         if ($request->user()->rol->nombre_rol === 'docente'
-            && ! $examen->grupos()->where('grupo.id_usuario', $request->user()->id)->exists()
+            && ! $examen->perteneceIntegramenteA($request->user()->id)
         ) {
             abort(403);
         }
@@ -58,6 +60,14 @@ class HabilitacionController extends Controller
 
     public function update(Request $request, Habilitacion $habilitacion)
     {
+        // Igual criterio que el índice: el docente solo gestiona habilitaciones
+        // de exámenes que le pertenecen por completo.
+        if ($request->user()->rol->nombre_rol === 'docente'
+            && ! $habilitacion->examen->perteneceIntegramenteA($request->user()->id)
+        ) {
+            abort(403);
+        }
+
         $datos = $request->validate([
             'estado_habilitado' => ['required', 'boolean'],
             'motivo_inhabilitacion' => ['nullable', 'string', 'max:1000'],
@@ -120,6 +130,14 @@ class HabilitacionController extends Controller
 
     public function store(Request $request, Examen $examen)
     {
+        // Igual criterio que el índice: el docente solo puede agregar
+        // estudiantes a exámenes cuyos grupos le pertenecen por completo.
+        if ($request->user()->rol->nombre_rol === 'docente'
+            && ! $examen->perteneceIntegramenteA($request->user()->id)
+        ) {
+            abort(403);
+        }
+
         $datos = $request->validate([
             'student_ids' => ['required', 'array', 'min:1'],
             'student_ids.*' => [
