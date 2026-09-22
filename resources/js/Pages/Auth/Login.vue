@@ -74,7 +74,7 @@
             
             <div class="dev-container">
               <span class="dev-text">Desarrollado por</span>
-              <img src="/images/texcorp-logo.png" alt="Logotipo Texcorp" class="texcorp-logo" />
+              <div class="texcorp-brand" aria-label="TexCorp"><svg class="texcorp-x" viewBox="0 0 160 96" xmlns="http://www.w3.org/2000/svg"><polygon points="0,0 30,0 95,48 65,48" fill="#1f2d4f"/><polygon points="65,48 95,48 160,96 130,96" fill="#c8641f"/><polygon points="112,0 160,0 48,96 0,96" fill="#d6d1ca"/></svg><span class="texcorp-text">TEXCORP</span></div>
             </div>
           </div>
         </div>
@@ -120,6 +120,7 @@ function handleLogin() {
 </script>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap");
 /* Hereda el fondo base del sistema */
 .login-body {
     display: flex;
@@ -354,4 +355,17 @@ function handleLogin() {
     font-size: 13px;
     color: #9ca3af;
 }
+.logo-large { font-family: "Orbitron", sans-serif; letter-spacing: 0.12em; }
+.info-panel { background: radial-gradient(circle at 30% 20%, #2b4f78 0%, #1d3653 45%, #0f2238 100%); }
+.umss-logo { transition: scale 0.35s ease, filter 0.35s ease; }
+.umss-logo:hover { scale: 1.08; filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.35)); }
+.dev-text { font-family: "Orbitron", sans-serif; font-size: 0.75rem; letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.75); }
+.input-control { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
+.input-control:focus { border-color: #1d3653 !important; box-shadow: 0 0 0 3px rgba(29, 54, 83, 0.15), 0 0 14px rgba(29, 54, 83, 0.2) !important; outline: none; }
+.btn-submit { font-family: "Orbitron", sans-serif !important; text-transform: uppercase; letter-spacing: 0.2em; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); transition: letter-spacing 0.3s ease, background 0.3s ease !important; }
+.btn-submit:hover { letter-spacing: 0.26em; background: #a12b33 !important; }
+.texcorp-brand { display: flex; flex-direction: column; align-items: center; gap: 14px; transition: scale 0.35s ease, filter 0.35s ease; cursor: default; }
+.texcorp-brand:hover { scale: 1.08; filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 28px rgba(255, 255, 255, 0.35)); }
+.texcorp-x { width: 90px; height: auto; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)); }
+.texcorp-text { font-family: "Orbitron", sans-serif; font-weight: 800; font-size: 2.2rem; letter-spacing: 0.22em; background: linear-gradient(90deg, #e8e4de 0%, #d6d1ca 35%, #c8641f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 </style>

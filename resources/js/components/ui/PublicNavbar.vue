@@ -49,9 +49,11 @@ import { Link } from '@inertiajs/vue3';
 .nav-links a {
     color: var(--color-cream, #FFFFFF);
     text-decoration: none;
-    font-size: 0.9rem;
-    letter-spacing: 1px;
+    font-size: 1.4rem;
+    letter-spacing: 1.5px;
     text-transform: uppercase;
     font-family: 'Rajdhani', sans-serif;
 }
+.nav-links a { font-weight: 600; opacity: 0.9; transition: opacity 0.2s ease, color 0.2s ease; }
+.nav-links a:hover { opacity: 1; color: #ffffff; }
 </style>

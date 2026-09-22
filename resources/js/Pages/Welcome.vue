@@ -71,6 +71,7 @@ const goToLogin = () => {
 </script>
 
 <style scoped>
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap");
 /* Importa las fuentes necesarias solo para esta vista, o muévelas a tu layout principal */
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Playfair+Display:wght@600;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
 
@@ -133,7 +134,7 @@ const goToLogin = () => {
     position: relative;
     width: 450px;
     height: 450px;
-    background-color: var(--color-umss-accent);
+    background-color: rgba(227, 6, 19, 0.6);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -160,7 +161,7 @@ const goToLogin = () => {
 .btn-hero-custom {
     padding: 12px 30px;
     background-color: var(--color-cream, #fff) !important;
-    color: var(--color-umss-accent, #E30613) !important;
+    color: #000000 !important;
     border-radius: 30px;
     transition: transform 0.3s, box-shadow 0.3s;
 }
@@ -191,7 +192,7 @@ const goToLogin = () => {
 }
 
 .tutorial-header p {
-    color: var(--color-umss-taupe);
+    color: #334155;
     font-size: 1.1rem;
     max-width: 600px;
     margin: 0 auto;
@@ -224,7 +225,7 @@ const goToLogin = () => {
     font-family: 'Orbitron', sans-serif;
     font-size: 3rem;
     font-weight: 900;
-    color: var(--color-sand);
+    color: var(--color-umss-taupe);
     margin-bottom: 1rem;
 }
 
@@ -235,8 +236,25 @@ const goToLogin = () => {
 }
 
 .step-card p {
-    color: var(--color-umss-taupe);
+    color: #334155;
     font-size: 0.95rem;
     line-height: 1.6;
 }
+.step-card { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+.step-card:hover { transform: scale(1.06); box-shadow: 0 12px 30px rgba(0, 33, 67, 0.18); }
+.btn-hero-custom:hover { color: #000000 !important; }
+.background-letters { pointer-events: none; }
+.background-letters span { transition: scale 0.4s ease, text-shadow 0.4s ease, opacity 0.4s ease; }
+.circle-accent { transition: scale 0.4s ease, background-color 0.4s ease; }
+.circle-accent:hover { scale: 1.06; background-color: rgba(227, 6, 19, 0.7); }
+.hero-container:has(.circle-accent:hover) .background-letters span { scale: 1.08; }
+.letter-bottom-left, .letter-bottom-right { translate: 0 -40px; transform-origin: bottom center; }
+.letter-top-left, .letter-top-right { transform-origin: top center; }
+.circle-content h2 { font-family: "Orbitron", var(--font-display), sans-serif !important; font-weight: 700; font-size: 1.55rem; line-height: 1.5; letter-spacing: 0.06em; text-transform: uppercase; text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35); }
+.btn-hero-custom { font-family: "Orbitron", var(--font-display), sans-serif !important; font-weight: 700 !important; font-size: 0.8rem !important; letter-spacing: 0.18em !important; text-transform: uppercase !important; padding: 0.9rem 2.2rem !important; border-radius: 0 !important; border: 2px solid #ffffff !important; background: rgba(255, 255, 255, 0.92) !important; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); transition: background 0.3s ease, letter-spacing 0.3s ease, scale 0.3s ease !important; }
+.btn-hero-custom:hover { background: #ffffff !important; letter-spacing: 0.24em !important; scale: 1.05; }
+.tutorial-header p { font-size: 1.2rem; line-height: 1.6; color: #1f2937; }
+.step-card p { font-size: 1.1rem; line-height: 1.7; color: #1f2937; }
+.step-number { transition: color 0.25s ease; }
+.step-card:hover .step-number { color: var(--color-umss-dark); }
 </style>
