@@ -20,7 +20,16 @@ class AmbienteController extends Controller
         if (isset($filtros['nombre_ambiente'])) {
             // Buscar literalmente los comodines escritos por el usuario.
             $nombre = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['nombre_ambiente']);
-            $query->where('nombre_ambiente', 'ilike', '%'.$nombre.'%');
+            $capacidad = filter_var($filtros['nombre_ambiente'], FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => 1, 'max_range' => 2147483647],
+            ]);
+
+            $query->where(function ($busqueda) use ($nombre, $capacidad) {
+                $busqueda->where('nombre_ambiente', 'ilike', '%'.$nombre.'%');
+                if ($capacidad !== false) {
+                    $busqueda->orWhere('capacidad', $capacidad);
+                }
+            });
         }
 
         $ambientes = $query
