@@ -37,7 +37,7 @@ class CambiarEstadoExamenRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'accion' => ['required', Rule::in(['anular', 'suspender', 'reanudar'])],
+            'accion' => ['required', Rule::in(['cancelar', 'anular', 'suspender', 'reanudar'])],
         ];
     }
 

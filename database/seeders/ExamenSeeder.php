@@ -6,6 +6,7 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Examen;
 use App\Models\ExamenAmbiente;
+use App\Models\Periodo;
 use Illuminate\Database\Seeder;
 
 class ExamenSeeder extends Seeder
@@ -14,6 +15,7 @@ class ExamenSeeder extends Seeder
     {
         $asignaturas = Asignatura::pluck('id_asignatura', 'nombre_asignatura');
         $ambientes = Ambiente::pluck('id_ambiente', 'nombre_ambiente');
+        $periodos = Periodo::all();
 
         $examenes = [
             [
@@ -90,14 +92,36 @@ class ExamenSeeder extends Seeder
             ],
         ];
 
+        $gestion = (string) now()->year;
+
         foreach ($examenes as $datos) {
+            // Periodo sugerido para la fecha del examen: el que contiene la fecha;
+            // si queda fuera de rango (p. ej. examen de fin de gestión), el primero
+            // de la gestión correspondiente. Si no existe, se crea el del primer periodo.
+            $fecha = now()->addDays($datos['dias_desde_hoy'])->toDateString();
+            $periodo = $periodos
+                ->where('gestion', $gestion)
+                ->first(fn (Periodo $p) => $p->fecha_inicio !== null
+                    && $p->fecha_fin !== null
+                    && $p->fecha_inicio <= $fecha
+                    && $p->fecha_fin >= $fecha)
+                ?? $periodos
+                    ->where('gestion', $gestion)
+                    ->sortBy('numero')
+                    ->first()
+                ?? Periodo::firstOrCreate(
+                    ['gestion' => $gestion, 'tipo' => 'semestre', 'numero' => 1],
+                    ['fecha_inicio' => $gestion.'-01-01', 'fecha_fin' => $gestion.'-12-31']
+                );
+
             $examen = Examen::firstOrCreate(
                 [
                     'id_asignatura' => $asignaturas[$datos['asignatura']],
-                    'fecha' => now()->addDays($datos['dias_desde_hoy'])->toDateString(),
+                    'fecha' => $fecha,
                     'hora_inicio' => $datos['hora_inicio'],
                 ],
                 [
+                    'id_periodo' => $periodo->id_periodo,
                     'duracion_minutos' => $datos['duracion_minutos'],
                     'normas_generales' => $datos['normas_generales'],
                 ]

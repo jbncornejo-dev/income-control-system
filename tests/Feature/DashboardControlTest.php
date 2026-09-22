@@ -16,7 +16,9 @@ class DashboardControlTest extends TestCase
     use RefreshDatabase;
 
     protected $controlUser;
+
     protected $estudianteUser;
+
     protected $asignatura;
 
     protected function setUp(): void
@@ -38,6 +40,7 @@ class DashboardControlTest extends TestCase
         // Caso 1 — Exámenes del día actual
         $examenHoy = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->toDateString(),
             'hora_inicio' => '08:00:00',
             'duracion_minutos' => 90,
@@ -62,6 +65,7 @@ class DashboardControlTest extends TestCase
         // Caso 2 — Exámenes de fechas inmediatas (intervalo de 1 día: hoy y mañana)
         $examenManana = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -83,6 +87,7 @@ class DashboardControlTest extends TestCase
         // Caso 3 — Exámenes fuera del intervalo (pasado mañana)
         $examenFueraIntervalo = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDays(2)->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -101,6 +106,7 @@ class DashboardControlTest extends TestCase
         // Caso 4 — Exámenes pasados (ayer)
         $examenAyer = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->subDay()->toDateString(),
             'hora_inicio' => '10:00:00',
             'duracion_minutos' => 90,
@@ -120,20 +126,23 @@ class DashboardControlTest extends TestCase
         // Caso 6 — Orden cronológico
         $examenTemprano = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->toDateString(),
             'hora_inicio' => '07:00:00', // Inicio del día
             'duracion_minutos' => 90,
         ]);
-        
+
         $examenTarde = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->toDateString(),
             'hora_inicio' => '23:59:00', // Final del día
             'duracion_minutos' => 90,
         ]);
-        
+
         $examenManana = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '00:01:00', // Mañana temprano
             'duracion_minutos' => 90,
@@ -183,14 +192,15 @@ class DashboardControlTest extends TestCase
     {
         // Caso 10 — Zona horaria
         $appTimezone = config('app.timezone');
-        
+
         // Simular que estamos justo antes de la medianoche en la zona local
         $dateStr = '2026-05-10 23:55:00';
         Carbon::setTestNow(Carbon::createFromFormat('Y-m-d H:i:s', $dateStr, $appTimezone));
-        
+
         // Examen de HOY (10 de mayo)
         $examenHoy = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => '2026-05-10',
             'hora_inicio' => '08:00:00',
             'duracion_minutos' => 90,
@@ -199,6 +209,7 @@ class DashboardControlTest extends TestCase
         // Examen de MAÑANA (11 de mayo)
         $examenManana = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => '2026-05-11',
             'hora_inicio' => '08:00:00',
             'duracion_minutos' => 90,
@@ -209,7 +220,7 @@ class DashboardControlTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('examenes', 2)
             );
-            
+
         Carbon::setTestNow(); // Reset
     }
 }

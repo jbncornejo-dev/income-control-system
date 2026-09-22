@@ -49,6 +49,7 @@ class UpdateExamenRequest extends FormRequest
     {
         return [
             'id_asignatura' => ['sometimes', 'integer', 'exists:asignatura,id_asignatura'],
+            'id_periodo' => ['sometimes', 'integer', 'exists:periodo,id_periodo'],
             'fecha' => ['sometimes', 'nullable', 'date_format:Y-m-d'],
             'hora_inicio' => ['sometimes', 'nullable', 'date_format:H:i'],
             'duracion_minutos' => ['sometimes', 'nullable', 'integer', 'min:1', 'max:720'],
@@ -111,6 +112,8 @@ class UpdateExamenRequest extends FormRequest
         return [
             'id_asignatura.integer' => 'La asignatura es inválida.',
             'id_asignatura.exists' => 'La asignatura seleccionada no existe.',
+            'id_periodo.integer' => 'El periodo es inválido.',
+            'id_periodo.exists' => 'El periodo seleccionado no existe.',
             'fecha.date_format' => 'La fecha debe tener el formato AAAA-MM-DD.',
             'hora_inicio.date_format' => 'La hora de inicio debe tener el formato HH:MM.',
             'duracion_minutos.integer' => 'La duración debe ser un número entero.',

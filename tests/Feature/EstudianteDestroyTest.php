@@ -47,6 +47,7 @@ class EstudianteDestroyTest extends TestCase
 
         return Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,

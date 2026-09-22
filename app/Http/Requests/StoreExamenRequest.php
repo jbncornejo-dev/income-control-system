@@ -36,6 +36,7 @@ class StoreExamenRequest extends FormRequest
     {
         return [
             'id_asignatura' => ['required', 'integer', 'exists:asignatura,id_asignatura'],
+            'id_periodo' => ['required', 'integer', 'exists:periodo,id_periodo'],
             'fecha' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
             'hora_inicio' => ['required', 'date_format:H:i'],
             'duracion_minutos' => ['required', 'integer', 'min:1', 'max:720'],
@@ -89,6 +90,8 @@ class StoreExamenRequest extends FormRequest
         return [
             'id_asignatura.required' => 'La asignatura es obligatoria.',
             'id_asignatura.exists' => 'La asignatura seleccionada no existe.',
+            'id_periodo.required' => 'El periodo es obligatorio.',
+            'id_periodo.exists' => 'El periodo seleccionado no existe.',
             'fecha.required' => 'La fecha del examen es obligatoria.',
             'fecha.date_format' => 'La fecha debe tener el formato AAAA-MM-DD.',
             'fecha.after_or_equal' => 'La fecha del examen no puede estar en el pasado.',

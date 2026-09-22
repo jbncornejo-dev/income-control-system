@@ -80,6 +80,7 @@ class ExamenUpdateTest extends TestCase
 
         $examen = Examen::create([
             'id_asignatura' => $datos['id_asignatura'],
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => $datos['fecha'],
             'hora_inicio' => $datos['hora_inicio'],
             'duracion_minutos' => $datos['duracion_minutos'],

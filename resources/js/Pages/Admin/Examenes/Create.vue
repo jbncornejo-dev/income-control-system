@@ -8,6 +8,7 @@ import { useToastStore } from '@/stores/useToastStore';
 const props = defineProps({
     asignaturas: { type: Array, default: () => [] },
     ambientes: { type: Array, default: () => [] },
+    periodos: { type: Array, default: () => [] },
     // Cuando llega "examen", la página funciona como edición (PATCH) del mismo.
     examen: { type: Object, default: null },
 });
@@ -18,8 +19,10 @@ const esEdicion = computed(() => !!props.examen);
 
 // En un examen en curso (incluye suspendido) solo se editan las normas generales;
 // los datos estructurales (fecha, hora, duración, ambientes, asignatura) quedan congelados.
+// Se usa `estado_horario` (ciclo según horario): un examen suspendido sigue teniendo
+// su ventana activa, por lo que también queda congelado aunque su estado de gestión sea "Suspendido".
 const soloNormas = computed(() =>
-    esEdicion.value && props.examen?.estado_actual === 'en_curso'
+    esEdicion.value && props.examen?.estado_horario === 'en_curso'
 );
 
 // Fecha mínima seleccionable: hoy (la validación exige que el examen sea futuro).
@@ -27,12 +30,35 @@ const hoy = ref(new Date().toISOString().slice(0, 10));
 
 const form = useForm({
     id_asignatura: props.examen?.id_asignatura ?? '',
+    id_periodo: props.examen?.id_periodo ?? '',
     fecha: props.examen?.fecha ?? '',
     hora_inicio: props.examen ? String(props.examen.hora_inicio ?? '').slice(0, 5) : '',
     duracion_minutos: props.examen?.duracion_minutos ?? 90,
     normas_generales: props.examen?.normas_generales ?? '',
     id_ambientes: (props.examen?.examenes_ambientes ?? []).map((ea) => ea.id_ambiente),
 });
+
+// Sugiere el periodo según la fecha del examen: primero el periodo cuyo rango
+// contiene la fecha y, si no, el de la misma gestión (año). Si el usuario ya
+// eligió un periodo no se sobreescribe.
+function periodoSugerido(fecha) {
+    if (!fecha) return null;
+
+    const porRango = props.periodos.find(
+        (p) => p.fecha_inicio && p.fecha_fin && fecha >= p.fecha_inicio && fecha <= p.fecha_fin
+    );
+    if (porRango) return porRango.id_periodo;
+
+    const porGestion = props.periodos.find((p) => String(p.gestion) === fecha.slice(0, 4));
+    return porGestion?.id_periodo ?? null;
+}
+
+watch(
+    () => form.fecha,
+    (fecha) => {
+        if (!form.id_periodo) form.id_periodo = periodoSugerido(fecha) ?? '';
+    }
+);
 
 const ambientesSeleccionados = computed(() =>
     props.ambientes.filter((a) => form.id_ambientes.includes(a.id_ambiente))
@@ -190,11 +216,11 @@ function guardar() {
                     {{ esEdicion
                         ? (soloNormas
                             ? 'El examen está en curso: solo puedes actualizar las normas generales.'
-                            : 'Modifica asignatura, horario o ambientes de la evaluación.')
-                        : 'Programa una nueva evaluación asignándole asignatura, horario y ambientes.' }}
+                            : 'Modifica asignatura, periodo, horario o ambientes de la evaluación.')
+                        : 'Programa una nueva evaluación asignándole asignatura, periodo, horario y ambientes.' }}
                 </p>
                 <p v-if="soloNormas" class="form-aviso">
-                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes y asignatura quedan congelados; podrás reajustarlos una vez finalice.
+                    ⏸ El examen está <strong>en curso</strong>. Fecha, hora, duración, ambientes, asignatura y periodo quedan congelados; podrás reajustarlos una vez finalice.
                 </p>
 
                 <form @submit.prevent="guardar" novalidate>
@@ -216,6 +242,26 @@ function guardar() {
                         </select>
                         <p v-if="form.errors.id_asignatura" class="error-msg">{{ form.errors.id_asignatura }}</p>
                         <p v-if="asignaturas.length === 0" class="help-text">No hay asignaturas registradas. Crea una desde el módulo Asignaturas.</p>
+                    </div>
+
+                    <!-- Periodo -->
+                    <div v-if="!soloNormas" class="form-group">
+                        <label for="id_periodo" class="form-label">Periodo <span class="required">*</span></label>
+                        <select
+                            id="id_periodo"
+                            v-model="form.id_periodo"
+                            class="form-input"
+                            :class="{ 'input-error': form.errors.id_periodo }"
+                            :disabled="form.processing"
+                            @change="form.clearErrors('id_periodo')"
+                        >
+                            <option value="" disabled>Seleccione un periodo...</option>
+                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="periodo.id_periodo" :title="periodo.nombre">
+                                {{ periodo.codigo }}
+                            </option>
+                        </select>
+                        <p v-if="form.errors.id_periodo" class="error-msg">{{ form.errors.id_periodo }}</p>
+                        <p v-if="periodos.length === 0" class="help-text">No hay periodos registrados. Crea el periodo desde el módulo de administración.</p>
                     </div>
 
                     <!-- Fecha / Hora / Duración -->

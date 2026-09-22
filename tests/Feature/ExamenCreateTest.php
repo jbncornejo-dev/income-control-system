@@ -41,6 +41,7 @@ class ExamenCreateTest extends TestCase
     {
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Cálculo I']);
         $ambiente = Ambiente::create(['nombre_ambiente' => 'Aula 101', 'capacidad' => 40]);
+        $periodo = $this->crearPeriodo();
 
         $respuesta = $this->actingAs($this->usuario('administrador'))->get('/examenes/crear');
 
@@ -49,7 +50,11 @@ class ExamenCreateTest extends TestCase
             ->where('asignaturas.0.id_asignatura', $asignatura->id_asignatura)
             ->where('asignaturas.0.nombre_asignatura', 'Cálculo I')
             ->where('ambientes.0.id_ambiente', $ambiente->id_ambiente)
-            ->where('ambientes.0.nombre_ambiente', 'Aula 101'));
+            ->where('ambientes.0.nombre_ambiente', 'Aula 101')
+            ->where('periodos.0.id_periodo', $periodo->id_periodo)
+            ->where('periodos.0.gestion', '2026')
+            ->where('periodos.0.tipo', 'semestre')
+            ->where('periodos.0.numero', 1));
     }
 
     public function test_docente_abre_la_pagina_y_solo_ve_las_asignaturas_que_dicta(): void
@@ -80,6 +85,7 @@ class ExamenCreateTest extends TestCase
 
         $respuesta = $this->actingAs($this->usuario('administrador'))->post('/examenes', [
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 90,
@@ -97,6 +103,7 @@ class ExamenCreateTest extends TestCase
     {
         Examen::create([
             'id_asignatura' => Asignatura::create(['nombre_asignatura' => 'Física'])->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 90,
@@ -107,6 +114,7 @@ class ExamenCreateTest extends TestCase
 
         $this->actingAs($this->usuario('administrador'))->post('/examenes', [
             'id_asignatura' => $examen->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->format('Y-m-d'),
             'hora_inicio' => '10:30',
             'duracion_minutos' => 90,
