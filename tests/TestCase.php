@@ -16,6 +16,18 @@ abstract class TestCase extends BaseTestCase
         // impide que phpunit.xml fije APP_ENV=testing y que Laravel omita el
         // CSRF en pruebas (runningUnitTests()). Forzamos el entorno de la app.
         $this->app['env'] = 'testing';
+
+        // Red de seguridad: las pruebas jamás deben correr sobre la base de
+        // desarrollo. tests/bootstrap.php fuerza app_testing; si algo cambia la
+        // config, fallamos alto en lugar de borrar datos de desarrollo.
+        $conexion = config('database.default');
+        $base = config("database.connections.{$conexion}.database");
+
+        if ($base !== 'app_testing') {
+            throw new \RuntimeException(
+                "Refusing to run tests on '{$conexion}:{$base}' (se espera app_testing)."
+            );
+        }
     }
 
     /**

@@ -79,6 +79,9 @@ services:
       - POSTGRES_PASSWORD=secret
     volumes:
       - postgres-data-development:/var/lib/postgresql/data:Z
+      # Crea la base de pruebas (app_testing) al inicializar el volumen por
+      # primera vez; ver docker/development/postgres/initdb/.
+      - ./docker/development/postgres/initdb/:/docker-entrypoint-initdb.d/:Z,ro
     networks:
       - nath-development
 
