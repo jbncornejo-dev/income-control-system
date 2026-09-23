@@ -7,6 +7,7 @@ use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PeriodoTipoExamenController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TipoExamenController;
@@ -71,9 +72,7 @@ Route::middleware('auth')->group(function () {
 
         // 4. LÓGICA PARA EL ESTUDIANTE
         if ($nombreRol === 'estudiante') {
-            return Inertia::render('Estudiantes/Dashboard', [
-                // Datos específicos del estudiante
-            ]);
+            return redirect()->route('mis-examenes.index');
         }
 
         // 5. LÓGICA PARA CONTROL DE INGRESO
@@ -88,6 +87,13 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
         Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
+    });
+
+    // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
+    // y habilitaciones). El controlador no recibe parámetros de la URL, así
+    // que es imposible pedir los exámenes de otro estudiante.
+    Route::middleware('role:estudiante')->group(function () {
+        Route::get('/mis-examenes', [MisExamenesController::class, 'index'])->name('mis-examenes.index');
     });
 
     Route::middleware('role:administrador')->group(function () {

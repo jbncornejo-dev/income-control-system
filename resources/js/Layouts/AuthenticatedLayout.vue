@@ -14,7 +14,7 @@ const role = computed(() => ({ administrador: 'admin', 'personal de control de i
 // Definición centralizada de navegación por rol.
 // Agregar/quitar un link o un rol es cambiar este arreglo, no el template.
 const navItems = [
-  { label: 'Inicio', href: '/dashboard', roles: ['admin', 'docente', 'control', 'estudiante'] },
+  { label: 'Inicio', href: '/dashboard', roles: ['admin', 'docente', 'control'] },
   { label: 'Usuarios', href: '/usuarios', roles: ['admin'] },
   { label: 'Estudiantes', href: '/estudiantes', roles: ['admin'] },
   // HU7: acceso al catálogo real, exclusivo del administrador.

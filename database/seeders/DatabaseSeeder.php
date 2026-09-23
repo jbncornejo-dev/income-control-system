@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -83,5 +84,16 @@ class DatabaseSeeder extends Seeder
             InscripcionSeeder::class,
             HabilitacionSeeder::class,
         ]);
+
+        // La cuenta demo "estudiante / pass" se vincula a una matrícula real
+        // (primer estudiante del demo), así al entrar ve sus exámenes en
+        // /mis-examenes. Requiere que EstudianteSeeder ya haya corrido.
+        $estudianteDemo = Estudiante::query()->orderBy('id_estudiante')->first();
+
+        if ($estudianteDemo) {
+            User::query()->where('username', 'estudiante')->update([
+                'id_estudiante' => $estudianteDemo->id_estudiante,
+            ]);
+        }
     }
 }
