@@ -9,7 +9,9 @@ const props = defineProps({
     stats: Object,
 });
 
-const filtro = ref('todos');
+// La pestaña "Hoy" se muestra al entrar: el estudiante ve primero lo que le
+// toca hoy y puede cambiar de pestaña para ver todo lo demás.
+const filtro = ref('hoy');
 
 const etiquetasEstado = {
     programado: 'Programado',
@@ -28,6 +30,7 @@ const estadosDelFiltro = {
 };
 
 const filtros = [
+    { clave: 'hoy', etiqueta: 'Hoy' },
     { clave: 'todos', etiqueta: 'Todos' },
     { clave: 'en_curso', etiqueta: 'En curso' },
     { clave: 'proximos', etiqueta: 'Próximos' },
@@ -35,25 +38,22 @@ const filtros = [
     { clave: 'cerrados', etiqueta: 'Cerrados' },
 ];
 
-// El backend ya entrega los exámenes ordenados por relevancia (en curso →
-// próximos → finalizados/cerrados); aquí solo se filtra por el estado de la
-// pestaña seleccionada.
+const examenesHoy = computed(() => (props.examenes || []).filter((e) => esHoy(e.fecha)));
+
+// El backend entrega los exámenes ordenados por relevancia (en curso →
+// próximos → finalizados/cerrados); aquí solo se filtra por la pestaña
+// seleccionada. La pestaña "Hoy" filtra por fecha (día actual).
 const visibles = computed(() => {
     const examenes = props.examenes || [];
+
+    if (filtro.value === 'hoy') {
+        return examenes.filter((e) => esHoy(e.fecha));
+    }
+
     const estados = estadosDelFiltro[filtro.value] || null;
 
     return estados ? examenes.filter((e) => estados.includes(e.estado)) : examenes;
 });
-
-// Bloque "Hoy": agenda del día, siempre visible y con prioridad sobre el
-// resto (today-first). El orden lo pone el backend: en curso primero.
-const examenesHoy = computed(() => (props.examenes || []).filter((e) => esHoy(e.fecha)));
-
-const hoyFormateado = computed(() => new Date().toLocaleDateString('es', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-}));
 
 function esHoy(fecha) {
     const hoy = new Date();
@@ -63,6 +63,7 @@ function esHoy(fecha) {
 
 function mensajeVacio() {
     const mensajes = {
+        hoy: 'Hoy no tienes exámenes asignados.',
         todos: 'Aún no tienes exámenes asignados.',
         en_curso: 'No hay exámenes en curso ahora mismo.',
         proximos: 'No tienes exámenes próximos.',
@@ -89,39 +90,6 @@ function mensajeVacio() {
                 </p>
             </header>
 
-            <section class="hoy-bloque" aria-label="Exámenes de hoy">
-                <header class="hoy-cabecera">
-                    <h2>Hoy</h2>
-                    <span class="hoy-fecha">{{ hoyFormateado }}</span>
-                </header>
-
-                <ul v-if="examenesHoy.length" class="hoy-lista">
-                    <li
-                        v-for="examen in examenesHoy"
-                        :key="examen.id"
-                        class="hoy-item"
-                        :class="{ activo: examen.estado === 'en_curso' }"
-                    >
-                        <span class="hoy-hora">
-                            <strong>{{ examen.hora_inicio }}</strong>
-                            <small>{{ examen.hora_fin }}</small>
-                        </span>
-                        <div class="hoy-info">
-                            <strong>{{ examen.asignatura || 'Examen sin asignatura' }}</strong>
-                            <small>
-                                <template v-if="examen.tipo">{{ examen.tipo }}</template>
-                                <template v-if="examen.grupos.length"> · {{ examen.grupos.join(', ') }}</template>
-                            </small>
-                        </div>
-                        <span class="badge" :class="'estado-' + examen.estado">
-                            {{ etiquetasEstado[examen.estado] || examen.estado }}
-                        </span>
-                    </li>
-                </ul>
-
-                <p v-else class="hoy-vacio">Hoy no tienes exámenes asignados.</p>
-            </section>
-
             <nav class="filtros" aria-label="Filtrar exámenes">
                 <button
                     v-for="f in filtros"
@@ -132,7 +100,7 @@ function mensajeVacio() {
                     @click="filtro = f.clave"
                 >
                     {{ f.etiqueta }}
-                    <span class="cantidad">{{ stats?.[f.clave] ?? 0 }}</span>
+                    <span class="cantidad">{{ f.clave === 'hoy' ? examenesHoy.length : stats?.[f.clave] ?? 0 }}</span>
                 </button>
             </nav>
 
@@ -428,112 +396,6 @@ function mensajeVacio() {
 
 .habilitacion .motivo {
     color: #b91c1c;
-}
-
-/* Bloque "Hoy" */
-.hoy-bloque {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-left: 5px solid var(--color-primary);
-    border-radius: 0.6rem;
-    padding: 1rem 1.15rem;
-    margin-bottom: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
-
-.hoy-cabecera {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    margin-bottom: 0.7rem;
-}
-
-.hoy-cabecera h2 {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--color-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0;
-}
-
-.hoy-fecha {
-    font-size: 0.85rem;
-    color: #6b7280;
-    text-transform: capitalize;
-}
-
-.hoy-lista {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.hoy-item {
-    display: flex;
-    align-items: center;
-    gap: 0.9rem;
-    padding: 0.65rem 0;
-    border-top: 1px solid #f3f4f6;
-}
-
-.hoy-item:first-child {
-    border-top: 0;
-}
-
-.hoy-item.activo {
-    background: #ecfdf5;
-    border-radius: 0.4rem;
-    padding-left: 0.6rem;
-    padding-right: 0.6rem;
-}
-
-.hoy-hora {
-    flex-shrink: 0;
-    width: 3.1rem;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    color: #1f2937;
-}
-
-.hoy-hora strong {
-    font-size: 0.95rem;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.2;
-}
-
-.hoy-hora small {
-    font-size: 0.72rem;
-    color: #6b7280;
-    font-variant-numeric: tabular-nums;
-}
-
-.hoy-info {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.1rem;
-}
-
-.hoy-info strong {
-    font-size: 0.95rem;
-    color: #1f2937;
-    line-height: 1.25;
-}
-
-.hoy-info small {
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.hoy-vacio {
-    margin: 0.25rem 0 0;
-    font-size: 0.85rem;
-    color: #6b7280;
 }
 
 .vacio {
