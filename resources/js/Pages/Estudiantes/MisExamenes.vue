@@ -72,6 +72,22 @@ function mensajeVacio() {
     };
     return mensajes[filtro.value] || mensajes.todos;
 }
+
+// El backend expone los contadores bajo keys por estado (total, en_curso,
+// ...); acá se mapean a las pestañas. "Hoy" y "Todos" no tienen key propia.
+function cantidadDe(f) {
+    if (f.clave === 'hoy') return examenesHoy.value.length;
+    if (f.clave === 'todos') return props.stats?.total ?? 0;
+    return props.stats?.[f.clave] ?? 0;
+}
+
+// La habilitación es relevante solo mientras el examen no terminó: en
+// finalizados/cerrados no tiene sentido el aviso de "estás habilitado/a".
+const estadosConHabilitacion = ['programado', 'en_curso'];
+
+function mostrarHabilitacion(examen) {
+    return Boolean(examen.habilitacion) && estadosConHabilitacion.includes(examen.estado);
+}
 </script>
 
 <template>
@@ -100,7 +116,7 @@ function mensajeVacio() {
                     @click="filtro = f.clave"
                 >
                     {{ f.etiqueta }}
-                    <span class="cantidad">{{ f.clave === 'hoy' ? examenesHoy.length : stats?.[f.clave] ?? 0 }}</span>
+                    <span class="cantidad">{{ cantidadDe(f) }}</span>
                 </button>
             </nav>
 
@@ -150,7 +166,7 @@ function mensajeVacio() {
                     </div>
 
                     <div
-                        v-if="examen.habilitacion"
+                        v-if="mostrarHabilitacion(examen)"
                         class="habilitacion"
                         :class="examen.habilitacion.estado ? 'habilitado' : 'inhabilitado'"
                     >
