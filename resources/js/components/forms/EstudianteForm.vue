@@ -27,8 +27,9 @@
       <input
         type="text"
         v-model="form.codigo_universitario"
-        placeholder="Ej: 2020-12345"
-        maxlength="20"
+        placeholder="9 dígitos iniciando con el año de ingreso (ej: 201809372)"
+        maxlength="9"
+        inputmode="numeric"
         :disabled="isEdit"
         class="form-input"
         :class="{ 'input-error': form.errors.codigo_universitario, 'input-readonly': isEdit }"
@@ -40,13 +41,26 @@
       <input
         type="text"
         v-model="form.documento_identidad"
-        placeholder="CI / Documento"
-        maxlength="20"
+        placeholder="6 a 8 dígitos (ej: 12590804)"
+        maxlength="8"
+        inputmode="numeric"
         :disabled="isEdit"
         class="form-input"
         :class="{ 'input-error': form.errors.documento_identidad, 'input-readonly': isEdit }"
       />
       <p v-if="form.errors.documento_identidad" class="error-msg">{{ form.errors.documento_identidad }}</p>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Correo institucional</label>
+      <input
+        type="email"
+        v-model="form.email"
+        placeholder="Ej: 201809372@est.umss.edu"
+        maxlength="255"
+        class="form-input"
+        :class="{ 'input-error': form.errors.email }"
+      />
+      <p v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</p>
     </div>
     <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
       <LoadingSpinner size="medium" />
@@ -77,6 +91,7 @@ const form = useForm({
   apellidos: props.estudiante?.apellidos || '',
   codigo_universitario: props.estudiante?.codigo_universitario || '',
   documento_identidad: props.estudiante?.documento_identidad || '',
+  email: props.estudiante?.email || '',
 })
 
 const emitirGuardado = () => {

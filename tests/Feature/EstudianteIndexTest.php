@@ -23,7 +23,7 @@ class EstudianteIndexTest extends TestCase
     private function crearEstudiante(array $overrides = []): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -40,6 +40,7 @@ class EstudianteIndexTest extends TestCase
             'nombres' => $estudiante->nombres,
             'apellidos' => $estudiante->apellidos,
             'codigo_qr' => $estudiante->codigo_qr,
+            'email' => $estudiante->email,
         ];
     }
 
@@ -61,13 +62,13 @@ class EstudianteIndexTest extends TestCase
     public function test_lists_mapped_students_ordered_by_apellidos(): void
     {
         $zamora = $this->crearEstudiante([
-            'codigo_universitario' => '2019-00001',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '2222222',
             'nombres' => 'Luis',
             'apellidos' => 'Zamora',
         ]);
         $perez = $this->crearEstudiante([
-            'codigo_universitario' => '2019-00002',
+            'codigo_universitario' => '201809374',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -87,7 +88,7 @@ class EstudianteIndexTest extends TestCase
         $ids = [];
         for ($i = 1; $i <= 17; $i++) {
             $ids[] = $this->crearEstudiante([
-                'codigo_universitario' => "2020-{$i}",
+                'codigo_universitario' => '2'.str_pad((string) $i, 8, '0', STR_PAD_LEFT),
                 'documento_identidad' => (string) (1000 + $i),
                 'nombres' => "Nombre {$i}",
                 'apellidos' => 'Apellido '.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
@@ -124,20 +125,20 @@ class EstudianteIndexTest extends TestCase
     public function test_search_is_case_insensitive_across_all_fields(): void
     {
         $this->crearEstudiante([
-            'codigo_universitario' => '2020-AAAA',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'María',
             'apellidos' => 'Gómez',
         ]);
         $this->crearEstudiante([
-            'codigo_universitario' => '2020-BBBB',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '9999999',
             'nombres' => 'Pedro',
             'apellidos' => 'Suarez',
         ]);
 
         $casos = [
-            ['aaaa', 'codigo_universitario', '2020-AAAA'],
+            ['9372', 'codigo_universitario', '201809372'],
             ['999999', 'documento_identidad', '9999999'],
             ['maría', 'nombres', 'María'],
             ['SUAREZ', 'apellidos', 'Suarez'],
@@ -158,38 +159,41 @@ class EstudianteIndexTest extends TestCase
     public function test_search_treats_wildcards_literally(): void
     {
         $this->crearEstudiante([
-            'codigo_universitario' => '100%UNICO',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '7777777',
             'nombres' => 'Ruth',
             'apellidos' => 'Condori',
         ]);
         $this->crearEstudiante([
-            'codigo_universitario' => '200%UIT',
+            'codigo_universitario' => '201811090',
             'documento_identidad' => '5555555',
             'nombres' => 'Pablo',
             'apellidos' => 'Mamani',
         ]);
 
-        $this->actingAs(User::factory()->create())
-            ->get(route('estudiantes.index', ['search' => '%UN']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Estudiantes/Index')
-                ->where('estudiantes.total', 1)
-                ->where('estudiantes.data.0.codigo_universitario', '100%UNICO'));
+        $this->actingAs(User::factory()->create());
+
+        // '%' y '_' se tratan como texto literal: no deben actuar como comodines.
+        foreach (['%809', '2018_09372'] as $termino) {
+            $this->get(route('estudiantes.index', ['search' => $termino]))
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page->component('Estudiantes/Index')
+                    ->where('estudiantes.total', 0));
+        }
     }
 
     public function test_search_reports_metadata_and_persists_terms_in_pagination_links(): void
     {
         for ($i = 1; $i <= 16; $i++) {
             $this->crearEstudiante([
-                'codigo_universitario' => "2020-{$i}",
+                'codigo_universitario' => '2'.str_pad((string) $i, 8, '0', STR_PAD_LEFT),
                 'documento_identidad' => (string) (1000 + $i),
                 'nombres' => 'Estudiante',
                 'apellidos' => 'Apellido '.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
             ]);
         }
         $this->crearEstudiante([
-            'codigo_universitario' => '2021-OTRO',
+            'codigo_universitario' => '202200000',
             'documento_identidad' => '8888888',
             'nombres' => 'Fuera',
             'apellidos' => 'Del Filtro',

@@ -173,11 +173,11 @@ class ExamenUpdateTest extends TestCase
         $pivot = ExamenAmbiente::where('id_examen', $examen->id_examen)->firstOrFail();
 
         $estudiante = Estudiante::create([
-            'codigo_universitario' => '2024-0001',
+            'codigo_universitario' => '201800001',
             'documento_identidad' => '12345678',
             'nombres' => 'Ana',
             'apellidos' => 'Pérez',
-            'codigo_qr' => 'qr-2024-0001',
+            'codigo_qr' => 'qr-201800001',
         ]);
 
         $admin = $this->administrador();

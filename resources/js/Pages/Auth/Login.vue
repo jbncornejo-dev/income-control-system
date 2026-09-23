@@ -16,15 +16,16 @@
 
           <form @submit.prevent="handleLogin" class="login-form">
             <div class="form-group">
-              <label>Correo Electrónico</label>
+              <label>Correo, código o documento</label>
               <input 
-                type="email" 
-                v-model.trim="loginForm.email" 
+                type="text" 
+                v-model.trim="loginForm.identificador" 
                 required 
-                autocomplete="email" 
+                autocomplete="username" 
                 class="input-control"
+                placeholder="ej: 201809372"
               />
-              <p v-if="loginForm.errors.email" class="form-error" role="alert">{{ loginForm.errors.email }}</p>
+              <p v-if="loginForm.errors.identificador" class="form-error" role="alert">{{ loginForm.errors.identificador }}</p>
             </div>
 
             <div class="form-group">
@@ -102,7 +103,7 @@ import Button from '@/components/ui/Button.vue'
 const toastStore = useToastStore()
 const showPassword = ref(false)
 
-const loginForm = useForm({ email: '', password: '' })
+const loginForm = useForm({ identificador: '', password: '' })
 const loginError = ref('')
 
 function handleLogin() {
@@ -110,7 +111,7 @@ function handleLogin() {
   loginForm.post('/login', {
     onError: () => {
       toastStore.error('Credenciales inválidas. Intenta de nuevo.')
-      if (!loginForm.errors.email && !loginForm.errors.password) {
+      if (!loginForm.errors.identificador && !loginForm.errors.password) {
         loginError.value = 'Credenciales inválidas. Intenta de nuevo.'
       }
     },

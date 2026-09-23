@@ -24,7 +24,7 @@ class EstudianteInertiaTest extends TestCase
     public function test_index_exposes_editable_fields_for_the_edit_form(): void
     {
         $estudiante = Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -38,7 +38,7 @@ class EstudianteInertiaTest extends TestCase
                 ->where('estudiantes.data.0.id', $estudiante->id_estudiante)
                 ->where('estudiantes.data.0.nombres', 'Ana')
                 ->where('estudiantes.data.0.apellidos', 'Perez')
-                ->where('estudiantes.data.0.codigo_universitario', '2020-00001')
+                ->where('estudiantes.data.0.codigo_universitario', '201809372')
                 ->where('estudiantes.data.0.documento_identidad', '1111111')
                 ->where('estudiantes.data.0.codigo_qr', 'QR-1'));
     }
@@ -46,7 +46,7 @@ class EstudianteInertiaTest extends TestCase
     public function test_update_shares_success_message_and_persists_changes(): void
     {
         $estudiante = Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -56,8 +56,8 @@ class EstudianteInertiaTest extends TestCase
         $this->from('/estudiantes')->put(
             route('estudiantes.update', $estudiante),
             [
-                'nombres' => 'Ana Maria', 
-                'apellidos' => 'Perez Lopez', 
+                'nombres' => 'Ana Maria',
+                'apellidos' => 'Perez Lopez',
                 'codigo_qr' => 'QR-NUEVO',
                 // Agregamos los campos obligatorios para satisfacer la validación:
                 'codigo_universitario' => $estudiante->codigo_universitario,

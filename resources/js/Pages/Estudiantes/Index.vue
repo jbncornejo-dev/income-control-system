@@ -4,7 +4,7 @@
       <h1 class="panel-title">ESTUDIANTES</h1>
 
       <div class="action-bar">
-        <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, nombres o apellidos..." />
+        <SearchInput v-model="searchQuery" placeholder="Buscar por código, documento, correo, nombres o apellidos..." />
         <div class="action-controls">
           <Button variant="action" @click="abrirModalCsv">Importar CSV</Button>
           <Button variant="primary" @click="abrirModalCrear">Añadir Estudiante</Button>
@@ -18,6 +18,7 @@
               <th>ESTUDIANTE</th>
               <th>CÓDIGO UNIV.</th>
               <th>DOCUMENTO IDENTIDAD</th>
+              <th>CORREO</th>
               <th class="actions-col">ACCIONES</th>
             </tr>
           </thead>
@@ -29,13 +30,15 @@
               </td>
               <td>{{ student.codigo_universitario }}</td>
               <td>{{ student.documento_identidad }}</td>
+              <td>{{ student.email || '—' }}</td>
               <td class="actions-cell">
+                <Button variant="action" @click="abrirQr(student)">QR</Button>
                 <Button variant="action" @click="abrirModalEditar(student)">Editar</Button>
                 <Button variant="delete" @click="confirmarEliminar(student)">Eliminar</Button>
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td colspan="4" class="empty-state">
+              <td colspan="5" class="empty-state">
                 {{ searchQuery
                   ? 'No se encontraron resultados para la búsqueda.'
                   : 'No hay estudiantes registrados.' }}
@@ -73,8 +76,15 @@
         <div v-if="csvStep === 'upload'" class="csv-upload">
           <p class="help-text">
             El archivo debe llevar la cabecera
-            <code>codigo_universitario,documento_identidad,nombres,apellidos</code>.
-            Todos los campos son obligatorios (código y documento máx. 20 caracteres; nombres y apellidos máx. 100).
+            <code>codigo_universitario,documento_identidad,nombres,apellidos</code>,
+            con columnas opcionales
+            <code>codigo_qr</code> y <code>email</code>.
+            Los cuatro primeros campos son obligatorios y deben cumplir el formato:
+            código de 9 dígitos iniciando con el año de ingreso (ej: 201809372),
+            documento de 6 a 8 dígitos (ej: 12590804), nombres/apellidos solo con
+            letras, espacios, apóstrofes y guiones; el correo institucional, si se
+            envía, debe ser <code>codigo@est.umss.edu</code> (ej: 201809372@est.umss.edu).
+            Si no se envía código QR, se genera automáticamente por estudiante.
           </p>
           <div class="csv-file-row">
             <input
@@ -256,6 +266,33 @@
           </Button>
         </template>
       </Modal>
+
+      <!-- Modal: código QR del estudiante -->
+      <Modal
+        :open="qrModal"
+        :title="estudianteQr ? `QR de ${estudianteQr.nombres} ${estudianteQr.apellidos}` : 'Código QR'"
+        @close="qrModal = false"
+      >
+        <div v-if="estudianteQr" class="qr-content">
+          <img :src="`/estudiantes/${estudianteQr.id}/qr`" alt="Código QR del estudiante" class="qr-image" />
+          <p class="qr-help">
+            El personal de control puede escanear este código al momento del ingreso al examen
+            para identificar al estudiante.
+          </p>
+        </div>
+
+        <template #footer>
+          <Button variant="action" class="btn-modal" @click="qrModal = false">Cerrar</Button>
+          <a
+            v-if="estudianteQr"
+            :href="`/estudiantes/${estudianteQr.id}/qr`"
+            download
+            class="btn-descargar"
+          >
+            Descargar QR
+          </a>
+        </template>
+      </Modal>
     </div>
   </AuthenticatedLayout>
   <Modal :show="showModal" @close="showModal = false">
@@ -343,6 +380,15 @@ const eliminarEstudiante = () => {
       estudianteAEliminar.value = null;
     },
   });
+};
+
+// --- QR del estudiante ---
+const qrModal = ref(false);
+const estudianteQr = ref(null);
+
+const abrirQr = (estudiante) => {
+  estudianteQr.value = estudiante;
+  qrModal.value = true;
 };
 
 // --- Tabla ---
@@ -847,4 +893,29 @@ const getInitial = (name) => {
     color: #6b7280;
     padding: 2rem !important;
 }
+
+/* ---- Modal QR ---- */
+.qr-content { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.qr-image {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+}
+.qr-help { color: #6b7280; font-size: 13px; line-height: 1.5; text-align: center; margin: 0; }
+.btn-descargar {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  background: #1d3653;
+  color: #ffffff;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.btn-descargar:hover { background: #152a45; }
 </style>

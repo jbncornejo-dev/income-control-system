@@ -263,7 +263,7 @@ class ExamenStoreTest extends TestCase
         $datos = $this->datosValidos();
 
         $estudiante = Estudiante::create([
-            'codigo_universitario' => '2026-00001',
+            'codigo_universitario' => '201900001',
             'documento_identidad' => '1234567',
             'nombres' => 'Estudiante',
             'apellidos' => 'Uno',

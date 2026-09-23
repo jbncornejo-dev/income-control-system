@@ -30,7 +30,7 @@ class EstudianteUpdateTest extends TestCase
     private function crearEstudiante(): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -64,8 +64,8 @@ class EstudianteUpdateTest extends TestCase
             'apellidos' => 'Perez Lopez',
             'codigo_qr' => 'QR-NUEVO',
             // Se envían igual que el frontend (inputs disabled), pero no deben cambiarse.
-            'codigo_universitario' => '9999-99999',
-            'documento_identidad' => '9999999',
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -80,7 +80,7 @@ class EstudianteUpdateTest extends TestCase
         ]);
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
         ]);
     }
@@ -131,7 +131,7 @@ class EstudianteUpdateTest extends TestCase
         $user = $this->createUser();
         $estudiante = $this->crearEstudiante();
         Estudiante::create([
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',

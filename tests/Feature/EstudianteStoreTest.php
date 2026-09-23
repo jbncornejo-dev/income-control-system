@@ -31,7 +31,7 @@ class EstudianteStoreTest extends TestCase
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $response = $this->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -46,7 +46,7 @@ class EstudianteStoreTest extends TestCase
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -55,7 +55,7 @@ class EstudianteStoreTest extends TestCase
         $response->assertRedirect(route('estudiantes.index'));
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('estudiante', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
         ]);
     }
@@ -65,14 +65,14 @@ class EstudianteStoreTest extends TestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
@@ -87,14 +87,14 @@ class EstudianteStoreTest extends TestCase
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '1111111',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
@@ -119,12 +119,57 @@ class EstudianteStoreTest extends TestCase
         $response->assertSessionHasErrors(['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos']);
     }
 
-    public function test_ignores_codigo_qr_on_create(): void
+    public function test_rejects_invalid_field_formats(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '2020-00001',   // no es código SIS de 9 dígitos
+            'documento_identidad' => 'ABC123',        // no es CI numérico boliviano
+            'nombres' => 'Ana123',                    // caracteres no permitidos
+            'apellidos' => 'Perez',
+            'email' => 'ana.perez@correo.org',        // no es correo UMSS
+        ]);
+
+        $response->assertSessionHasErrors([
+            'codigo_universitario',
+            'documento_identidad',
+            'nombres',
+            'email',
+        ]);
+        $this->assertDatabaseCount('estudiante', 0);
+    }
+
+    public function test_accepts_valid_umss_formats(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => '201809372@est.umss.edu',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => '201809372@est.umss.edu',
+        ]);
+    }
+
+    public function test_ignores_external_codigo_qr_and_autogenerates_it(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -132,18 +177,19 @@ class EstudianteStoreTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
             'codigo_qr' => 'QR-123',
         ]);
 
-        // El QR ya no forma parte del registro: se envía pero no se valida ni se guarda.
+        // El QR externo no forma parte del registro individual: se autogenera
+        // con el payload estándar del sistema.
         $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('estudiante', [
-            'codigo_universitario' => '2020-00002',
-            'codigo_qr' => null,
+            'codigo_universitario' => '201809373',
+            'codigo_qr' => Estudiante::qrPayload('201809373'),
         ]);
     }
 }

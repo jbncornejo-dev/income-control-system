@@ -3,6 +3,7 @@
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
@@ -32,11 +33,15 @@ Route::middleware('guest')->group(function () {
     })->name('login');
 
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
-    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+
+    // Cambio de contraseña: obligatorio para cuentas de estudiante recién
+    // creadas (contraseña inicial temporal), opcional para el resto.
+    Route::get('/cambiar-password', [CambiarPasswordController::class, 'show'])->name('cambiar-password.show');
+    Route::post('/cambiar-password', [CambiarPasswordController::class, 'store'])->name('cambiar-password.store');
 
     /*Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
     Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
@@ -102,6 +107,8 @@ Route::middleware('auth')->group(function () {
         // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
+        // QR de identificación del estudiante (PNG) para el control de ingreso.
+        Route::get('/estudiantes/{estudiante}/qr', [StudentController::class, 'qr'])->name('estudiantes.qr');
         // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
         // Eliminar únicamente exámenes sin inscripciones ni registros de ingreso; además borra sus ambientes asociados.
         Route::delete('/examenes/{examen}', [ExamenController::class, 'destroy'])->name('examenes.destroy');

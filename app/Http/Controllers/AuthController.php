@@ -2,67 +2,79 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Rol;
+use App\Models\Estudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     public function store(Request $request)
     {
         $request->validate([
-            'email' => ['required', 'email'],
+            'identificador' => ['required', 'string'],
             'password' => ['required'],
         ]);
 
-        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
+        $user = $this->resolverUsuarioPorIdentificador($request->input('identificador'));
+
+        if ($user === null || ! Auth::attempt(['id' => $user->id, 'password' => $request->password], $request->boolean('remember'))) {
             return back()->withErrors([
-                'email' => 'Credenciales inválidas.',
-            ])->onlyInput('email');
+                'identificador' => 'Credenciales inválidas.',
+            ])->onlyInput('identificador');
         }
 
         $request->session()->regenerate();
 
-        // Todos los usuarios van a /dashboard. 
+        // Las cuentas de estudiante recién creadas llevan una contraseña
+        // inicial temporal: se obliga a cambiarla antes de usar el panel.
+        if ($user->debe_cambiar_password) {
+            return redirect()->route('cambiar-password.show');
+        }
+
+        // Todos los usuarios van a /dashboard.
         // El archivo web.php decidirá qué vista renderizar según su rol.
         return redirect()->intended(route('dashboard'));
     }
 
-    public function register(Request $request)
+    /**
+     * Resuelve la cuenta a partir de cualquiera de los identificadores
+     * válidos: correo electrónico, código universitario (username) o
+     * documento de identidad del estudiante.
+     */
+    private function resolverUsuarioPorIdentificador(string $identificador): ?User
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
+        $identificador = trim($identificador);
 
-        // Public registration must never grant administrator access.
-        $rol = Rol::firstOrCreate(['nombre_rol' => 'personal de control de ingreso']);
-
-        $baseUsername = Str::slug(explode(' ', trim($request->name))[0].'_'.Str::before($request->email, '@'));
-        $baseUsername = Str::limit($baseUsername, 45, '');
-        $username = $baseUsername;
-        $suffix = 1;
-        while (User::where('username', $username)->exists()) {
-            $suffixStr = (string) $suffix++;
-            $username = Str::limit($baseUsername, 50 - strlen($suffixStr), '').$suffixStr;
+        if ($identificador === '') {
+            return null;
         }
 
-        $user = User::create([
-            'id_rol' => $rol->id_rol,
-            'name' => $request->name,
-            'username' => $username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        if (str_contains($identificador, '@')) {
+            // Login por correo: se consulta primero la cuenta y, si el correo
+            // aún no está sincronizado en users, el del registro del estudiante.
+            $usuario = User::query()->where('email', $identificador)->first();
 
-        Auth::login($user);
-        $request->session()->regenerate();
+            if ($usuario !== null) {
+                return $usuario;
+            }
 
-        return redirect()->route('dashboard');
+            $estudiante = Estudiante::query()->where('email', $identificador)->first();
+
+            return $estudiante?->user;
+        }
+
+        // Código universitario (el username de la cuenta del estudiante).
+        $usuario = User::query()->where('username', $identificador)->first();
+
+        if ($usuario !== null) {
+            return $usuario;
+        }
+
+        // Documento de identidad del estudiante.
+        $estudiante = Estudiante::query()->where('documento_identidad', $identificador)->first();
+
+        return $estudiante?->user;
     }
 
     public function destroy(Request $request)

@@ -34,7 +34,7 @@ class EstudianteDestroyTest extends TestCase
     private function crearEstudiante(): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
