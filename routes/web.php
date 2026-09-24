@@ -82,9 +82,9 @@ Route::middleware('auth')->group(function () {
 
         abort(403, 'Tu rol no tiene un panel principal configurado.');
 
-    })->middleware(['verified'])->name('dashboard');
+    })->middleware(['password.pendiente', 'verified'])->name('dashboard');
 
-    Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador,docente,personal de control de ingreso'])->group(function () {
         Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
     });
@@ -92,11 +92,11 @@ Route::middleware('auth')->group(function () {
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
     // y habilitaciones). El controlador no recibe parámetros de la URL, así
     // que es imposible pedir los exámenes de otro estudiante.
-    Route::middleware('role:estudiante')->group(function () {
+    Route::middleware(['password.pendiente', 'role:estudiante'])->group(function () {
         Route::get('/mis-examenes', [MisExamenesController::class, 'index'])->name('mis-examenes.index');
     });
 
-    Route::middleware('role:administrador')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
@@ -144,7 +144,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
 
-    Route::middleware('role:administrador,docente')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
         Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.

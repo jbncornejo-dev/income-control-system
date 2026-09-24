@@ -77,6 +77,20 @@ class CambiarPasswordTest extends TestCase
         ])->assertRedirect(route('dashboard'));
     }
 
+    public function test_estudiante_con_password_pendiente_no_abre_el_panel_por_url(): void
+    {
+        [$estudiante, $cuenta] = $this->estudiantePendiente();
+
+        // Entrar directo a /mis-examenes con el flag activo debe redirigir al
+        // cambio de contraseña (no basta con el redirect del login).
+        $this->actingAs($cuenta)
+            ->get(route('mis-examenes.index'))
+            ->assertRedirect(route('cambiar-password.show'));
+
+        $cuenta->refresh();
+        $this->assertTrue($cuenta->debe_cambiar_password);
+    }
+
     public function test_password_change_rejects_wrong_current_password(): void
     {
         [, $cuenta] = $this->estudiantePendiente();

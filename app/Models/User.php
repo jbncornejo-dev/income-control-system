@@ -21,6 +21,7 @@ class User extends Authenticatable
         'id_estudiante',
         'name',
         'email',
+        'email_verified_at',
         'username',
         'password',
         'debe_cambiar_password',

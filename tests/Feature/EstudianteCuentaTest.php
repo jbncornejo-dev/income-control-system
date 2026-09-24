@@ -60,6 +60,9 @@ class EstudianteCuentaTest extends TestCase
         $this->assertTrue($cuenta->debe_cambiar_password);
         $this->assertSame('estudiante', $cuenta->rol->nombre_rol);
         $this->assertSame('Ana Perez', $cuenta->name);
+        // La cuenta nace verificada (no hay infraestructura de correo): el
+        // middleware 'verified' de /dashboard no debe bloquear al estudiante.
+        $this->assertNotNull($cuenta->email_verified_at);
         // La contraseña inicial es el documento de identidad: se fuerza el cambio.
         $this->assertTrue(Hash::check('1111111', $cuenta->password));
 
