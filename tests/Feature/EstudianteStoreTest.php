@@ -104,6 +104,56 @@ class EstudianteStoreTest extends TestCase
         $this->assertDatabaseCount('estudiante', 1);
     }
 
+    public function test_rejects_email_ya_usada_por_otra_cuenta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        // Otra cuenta (docente) ya tiene ese correo institucional.
+        User::create([
+            'id_rol' => $user->id_rol,
+            'name' => 'Docente',
+            'username' => 'docente_x',
+            'email' => '123456789@est.umss.edu',
+            'password' => Hash::make('password'),
+        ]);
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
+            'nombres' => 'Ana',
+            'apellidos' => 'Perez',
+            'email' => '123456789@est.umss.edu',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertDatabaseCount('estudiante', 0);
+        $this->assertDatabaseCount('users', 2);
+    }
+
+    public function test_rejects_codigo_ya_usado_como_username_por_otra_cuenta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        // El código ya es el username de otra cuenta (no estudiante).
+        User::create([
+            'id_rol' => $user->id_rol,
+            'name' => 'Personal',
+            'username' => '201809372',
+            'email' => '123456789@est.umss.edu',
+            'password' => Hash::make('password'),
+        ]);
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
+            'nombres' => 'Ana',
+            'apellidos' => 'Perez',
+        ]);
+
+        $response->assertSessionHasErrors('codigo_universitario');
+        $this->assertDatabaseCount('estudiante', 0);
+    }
+
     public function test_rejects_missing_required_fields(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);

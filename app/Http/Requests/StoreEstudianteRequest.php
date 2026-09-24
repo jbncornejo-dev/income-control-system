@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Estudiante;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEstudianteRequest extends FormRequest
@@ -36,6 +37,13 @@ class StoreEstudianteRequest extends FormRequest
                 'max:20',
                 'regex:'.Estudiante::REGEX_CODIGO_SIS,
                 'unique:estudiante,codigo_universitario',
+                // El código es el username de la cuenta del estudiante: no debe
+                // chocar con ninguna cuenta existente (docentes, control, etc.).
+                function ($attribute, $value, $fail) {
+                    if (User::query()->where('username', $value)->exists()) {
+                        $fail('El código universitario ya está en uso por otra cuenta de acceso.');
+                    }
+                },
             ],
             'documento_identidad' => [
                 'required',
@@ -52,6 +60,13 @@ class StoreEstudianteRequest extends FormRequest
                 'max:255',
                 'regex:'.Estudiante::REGEX_EMAIL_UMSS,
                 'unique:estudiante,email',
+                // El correo institucional no puede pertenecer a otra cuenta de
+                // acceso, o el login por correo resolvería al usuario equivocado.
+                function ($attribute, $value, $fail) {
+                    if (User::query()->where('email', $value)->exists()) {
+                        $fail('El correo ya está en uso por otra cuenta de acceso.');
+                    }
+                },
             ],
         ];
     }

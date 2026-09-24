@@ -14,7 +14,6 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class StudentController extends Controller
@@ -269,17 +268,16 @@ class StudentController extends Controller
     {
         $rolEstudiante = Rol::firstOrCreate(['nombre_rol' => 'estudiante']);
 
-        $emailCuenta = $email;
-        if ($emailCuenta !== null && User::query()->where('email', $emailCuenta)->exists()) {
-            $emailCuenta = null;
-        }
-
+        // El identificador de login del estudiante es su propio código
+        // universitario (username). Las colisiones de username o email con
+        // otras cuentas se rechazan ANTES en el formulario/importación; si algo
+        // se desliza, las restricciones UNIQUE de users lo frenan en la BD.
         return User::create([
             'id_rol' => $rolEstudiante->id_rol,
             'id_estudiante' => $estudiante->id_estudiante,
             'name' => trim($estudiante->nombres.' '.$estudiante->apellidos),
-            'username' => $this->usernameUnico($estudiante->codigo_universitario),
-            'email' => $emailCuenta,
+            'username' => $estudiante->codigo_universitario,
+            'email' => $email,
             // Sin infraestructura de correo, la cuenta se considera verificada
             // desde el registro: /dashboard exige el middleware 'verified'.
             'email_verified_at' => now(),
@@ -300,32 +298,12 @@ class StudentController extends Controller
             return;
         }
 
-        $email = $estudiante->email;
-        if ($email !== null && User::query()->where('email', $email)->where('id', '!=', $cuenta->id)->exists()) {
-            $email = null;
-        }
-
+        // El Form Request ya garantizó que el correo no pertenezca a otra
+        // cuenta (users.email es UNIQUE): aquí solo se sincroniza.
         $cuenta->update([
             'name' => trim($estudiante->nombres.' '.$estudiante->apellidos),
-            'email' => $email,
+            'email' => $estudiante->email,
         ]);
-    }
-
-    /**
-     * Devuelve un username disponible partiendo del código universitario,
-     * agregando un sufijo numérico si ya existe una cuenta con ese username.
-     */
-    private function usernameUnico(string $base): string
-    {
-        $username = $base;
-        $sufijo = 1;
-
-        while (User::query()->where('username', $username)->exists()) {
-            $sufijoStr = (string) $sufijo++;
-            $username = Str::limit($base, 49 - strlen($sufijoStr), '').$sufijoStr;
-        }
-
-        return $username;
     }
 
     /**
@@ -427,6 +405,8 @@ class StudentController extends Controller
             'documento_identidad' => [],
             'codigo_qr' => [],
             'email' => [],
+            'users_username' => [],
+            'users_email' => [],
         ];
 
         Estudiante::query()
@@ -442,6 +422,18 @@ class StudentController extends Controller
 
                     if ($estudiante->email !== null) {
                         $indices['email'][$estudiante->email] = true;
+                    }
+                }
+            });
+
+        User::query()
+            ->select(['username', 'email'])
+            ->chunk(1000, function ($usuarios) use (&$indices) {
+                foreach ($usuarios as $usuario) {
+                    $indices['users_username'][$usuario->username] = true;
+
+                    if ($usuario->email !== null) {
+                        $indices['users_email'][$usuario->email] = true;
                     }
                 }
             });
@@ -467,6 +459,8 @@ class StudentController extends Controller
             $motivos[] = 'El código universitario debe tener 9 dígitos e iniciar con el año de ingreso.';
         } elseif (isset($existentes['codigo_universitario'][$datos['codigo_universitario']])) {
             $motivos[] = 'El código universitario ya está registrado.';
+        } elseif (isset($existentes['users_username'][$datos['codigo_universitario']])) {
+            $motivos[] = 'El código universitario ya está en uso por otra cuenta de acceso.';
         } elseif (isset($vistos['codigo_universitario'][$datos['codigo_universitario']])) {
             $motivos[] = 'El código universitario está duplicado dentro del archivo.';
         }
@@ -516,6 +510,8 @@ class StudentController extends Controller
                 $motivos[] = 'El correo debe tener un formato válido.';
             } elseif (isset($existentes['email'][$datos['email']])) {
                 $motivos[] = 'El correo ya está registrado.';
+            } elseif (isset($existentes['users_email'][$datos['email']])) {
+                $motivos[] = 'El correo ya está en uso por otra cuenta de acceso.';
             } elseif (isset($vistos['email'][$datos['email']])) {
                 $motivos[] = 'El correo está duplicado dentro del archivo.';
             }

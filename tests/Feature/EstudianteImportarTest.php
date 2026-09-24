@@ -193,6 +193,36 @@ class EstudianteImportarTest extends TestCase
         $this->assertDatabaseCount('estudiante', 1);
     }
 
+    public function test_rejects_row_whose_email_belongs_to_another_account(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        // El correo institucional ya pertenece a otra cuenta (docente).
+        User::create([
+            'id_rol' => $user->id_rol,
+            'name' => 'Docente',
+            'username' => 'docente_x',
+            'email' => '123456789@est.umss.edu',
+            'password' => Hash::make('password'),
+        ]);
+
+        $csv = "codigo_universitario,documento_identidad,nombres,apellidos,email\n"
+            ."201809372,1111111,Ana,Perez,123456789@est.umss.edu\n";
+
+        $response = $this->actingAs($user)->post('/estudiantes/importar', [
+            'file' => $this->csvFile($csv),
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('exitosos', 0);
+        $response->assertJsonPath('total_filas', 1);
+        $response->assertJsonCount(1, 'rechazados');
+        $motivos = implode(' | ', $response->json('rechazados.0.motivos'));
+        $this->assertStringContainsString('otra cuenta de acceso', $motivos);
+        $this->assertDatabaseCount('estudiante', 0);
+        $this->assertDatabaseCount('users', 2); // admin + docente (sin cuenta de estudiante)
+    }
+
     public function test_rejects_invalid_header(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
