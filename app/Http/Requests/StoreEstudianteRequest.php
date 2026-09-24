@@ -58,7 +58,7 @@ class StoreEstudianteRequest extends FormRequest
                 'nullable',
                 'string',
                 'max:255',
-                'regex:'.Estudiante::REGEX_EMAIL_UMSS,
+                'email',
                 'unique:estudiante,email',
                 // El correo institucional no puede pertenecer a otra cuenta de
                 // acceso, o el login por correo resolvería al usuario equivocado.
@@ -87,7 +87,7 @@ class StoreEstudianteRequest extends FormRequest
             'nombres.regex' => 'Los nombres solo pueden contener letras, espacios, apóstrofes y guiones.',
             'apellidos.required' => 'Los apellidos son obligatorios.',
             'apellidos.regex' => 'Los apellidos solo pueden contener letras, espacios, apóstrofes y guiones.',
-            'email.regex' => 'El correo debe tener un formato válido.',
+            'email.email' => 'El correo debe tener un formato válido.',
             'email.unique' => 'El correo ya está registrado.',
         ];
     }

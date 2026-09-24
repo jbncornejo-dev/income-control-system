@@ -179,7 +179,7 @@ class EstudianteStoreTest extends TestCase
             'documento_identidad' => 'ABC123',        // no es CI numérico boliviano
             'nombres' => 'Ana123',                    // caracteres no permitidos
             'apellidos' => 'Perez',
-            'email' => 'ana.perez@correo.org',        // no es correo UMSS
+            'email' => 'correo-mal-formado',          // no es un correo válido
         ]);
 
         $response->assertSessionHasErrors([
@@ -189,6 +189,32 @@ class EstudianteStoreTest extends TestCase
             'email',
         ]);
         $this->assertDatabaseCount('estudiante', 0);
+    }
+
+    public function test_accepts_personal_email_not_institutional(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        // Se acepta cualquier correo válido: funciona como canal de
+        // notificación (contraseña inicial, avisos), no como identificador.
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => 'laura.perez@gmail.com',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '201809372',
+            'email' => 'laura.perez@gmail.com',
+        ]);
+        $this->assertDatabaseHas('users', [
+            'username' => '201809372',
+            'email' => 'laura.perez@gmail.com',
+        ]);
     }
 
     public function test_accepts_valid_umss_formats(): void

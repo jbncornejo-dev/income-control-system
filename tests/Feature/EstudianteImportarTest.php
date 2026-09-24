@@ -123,7 +123,7 @@ class EstudianteImportarTest extends TestCase
         $user = $this->createUser();
         $csv = "codigo_universitario,documento_identidad,nombres,apellidos,email\n"
             ."201809372,1111111,Ana,Perez,201809372@est.umss.edu\n"
-            ."201809373,2222222,Juan,Gomez,\n";
+            ."201809373,2222222,Juan,Gomez,juan.gomez@gmail.com\n";
 
         $response = $this->actingAs($user)->post('/estudiantes/importar', [
             'file' => $this->csvFile($csv),
@@ -134,14 +134,15 @@ class EstudianteImportarTest extends TestCase
         $response->assertJsonPath('total_filas', 2);
         $response->assertJsonCount(0, 'rechazados');
 
-        // El estudiante con correo lo conserva; el otro queda sin correo.
+        // Se acepta tanto el correo institucional como el personal (gmail):
+        // el correo es un canal de contacto, no un identificador.
         $this->assertDatabaseHas('estudiante', [
             'codigo_universitario' => '201809372',
             'email' => '201809372@est.umss.edu',
         ]);
         $this->assertDatabaseHas('estudiante', [
             'codigo_universitario' => '201809373',
-            'email' => null,
+            'email' => 'juan.gomez@gmail.com',
         ]);
 
         // Cada estudiante importado tiene su cuenta de acceso (rol estudiante)
@@ -153,7 +154,7 @@ class EstudianteImportarTest extends TestCase
         ]);
         $this->assertDatabaseHas('users', [
             'username' => '201809373',
-            'email' => null,
+            'email' => 'juan.gomez@gmail.com',
             'debe_cambiar_password' => true,
         ]);
         $this->assertDatabaseCount('users', 3); // admin + 2 cuentas de estudiante
@@ -171,7 +172,7 @@ class EstudianteImportarTest extends TestCase
             ."ABC12345,1234567,Ana,Perez,\n"          // código no SIS
             ."201809372,12,,Perez,\n"                 // CI inválido y nombres vacío
             ."201809373,1234567,Ana123,Fernandez,\n"  // nombres con caracteres inválidos
-            ."201809374,1234567,Ana,Perez,ana@gmail.com\n" // correo no UMSS
+            ."201809374,1234567,Ana,Perez,correo-mal-formado\n" // correo inválido
             ."201809375,1234567,Ana,Perez,\n";        // válido -> inserta
 
         $response = $this->actingAs($user)->post('/estudiantes/importar', [

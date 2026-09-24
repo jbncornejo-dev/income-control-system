@@ -14,6 +14,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 
 class StudentController extends Controller
@@ -506,7 +507,9 @@ class StudentController extends Controller
         if ($datos['email'] !== null) {
             if (mb_strlen($datos['email']) > 255) {
                 $motivos[] = 'El correo no puede superar los 255 caracteres.';
-            } elseif (! preg_match(Estudiante::REGEX_EMAIL_UMSS, $datos['email'])) {
+            } elseif (Validator::make(['email' => $datos['email']], ['email' => 'email'])->fails()) {
+                // Mismo criterio que la regla 'email' de los Form Requests
+                // (RFC): se acepta cualquier correo, no solo institucional.
                 $motivos[] = 'El correo debe tener un formato válido.';
             } elseif (isset($existentes['email'][$datos['email']])) {
                 $motivos[] = 'El correo ya está registrado.';

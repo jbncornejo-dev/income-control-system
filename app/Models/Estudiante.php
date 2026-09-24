@@ -28,15 +28,14 @@ class Estudiante extends Model
      * - Código: 9 dígitos; los 4 primeros indican el año de ingreso, ej. 201809372.
      * - Documento de identidad: 6 a 8 dígitos, ej. 12590804.
      * - Nombre/Apellidos: letras (con acentos), espacios, apóstrofes y guiones.
-     * - Correo institucional: código@dominio, ej. 201809372@est.umss.edu.
+     * - Correo: cualquier dirección válida (el estudiante recibe notificaciones
+     *   y la usa para login; la identidad se valida con documento y código).
      */
     public const REGEX_NOMBRES = "/^[\p{L}][\p{L}\s'-]*$/u";
 
     public const REGEX_CODIGO_SIS = '/^(19|20)\d{2}\d{5}$/';
 
     public const REGEX_DOCUMENTO_CI = '/^\d{6,8}$/';
-
-    public const REGEX_EMAIL_UMSS = '/^\d{9}@est\.umss\.edu$/';
 
     /**
      * Payload del QR autogenerado para un código universitario.

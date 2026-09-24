@@ -66,7 +66,7 @@ class UpdateEstudianteRequest extends StoreEstudianteRequest
                 'nullable',
                 'string',
                 'max:255',
-                'regex:'.Estudiante::REGEX_EMAIL_UMSS,
+                'email',
                 Rule::unique('estudiante', 'email')->ignore($id, 'id_estudiante'),
                 function ($attribute, $value, $fail) use ($cuentaId) {
                     $query = User::query()->where('email', $value);
