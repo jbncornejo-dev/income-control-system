@@ -50,9 +50,13 @@ class EstudianteSeeder extends Seeder
             $codigo = (string) $anio.str_pad((string) (($indice % 6) + 1), 5, '0', STR_PAD_LEFT);
 
             Estudiante::updateOrCreate(
-                ['codigo_universitario' => $codigo],
+                // El documento de identidad es la clave natural estable de la
+                // persona; el código SIS (código universitario) puede cambiar de
+                // gestión en gestión. Re-seedear contra una BD existente
+                // actualiza el registro en lugar de intentar insertar duplicados.
+                ['documento_identidad' => $documento],
                 [
-                    'documento_identidad' => $documento,
+                    'codigo_universitario' => $codigo,
                     'nombres' => $nombres,
                     'apellidos' => $apellidos,
                     'codigo_qr' => Estudiante::qrPayload($codigo),

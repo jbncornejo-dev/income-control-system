@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -32,6 +33,12 @@ return new class extends Migration
 
     public function down(): void
     {
+        // El alta/importación de estudiantes puede dejar users.email en NULL
+        // (estudiantes sin correo institucional). Antes de restaurar el NOT
+        // NULL hay que darles un valor sintético único; si no, el rollback
+        // falla por la restricción.
+        DB::statement("UPDATE users SET email = 'sin-correo-' || id || '@local.invalid' WHERE email IS NULL");
+
         Schema::table('users', function (Blueprint $table) {
             $table->dropUnique('users_id_estudiante_unique');
             $table->dropConstrainedForeignId('id_estudiante');
