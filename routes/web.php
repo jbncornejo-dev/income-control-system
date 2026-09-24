@@ -3,9 +3,11 @@
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PeriodoTipoExamenController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TipoExamenController;
@@ -32,11 +34,15 @@ Route::middleware('guest')->group(function () {
     })->name('login');
 
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
-    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
+
+    // Cambio de contraseña: obligatorio para cuentas de estudiante recién
+    // creadas (contraseña inicial temporal), opcional para el resto.
+    Route::get('/cambiar-password', [CambiarPasswordController::class, 'show'])->name('cambiar-password.show');
+    Route::post('/cambiar-password', [CambiarPasswordController::class, 'store'])->name('cambiar-password.store');
 
     /*Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
     Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
@@ -66,9 +72,7 @@ Route::middleware('auth')->group(function () {
 
         // 4. LÓGICA PARA EL ESTUDIANTE
         if ($nombreRol === 'estudiante') {
-            return Inertia::render('Estudiantes/Dashboard', [
-                // Datos específicos del estudiante
-            ]);
+            return redirect()->route('mis-examenes.index');
         }
 
         // 5. LÓGICA PARA CONTROL DE INGRESO
@@ -78,14 +82,21 @@ Route::middleware('auth')->group(function () {
 
         abort(403, 'Tu rol no tiene un panel principal configurado.');
 
-    })->middleware(['verified'])->name('dashboard');
+    })->middleware(['password.pendiente', 'verified'])->name('dashboard');
 
-    Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador,docente,personal de control de ingreso'])->group(function () {
         Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
     });
 
-    Route::middleware('role:administrador')->group(function () {
+    // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
+    // y habilitaciones). El controlador no recibe parámetros de la URL, así
+    // que es imposible pedir los exámenes de otro estudiante.
+    Route::middleware(['password.pendiente', 'role:estudiante'])->group(function () {
+        Route::get('/mis-examenes', [MisExamenesController::class, 'index'])->name('mis-examenes.index');
+    });
+
+    Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
@@ -102,6 +113,8 @@ Route::middleware('auth')->group(function () {
         // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
+        // QR de identificación del estudiante (PNG) para el control de ingreso.
+        Route::get('/estudiantes/{estudiante}/qr', [StudentController::class, 'qr'])->name('estudiantes.qr');
         // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
         // Eliminar únicamente exámenes sin inscripciones ni registros de ingreso; además borra sus ambientes asociados.
         Route::delete('/examenes/{examen}', [ExamenController::class, 'destroy'])->name('examenes.destroy');
@@ -131,7 +144,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
 
-    Route::middleware('role:administrador,docente')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
         Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.

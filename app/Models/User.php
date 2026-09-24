@@ -18,10 +18,13 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'id_rol',
+        'id_estudiante',
         'name',
         'email',
+        'email_verified_at',
         'username',
         'password',
+        'debe_cambiar_password',
     ];
 
     /**
@@ -44,6 +47,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'debe_cambiar_password' => 'boolean',
         ];
     }
 
@@ -75,5 +79,19 @@ class User extends Authenticatable
     public function grupos()
     {
         return $this->hasMany(Grupo::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a uno (cuenta de usuario - estudiante)
+    public function estudiante()
+    {
+        return $this->belongsTo(Estudiante::class, 'id_estudiante', 'id_estudiante');
+    }
+
+    /**
+     * ¿La cuenta pertenece a un estudiante y debe cambiar su contraseña inicial?
+     */
+    public function esCuentaEstudiantePendiente(): bool
+    {
+        return $this->id_estudiante !== null && $this->debe_cambiar_password;
     }
 }
