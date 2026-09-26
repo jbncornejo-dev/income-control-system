@@ -68,6 +68,7 @@ class DatabaseSeeder extends Seeder
                     'id_rol' => $roles[$usuario['rol']]->id_rol,
                     'name' => $usuario['name'],
                     'username' => $usuario['username'],
+                    'email' => $usuario['email'],
                     'email_verified_at' => now(),
                     'password' => Hash::make('pass'),
                 ]

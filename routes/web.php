@@ -182,4 +182,27 @@ Route::middleware('auth')->group(function () {
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
+
+    Route::get('/estudiante/panel', function () {
+        return \Inertia\Inertia::render('Estudiantes/Panel', [
+            'estudiante' => [
+                'nombres' => 'Juan Carlos',
+                'apellidos' => 'Quispe Mamani',
+                'codigo_universitario' => '201800001',
+                'ci' => '4829135',
+                'email' => '201800001@est.umss.edu',
+                'qr_token' => 'token-de-prueba-12345',
+                'foto_path' => null,
+            ]
+        ]);
+    })->name('estudiante.panel');
+
+    // Mocks para los botones (evitan el 404 al dar clic)
+    Route::post('/estudiante/qr/regenerar', function () {
+        return back();
+    })->name('estudiante.qr.regenerate');
+
+    Route::post('/estudiante/foto', function () {
+        return back();
+    })->name('estudiante.foto.upload');
 });
