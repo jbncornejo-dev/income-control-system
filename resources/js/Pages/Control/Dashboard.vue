@@ -26,6 +26,14 @@ const props = defineProps({
                 </div>
             </Link>
 
+            <Link href="/incidencias" class="acceso-incidencias">
+                <div class="acceso-texto">
+                    <span class="acceso-titulo">Reportar incidencia</span>
+                    <span class="acceso-desc">Expulsiones, problemas de identificación u otras situaciones</span>
+                </div>
+                <span class="acceso-flecha">&rarr;</span>
+            </Link>
+
             <!-- Tarjetas de Estadísticas -->
             <div class="stats-grid">
                 <div class="stat-card" style="border-top-color: var(--color-primary);">
@@ -240,4 +248,9 @@ const props = defineProps({
     color: #6b7280;
     padding: 2rem !important;
 }
+.acceso-incidencias { display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: #fff; border: 1px solid #e5e7eb; border-left: 4px solid var(--color-active); border-radius: 0.5rem; padding: 1rem 1.25rem; text-decoration: none; margin-bottom: 2rem; }
+.acceso-texto { display: flex; flex-direction: column; }
+.acceso-titulo { font-weight: 700; color: var(--color-primary); font-size: 1rem; }
+.acceso-desc { font-size: 0.875rem; color: var(--text-muted); }
+.acceso-flecha { color: var(--color-active); font-size: 1.25rem; }
 </style>
