@@ -22,6 +22,7 @@ const navItems = [
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'] },
   { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'] },
   { label: 'Registrar Ingreso', href: '/ingreso/registrar', roles: ['control'], highlight: true },
+  { label: 'Mi Código QR', href: '/estudiante/panel', roles: ['estudiante'] },
   { label: 'Mis Exámenes', href: '/mis-examenes', roles: ['estudiante'] },
 ];
 
@@ -82,7 +83,7 @@ function logout() {
         <div class="topbar-actions">
 
           <nav class="topbar-nav">
-            <Link href="/dashboard" class="topbar-link">
+            <Link :href="role === 'estudiante' ? '/estudiante/panel' : '/dashboard'" class="topbar-link">
               Inicio
             </Link>
 
