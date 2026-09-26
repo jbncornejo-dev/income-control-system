@@ -9,6 +9,8 @@ class Incidencia extends Model
 {
     use HasFactory;
 
+    public const TIPOS = ['Expulsión', 'Problema de identificación', 'Cambio de ambiente', 'Otro'];
+
     protected $table = 'incidencia';
     protected $primaryKey = 'id_incidencia';
     public $timestamps = false;

@@ -7,6 +7,7 @@ use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PeriodoTipoExamenController;
 use App\Http\Controllers\StudentController;
@@ -87,6 +88,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['password.pendiente', 'role:administrador,docente,personal de control de ingreso'])->group(function () {
         Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
+        Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
+        Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
     });
 
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
