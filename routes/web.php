@@ -19,6 +19,7 @@ use App\Models\Estudiante;
 use App\Models\Examen;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\RegistroIngresoController;
 
 Route::get('/', function () {
     if (! Auth::check()) {
@@ -90,7 +91,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
         Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
-    });
+        Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
+        Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
+        Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
+        });
 
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
     // y habilitaciones). El controlador no recibe parámetros de la URL, así
