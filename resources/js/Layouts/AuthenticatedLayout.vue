@@ -22,7 +22,7 @@ const navItems = [
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'] },
   { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'] },
   { label: 'Incidencias', href: '/incidencias', roles: ['admin', 'docente', 'control'] },
-  { label: 'Registrar Ingreso', href: '/ingreso/registrar', roles: ['control'], highlight: true },
+  { label: 'Registrar Ingreso', href: '/registro-ingreso', roles: ['control'], highlight: true },
   { label: 'Mi Código QR', href: '/estudiante/panel', roles: ['estudiante'] },
   { label: 'Mis Exámenes', href: '/mis-examenes', roles: ['estudiante'] },
 ];
