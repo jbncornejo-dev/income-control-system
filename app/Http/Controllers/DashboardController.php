@@ -91,12 +91,17 @@ class DashboardController extends Controller
             ->orderBy('hora_inicio', 'asc')
             ->get();
 
+        $idsExamenes = $examenesControl->pluck('id_examen');
+        $ingresosTotales = \App\Models\RegistroIngreso::whereHas('examenAmbiente', function ($q) use ($idsExamenes) {
+            $q->whereIn('id_examen', $idsExamenes);
+        })->count();
+
         return Inertia::render('Control/Dashboard', [
             'stats' => [
                 'hoy' => $examenesControl->where('fecha', $fechaInicio)->count(),
-                // Los siguientes valores requerirán lógica de tiempo real y de la tabla registro_ingreso
-                'en_curso' => 0,
-                'ingresos' => 0,
+                // Estadísticas calculadas en tiempo real a partir de los datos existentes
+                'en_curso' => $examenesControl->filter(fn ($e) => $e->estado_actual === 'en_curso')->count(),
+                'ingresos' => $ingresosTotales,
             ],
             'examenes' => $examenesControl,
         ]);
