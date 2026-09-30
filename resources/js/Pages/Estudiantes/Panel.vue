@@ -64,22 +64,14 @@ const handleFileChange = (e) => {
 
     if (!validFormats.includes(file.type)) {
         fileError.value = 'Formato no soportado. Debe seleccionar una imagen JPG o PNG.';
-        toast.showToast({
-            title: 'Error de archivo',
-            message: fileError.value,
-            type: 'error',
-        });
+        toast.error(fileError.value);
         if (fileInput.value) fileInput.value.value = '';
         return;
     }
 
     if (file.size > maxSize) {
         fileError.value = 'La imagen excede el límite máximo de 2 MB.';
-        toast.showToast({
-            title: 'Tamaño excedido',
-            message: fileError.value,
-            type: 'error',
-        });
+        toast.error(fileError.value);
         if (fileInput.value) fileInput.value.value = '';
         return;
     }
@@ -92,22 +84,14 @@ const handleFileChange = (e) => {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
-            toast.showToast({
-                title: 'Foto actualizada',
-                message: 'Tu fotografía de perfil se ha guardado correctamente.',
-                type: 'success',
-            });
+            toast.success('Tu fotografía de perfil se ha guardado correctamente.');
             photoForm.reset('foto');
             if (fileInput.value) fileInput.value.value = '';
         },
         onError: (errors) => {
             previewFoto.value = null;
             fileError.value = errors.foto || 'Ocurrió un error al subir la fotografía.';
-            toast.showToast({
-                title: 'Error',
-                message: fileError.value,
-                type: 'error',
-            });
+            toast.error(fileError.value);
         }
     });
 };
@@ -117,22 +101,14 @@ const handleRegenerateQr = () => {
     if (isRegeneratingQr.value) return;
 
     isRegeneratingQr.value = true;
-    // Ruta directa sin ziggy
-    router.post('/estudiante/qr/regenerate', {}, {
+    // Ruta correcta: /estudiante/qr/regenerar (definida en web.php)
+    router.post('/estudiante/qr/regenerar', {}, {
         preserveScroll: true,
         onSuccess: () => {
-            toast.showToast({
-                title: 'QR actualizado',
-                message: 'Se ha generado un nuevo código QR. El anterior ha quedado invalidado.',
-                type: 'success',
-            });
+            toast.success('Se ha generado un nuevo código QR. El anterior ha quedado invalidado.');
         },
         onError: () => {
-            toast.showToast({
-                title: 'Error',
-                message: 'No fue posible regenerar el código QR. Intenta nuevamente.',
-                type: 'error',
-            });
+            toast.error('No fue posible regenerar el código QR. Intenta nuevamente.');
         },
         onFinish: () => {
             isRegeneratingQr.value = false;
