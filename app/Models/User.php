@@ -94,4 +94,16 @@ class User extends Authenticatable
     {
         return $this->id_estudiante !== null && $this->debe_cambiar_password;
     }
+
+    public function examenesAsignados()
+    {
+        return $this->belongsToMany(
+            Examen::class,
+            'examen_personal_control',
+            'id_usuario',
+            'id_examen',
+            'id',
+            'id_examen'
+        );
+    }
 }

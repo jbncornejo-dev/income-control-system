@@ -10,6 +10,7 @@ use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PeriodoTipoExamenController;
+use App\Http\Controllers\PersonalControlController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TipoExamenController;
 use App\Http\Controllers\UserController;
@@ -172,6 +173,16 @@ Route::middleware('auth')->group(function () {
             '/examenes/{examen}/habilitaciones',
             [HabilitacionController::class, 'index']
         )->name('habilitaciones.index');
+
+        Route::post(
+            '/examenes/{examen}/personal-control',
+            [PersonalControlController::class, 'store']
+        )->name('personal-control.store');
+
+        Route::delete(
+            '/examenes/{examen}/personal-control/{usuario}',
+            [PersonalControlController::class, 'destroy']
+        )->name('personal-control.destroy');
 
         // Cambiar estado de una habilitación
         Route::patch(

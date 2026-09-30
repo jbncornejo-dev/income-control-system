@@ -14,8 +14,46 @@ const props = defineProps({
     stats: Object,
     filtros: Object,
     coincidencias: Number,
-    acciones: Object
+    acciones: Object,
+    personalAsignado: { type: Array, default: () => [] },
+    personalDisponible: { type: Array, default: () => [] }
 });
+
+const personalSeleccionado = ref('');
+const errorPersonal = ref('');
+const procesandoPersonal = ref(false);
+
+function asignarPersonal() {
+    if (!personalSeleccionado.value) {
+        errorPersonal.value = 'Debe seleccionar un usuario para asignar';
+        return;
+    }
+    errorPersonal.value = '';
+    procesandoPersonal.value = true;
+
+    router.post(`/examenes/${props.examen.id_examen}/personal-control`, { id_usuario: personalSeleccionado.value }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            personalSeleccionado.value = '';
+            toast.success('Personal de control asignado correctamente.');
+        },
+        onError: (e) => {
+            errorPersonal.value = e.id_usuario ?? 'No se pudo asignar el personal de control.';
+        },
+        onFinish: () => { procesandoPersonal.value = false; }
+    });
+}
+
+function quitarPersonal(usuario) {
+    procesandoPersonal.value = true;
+
+    router.delete(`/examenes/${props.examen.id_examen}/personal-control/${usuario.id}`, {
+        preserveScroll: true,
+        onSuccess: () => toast.success('Personal de control desasignado correctamente.'),
+        onError: () => toast.error('No se pudo quitar al personal de control.'),
+        onFinish: () => { procesandoPersonal.value = false; }
+    });
+}
  
 const toast = useToastStore();
  
@@ -268,6 +306,37 @@ function guardarNormas(hab) {
             <nav v-if="habilitaciones?.last_page > 1" class="pagination" aria-label="Páginas de estudiantes">
                 <Link v-for="link in habilitaciones.links" :key="link.label" :href="link.url || '#'" :class="['page-link', { active: link.active, disabled: !link.url }]" preserve-scroll v-html="link.label" />
             </nav>
+
+            <div class="personal-seccion">
+                <div class="personal-header">
+                    <h2 class="personal-titulo">Personal de control asignado</h2>
+                    <span class="personal-contador">{{ personalAsignado.length }} asignado(s)</span>
+                </div>
+
+                <div class="personal-form">
+                    <select v-model="personalSeleccionado" class="personal-select" :class="{ 'personal-select-error': errorPersonal }">
+                        <option value="">Seleccione personal de control</option>
+                        <option v-for="persona in personalDisponible" :key="persona.id" :value="persona.id">
+                            {{ persona.name }} ({{ persona.username }})
+                        </option>
+                    </select>
+                    <button class="personal-btn" :disabled="procesandoPersonal || personalDisponible.length === 0" @click="asignarPersonal">Asignar</button>
+                </div>
+                <p v-if="errorPersonal" class="personal-error">{{ errorPersonal }}</p>
+                <p v-if="personalDisponible.length === 0" class="personal-nota">No hay mas usuarios de control disponibles para este examen.</p>
+
+                <div class="personal-lista">
+                    <div v-for="persona in personalAsignado" :key="persona.id" class="personal-item">
+                        <div class="personal-datos">
+                            <span class="personal-nombre">{{ persona.name }}</span>
+                            <span class="personal-usuario">{{ persona.username }}</span>
+                        </div>
+                        <button class="personal-quitar" :disabled="procesandoPersonal" @click="quitarPersonal(persona)">Quitar</button>
+                    </div>
+                    <p v-if="personalAsignado.length === 0" class="personal-vacio">Aun no se asigno personal de control a este examen.</p>
+                </div>
+            </div>
+
         </div>
  
         <!-- Modal motivo inhabilitación -->
@@ -433,5 +502,24 @@ function guardarNormas(hab) {
     border-radius: 0.5rem; 
     overflow-x: auto; 
 }
+.personal-seccion { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; margin-top: 1.5rem; }
+.personal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 0.75rem; margin-bottom: 1rem; }
+.personal-titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary); margin: 0; }
+.personal-contador { font-size: 0.85rem; color: var(--text-muted); }
+.personal-form { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+.personal-select { flex: 1; min-width: 240px; padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.95rem; font-family: inherit; background: #fff; }
+.personal-select-error { border-color: var(--color-active); }
+.personal-btn { background: var(--color-primary); color: #fff; border: none; padding: 0.5rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.personal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.personal-error { color: var(--color-active); font-size: 0.85rem; margin: 0.5rem 0 0; }
+.personal-nota { color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 0; }
+.personal-lista { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.personal-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem; border: 1px solid #f0f0f0; border-left: 3px solid var(--color-primary); border-radius: 0 0.25rem 0.25rem 0; background: #f9fafb; }
+.personal-datos { display: flex; flex-direction: column; }
+.personal-nombre { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; }
+.personal-usuario { font-size: 0.85rem; color: var(--text-muted); }
+.personal-quitar { background: #fff; color: var(--color-active); border: 1px solid var(--color-active); padding: 0.35rem 0.85rem; border-radius: 0.25rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.personal-quitar:disabled { opacity: 0.5; cursor: not-allowed; }
+.personal-vacio { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
 </style>
  
