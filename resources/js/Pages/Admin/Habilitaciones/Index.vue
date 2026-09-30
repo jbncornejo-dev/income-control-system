@@ -22,6 +22,7 @@ const props = defineProps({
 const personalSeleccionado = ref('');
 const errorPersonal = ref('');
 const procesandoPersonal = ref(false);
+const toast = useToastStore();
 
 function asignarPersonal() {
     if (!personalSeleccionado.value) {
@@ -54,8 +55,6 @@ function quitarPersonal(usuario) {
         onFinish: () => { procesandoPersonal.value = false; }
     });
 }
- 
-const toast = useToastStore();
  
 const listaLocal = ref(props.habilitaciones?.data ?? []);
 watch(() => props.habilitaciones, value => { listaLocal.value = value?.data ?? []; });
