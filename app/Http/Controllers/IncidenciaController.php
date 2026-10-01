@@ -43,9 +43,18 @@ class IncidenciaController extends Controller
         ]);
     }
 
-    public function store(StoreIncidenciaRequest $request)
+    public function store(\Illuminate\Http\Request $request)
     {
-        $datos = $request->validated();
+        $mensajes = [
+            'required' => 'Debe rellenar este campo para proceder'
+        ];
+
+        $datos = $request->validate([
+            'id_examen' => 'required|exists:examen,id_examen',
+            'id_estudiante' => 'nullable|exists:estudiante,id_estudiante',
+            'tipo_incidencia' => 'required|in:' . implode(',', Incidencia::TIPOS),
+            'descripcion_motivo' => 'required|string',
+        ], $mensajes);
 
         DB::transaction(fn () => Incidencia::create([
             'id_examen' => $datos['id_examen'],
