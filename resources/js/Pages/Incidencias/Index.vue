@@ -1,9 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { router, Head } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { router, Head, useForm, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import SelectInput from '@/components/ui/SelectInput.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import Button from '@/components/ui/Button.vue';
 import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import Pagination from '@/components/Pagination.vue';
 import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
@@ -15,19 +19,48 @@ const props = defineProps({
 });
 
 const toast = useToastStore();
+const page = usePage();
+const userRole = computed(() => page.props.auth.user?.rol || 'CONTROL');
 
-const filtroExamen = ref(props.filters?.id_examen ?? '');
-const filtroTipo = ref(props.filters?.tipo_incidencia ?? '');
-const filtroDesde = ref(props.filters?.desde ?? '');
-const filtroHasta = ref(props.filters?.hasta ?? '');
+// ==========================================
+// ESTADO DE FILTROS
+// ==========================================
+const filterExamen = ref(props.filters?.id_examen || '');
+const filterTipo = ref(props.filters?.tipo_incidencia || '');
 
-const modalAbierto = ref(false);
-const guardando = ref(false);
+const applyFilters = () => {
+    router.get('/incidencias', {
+        id_examen: filterExamen.value || undefined,
+        tipo_incidencia: filterTipo.value || undefined,
+    }, { preserveState: true, preserveScroll: true });
+};
+
+// ==========================================
+// MAPEOS PARA SELECTS
+// ==========================================
+const examenesOptions = computed(() => props.examenes.map(e => ({
+    value: e.id_examen,
+    label: `${e.asignatura?.nombre_asignatura || 'Sin asignatura'} – ${e.fecha}`
+})));
+
+const tiposOptions = computed(() => props.tipos.map(t => ({
+    value: t, label: t
+})));
+
+// ==========================================
+// ESTADO Y LÓGICA DEL FORMULARIO (MODAL)
+// ==========================================
+const isModalOpen = ref(false);
 const busquedaEstudiante = ref('');
 
-const form = ref({ id_examen: '', id_estudiante: '', tipo_incidencia: '', descripcion_motivo: '' });
-const errores = ref({ id_examen: '', tipo_incidencia: '', descripcion_motivo: '' });
+const form = useForm({
+    id_examen: '',
+    tipo_incidencia: '',
+    id_estudiante: '',
+    descripcion_motivo: ''
+});
 
+// Buscador/autocompletado sencillo en el cliente para estudiantes
 const estudiantesFiltrados = computed(() => {
     const q = busquedaEstudiante.value.trim().toLowerCase();
     if (!q) return props.estudiantes.slice(0, 30);
@@ -38,268 +71,430 @@ const estudiantesFiltrados = computed(() => {
     ).slice(0, 30);
 });
 
-const nombreExamen = (examen) => examen?.asignatura?.nombre_asignatura ?? 'Sin asignatura';
-
-const nombreEstudiante = (estudiante) =>
-    estudiante ? `${estudiante.nombres} ${estudiante.apellidos}` : 'Sin estudiante';
-
-function formatearFecha(valor) {
-    if (!valor) return '';
-    const fecha = new Date(valor);
-    return fecha.toLocaleString('es-BO', { dateStyle: 'short', timeStyle: 'short' });
-}
-
-function aplicarFiltros() {
-    router.get('/incidencias', {
-        id_examen: filtroExamen.value || undefined,
-        tipo_incidencia: filtroTipo.value || undefined,
-        desde: filtroDesde.value || undefined,
-        hasta: filtroHasta.value || undefined,
-    }, { preserveState: true, preserveScroll: true });
-}
-
-function limpiarFiltros() {
-    filtroExamen.value = '';
-    filtroTipo.value = '';
-    filtroDesde.value = '';
-    filtroHasta.value = '';
-    router.get('/incidencias', {}, { preserveState: true, preserveScroll: true });
-}
-
-function abrirModal() {
-    form.value = { id_examen: '', id_estudiante: '', tipo_incidencia: '', descripcion_motivo: '' };
-    errores.value = { id_examen: '', tipo_incidencia: '', descripcion_motivo: '' };
+const openModal = () => {
+    form.reset();
+    form.clearErrors();
     busquedaEstudiante.value = '';
-    modalAbierto.value = true;
-}
+    isModalOpen.value = true;
+};
 
-function cerrarModal() {
-    modalAbierto.value = false;
-}
+const closeModal = () => {
+    isModalOpen.value = false;
+};
 
-function validar() {
-    let valido = true;
-    errores.value = { id_examen: '', tipo_incidencia: '', descripcion_motivo: '' };
-    const mensaje = 'Debe rellenar este campo para proceder';
-
-    if (!form.value.id_examen) {
-        errores.value.id_examen = mensaje;
-        valido = false;
-    }
-    if (!form.value.tipo_incidencia) {
-        errores.value.tipo_incidencia = mensaje;
-        valido = false;
-    }
-    if (!form.value.descripcion_motivo.trim()) {
-        errores.value.descripcion_motivo = mensaje;
-        valido = false;
-    }
-    return valido;
-}
-
-function guardar() {
-    if (!validar()) return;
-    guardando.value = true;
-
-    router.post('/incidencias', form.value, {
+const guardarIncidencia = () => {
+    form.post('/incidencias', {
         preserveScroll: true,
         onSuccess: () => {
             toast.success('Incidencia registrada correctamente.');
-            cerrarModal();
+            closeModal();
         },
-        onError: (e) => {
-            errores.value.id_examen = e.id_examen ?? '';
-            errores.value.tipo_incidencia = e.tipo_incidencia ?? '';
-            errores.value.descripcion_motivo = e.descripcion_motivo ?? '';
-            toast.error('No se pudo registrar la incidencia.');
-        },
-        onFinish: () => { guardando.value = false; },
+        onError: () => {
+            toast.error('Error al registrar la incidencia.');
+        }
     });
-}
+};
 
-function irAPagina(url) {
-    if (url) router.get(url, {}, { preserveState: true, preserveScroll: true });
-}
+// ==========================================
+// UTILIDADES
+// ==========================================
+const formatDateTime = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleString('es-BO', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+};
+
+const getColorClass = (tipo) => {
+    switch(tipo) {
+        case 'Expulsión': return 'border-red color-red';
+        case 'Problema de identificación': return 'border-yellow color-yellow';
+        case 'Cambio de ambiente': return 'border-blue color-blue';
+        default: return 'border-gray color-gray';
+    }
+};
 </script>
 
 <template>
-    <Head title="Incidencias" />
+    <Head title="Gestión de Incidencias" />
 
     <AuthenticatedLayout>
-        <div class="panel-container">
-            <div class="header-section">
-                <div>
-                    <h1 class="panel-title">INCIDENCIAS</h1>
-                    <p class="subtitle">Historial de situaciones ocurridas durante los exámenes</p>
+        <div class="page-wrapper">
+            
+            <!-- Encabezado Principal -->
+            <header class="page-header">
+                <h1 class="titulo-principal">Gestión de Incidencias</h1>
+            </header>
+
+            <!-- Barra de Filtros y Botón Reportar -->
+            <div class="top-bar">
+                <div class="filtros-box">
+                    <SelectInput 
+                        v-model="filterExamen" 
+                        :options="examenesOptions" 
+                        placeholder="Todos los exámenes"
+                        @change="applyFilters"
+                        class="w-full md:w-64"
+                    />
+                    <SelectInput 
+                        v-model="filterTipo" 
+                        :options="tiposOptions" 
+                        placeholder="Todos los tipos"
+                        @change="applyFilters"
+                        class="w-full md:w-64"
+                    />
                 </div>
-                <button class="btn-primary" @click="abrirModal">Reportar incidencia</button>
+                
+                <Button variant="danger" @click="openModal" class="btn-reportar">
+                    REPORTAR INCIDENCIA
+                </Button>
             </div>
 
-            <div class="filtros">
-                <div class="filtro-campo">
-                    <label class="filtro-label">Examen</label>
-                    <select v-model="filtroExamen" class="control" @change="aplicarFiltros">
-                        <option value="">Todos</option>
-                        <option v-for="examen in examenes" :key="examen.id_examen" :value="examen.id_examen">
-                            {{ nombreExamen(examen) }} · {{ examen.fecha }}
-                        </option>
-                    </select>
-                </div>
-                <div class="filtro-campo">
-                    <label class="filtro-label">Tipo</label>
-                    <select v-model="filtroTipo" class="control" @change="aplicarFiltros">
-                        <option value="">Todos</option>
-                        <option v-for="tipo in tipos" :key="tipo" :value="tipo">{{ tipo }}</option>
-                    </select>
-                </div>
-                <div class="filtro-campo">
-                    <label class="filtro-label">Desde</label>
-                    <input v-model="filtroDesde" type="date" class="control" @change="aplicarFiltros" />
-                </div>
-                <div class="filtro-campo">
-                    <label class="filtro-label">Hasta</label>
-                    <input v-model="filtroHasta" type="date" class="control" @change="aplicarFiltros" />
-                </div>
-                <button class="btn-secundario" @click="limpiarFiltros">Limpiar</button>
+            <!-- Alerta Inmutabilidad -->
+            <div class="alerta-info">
+                Las incidencias registradas son inmutables. Una vez guardadas no pueden editarse ni eliminarse.
             </div>
 
-            <div class="table-container">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha y hora</th>
-                            <th>Examen</th>
-                            <th>Estudiante</th>
-                            <th>Tipo</th>
-                            <th>Descripción</th>
-                            <th>Registrado por</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="incidencia in incidencias.data" :key="incidencia.id_incidencia">
-                            <td data-label="Fecha y hora" class="col-fecha">{{ formatearFecha(incidencia.fecha_hora) }}</td>
-                            <td data-label="Examen">{{ nombreExamen(incidencia.examen) }}</td>
-                            <td data-label="Estudiante">{{ nombreEstudiante(incidencia.estudiante) }}</td>
-                            <td data-label="Tipo">
-                                <span class="badge" :class="incidencia.tipo_incidencia === 'Expulsión' ? 'badge-critico' : 'badge-normal'">
-                                    {{ incidencia.tipo_incidencia }}
-                                </span>
-                            </td>
-                            <td data-label="Descripción" class="col-descripcion">{{ incidencia.descripcion_motivo }}</td>
-                            <td data-label="Registrado por">{{ incidencia.user?.name ?? 'N/D' }}</td>
-                        </tr>
-                        <tr v-if="!incidencias.data || incidencias.data.length === 0">
-                            <td colspan="6" class="empty-state">No hay incidencias registradas.</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Lista de Incidencias (Tarjetas) -->
+            <div class="incidencias-list">
+                <div v-if="incidencias.data.length === 0" class="empty-state">
+                    No hay incidencias registradas.
+                </div>
+
+                <div 
+                    v-for="incidencia in incidencias.data" 
+                    :key="incidencia.id_incidencia"
+                    class="incidencia-card"
+                    :class="getColorClass(incidencia.tipo_incidencia).split(' ')[0]"
+                >
+                    <!-- Cabecera de la tarjeta (Examen y Badge) -->
+                    <div class="card-header">
+                        <span class="card-examen">
+                            {{ incidencia.examen?.asignatura?.nombre_asignatura || 'Sin Asignatura' }} – {{ incidencia.examen?.fecha }}
+                        </span>
+                        <span class="badge-tipo" :class="getColorClass(incidencia.tipo_incidencia).split(' ')[1]">
+                            {{ incidencia.tipo_incidencia }}
+                        </span>
+                    </div>
+
+                    <!-- Estudiante -->
+                    <div v-if="incidencia.estudiante" class="card-estudiante">
+                        {{ incidencia.estudiante.codigo_universitario }} – {{ incidencia.estudiante.apellidos }}, {{ incidencia.estudiante.nombres }}
+                    </div>
+                    <div v-else class="card-estudiante-null">
+                        Incidencia general (No asociada a un estudiante)
+                    </div>
+
+                    <!-- Descripción -->
+                    <p class="card-descripcion">
+                        {{ incidencia.descripcion_motivo }}
+                    </p>
+
+                    <!-- Footer Metadatos -->
+                    <div class="card-footer">
+                        <span>Registrado: {{ formatDateTime(incidencia.fecha_hora) }}</span>
+                        <span>Por: <strong>{{ incidencia.user?.username || 'Sistema' }}</strong></span>
+                    </div>
+                </div>
             </div>
 
-            <div class="paginacion" v-if="incidencias.last_page > 1">
-                <button class="btn-page" :disabled="!incidencias.prev_page_url" @click="irAPagina(incidencias.prev_page_url)">Anterior</button>
-                <span class="page-info">Página {{ incidencias.current_page }} de {{ incidencias.last_page }}</span>
-                <button class="btn-page" :disabled="!incidencias.next_page_url" @click="irAPagina(incidencias.next_page_url)">Siguiente</button>
+            <!-- Paginación usando componente base -->
+            <div class="mt-8" v-if="incidencias.last_page > 1">
+                <Pagination :links="incidencias.links" />
             </div>
+
         </div>
 
-        <Modal :open="modalAbierto" title="Reportar incidencia" @close="cerrarModal">
-            <div class="form-group">
-                <label class="form-label">Examen <span class="required">*</span></label>
-                <select v-model="form.id_examen" class="control" :class="{ 'control-error': errores.id_examen }">
-                    <option value="">Seleccione un examen</option>
-                    <option v-for="examen in examenes" :key="examen.id_examen" :value="examen.id_examen">
-                        {{ nombreExamen(examen) }} · {{ examen.fecha }}
-                    </option>
-                </select>
-                <p v-if="errores.id_examen" class="error-msg">{{ errores.id_examen }}</p>
-            </div>
+        <!-- Modal Reportar Incidencia -->
+        <Modal :open="isModalOpen" title="Reportar Incidencia" @close="closeModal">
+            <form @submit.prevent="guardarIncidencia">
+                
+                <!-- Examen (Obligatorio) -->
+                <div class="form-group">
+                    <SelectInput 
+                        label="EXAMEN *"
+                        v-model="form.id_examen" 
+                        :options="examenesOptions"
+                        placeholder="Seleccionar examen..."
+                    />
+                    <p v-if="form.errors.id_examen" class="error-msg">{{ form.errors.id_examen }}</p>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Estudiante</label>
-                <input v-model="busquedaEstudiante" type="text" class="control" placeholder="Buscar por nombre, código o documento" />
-                <select v-model="form.id_estudiante" class="control select-lista">
-                    <option value="">Sin estudiante asociado</option>
-                    <option v-for="estudiante in estudiantesFiltrados" :key="estudiante.id_estudiante" :value="estudiante.id_estudiante">
-                        {{ estudiante.codigo_universitario }} · {{ estudiante.nombres }} {{ estudiante.apellidos }}
-                    </option>
-                </select>
-                <p class="help-text">Opcional: una incidencia puede no estar asociada a un estudiante.</p>
-            </div>
+                <!-- Tipo de Incidencia (Obligatorio) -->
+                <div class="form-group">
+                    <SelectInput 
+                        label="TIPO DE INCIDENCIA *"
+                        v-model="form.tipo_incidencia" 
+                        :options="tiposOptions"
+                        placeholder="Seleccionar tipo..."
+                    />
+                    <p v-if="form.errors.tipo_incidencia" class="error-msg">{{ form.errors.tipo_incidencia }}</p>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Tipo de incidencia <span class="required">*</span></label>
-                <select v-model="form.tipo_incidencia" class="control" :class="{ 'control-error': errores.tipo_incidencia }">
-                    <option value="">Seleccione un tipo</option>
-                    <option v-for="tipo in tipos" :key="tipo" :value="tipo">{{ tipo }}</option>
-                </select>
-                <p v-if="errores.tipo_incidencia" class="error-msg">{{ errores.tipo_incidencia }}</p>
-            </div>
+                <!-- Estudiante (Opcional - con mini buscador) -->
+                <div class="form-group bg-light-gray p-4 rounded">
+                    <label class="form-label-custom">ESTUDIANTE (OPCIONAL)</label>
+                    <TextInput 
+                        v-model="busquedaEstudiante" 
+                        placeholder="Buscar por código, documento o nombre..." 
+                        class="mb-2"
+                    />
+                    <select v-model="form.id_estudiante" class="select-html">
+                        <option value="">Ninguno (Incidencia general)</option>
+                        <option v-for="estudiante in estudiantesFiltrados" :key="estudiante.id_estudiante" :value="estudiante.id_estudiante">
+                            {{ estudiante.codigo_universitario }} – {{ estudiante.nombres }} {{ estudiante.apellidos }}
+                        </option>
+                    </select>
+                    <p v-if="form.errors.id_estudiante" class="error-msg">{{ form.errors.id_estudiante }}</p>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Descripción <span class="required">*</span></label>
-                <textarea v-model="form.descripcion_motivo" rows="4" class="control" :class="{ 'control-error': errores.descripcion_motivo }" placeholder="Describa lo ocurrido"></textarea>
-                <p v-if="errores.descripcion_motivo" class="error-msg">{{ errores.descripcion_motivo }}</p>
-            </div>
+                <!-- Descripción (Obligatorio) -->
+                <div class="form-group">
+                    <label class="form-label-custom">DESCRIPCIÓN *</label>
+                    <textarea 
+                        v-model="form.descripcion_motivo" 
+                        rows="4" 
+                        class="textarea-custom" 
+                        placeholder="Describe la incidencia en detalle..."
+                    ></textarea>
+                    <p v-if="form.errors.descripcion_motivo" class="error-msg">{{ form.errors.descripcion_motivo }}</p>
+                </div>
 
-            <p class="aviso">La fecha, la hora y el usuario se registran automáticamente. Una vez guardada, la incidencia no puede editarse ni eliminarse.</p>
+                <!-- Footer Modal -->
+                <div class="modal-footer-custom">
+                    <Button type="button" variant="outline" @click="closeModal" class="text-gray-500 border-gray-300">
+                        CANCELAR
+                    </Button>
+                    <Button type="submit" variant="danger" :disabled="form.processing">
+                        <span v-if="!form.processing">GUARDAR INCIDENCIA</span>
+                        <LoadingSpinner v-else size="small" />
+                    </Button>
+                </div>
 
-            <template #footer>
-                <button class="btn-cancelar" @click="cerrarModal">Cancelar</button>
-                <button class="btn-primary" :disabled="guardando" @click="guardar">
-                    <LoadingSpinner v-if="guardando" size="small" />
-                    <span v-else>Registrar incidencia</span>
-                </button>
-            </template>
+            </form>
         </Modal>
+
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
-.panel-container { padding: 2rem 3rem; background-color: var(--bg-main); min-height: 100vh; font-family: var(--font-family); }
-.header-section { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
-.panel-title { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin: 0 0 4px; letter-spacing: 0.05em; font-family: var(--font-display); }
-.subtitle { font-size: 0.95rem; color: var(--text-muted); margin: 0; }
-.filtros { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
-.filtro-campo { display: flex; flex-direction: column; gap: 4px; }
-.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.control { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.95rem; background: #fff; color: var(--text-dark); font-family: inherit; width: 100%; box-sizing: border-box; }
-.control:focus { outline: none; border-color: var(--color-primary); }
-.control-error { border-color: var(--color-active); }
-.select-lista { margin-top: 6px; }
-.btn-primary { background: var(--color-primary); color: #fff; border: none; padding: 0.6rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
-.btn-secundario { background: #fff; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 0.5rem 1rem; border-radius: 0.25rem; font-size: 0.95rem; cursor: pointer; font-family: inherit; }
-.btn-cancelar { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; padding: 0.6rem 1rem; font-family: inherit; }
-.table-container { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-.data-table th { background-color: var(--color-primary); color: #fff; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }
-.data-table td { padding: 0.9rem 1rem; border-bottom: 1px solid #c7d0da; vertical-align: top; color: var(--text-dark); }
-.data-table tr:last-child td { border-bottom: none; }
-.col-fecha { white-space: nowrap; color: var(--text-muted); }
-.col-descripcion { max-width: 320px; }
-.badge { padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
-.badge-normal { background: #eff6ff; color: var(--color-primary); }
-.badge-critico { background: #fdecea; color: var(--color-active); }
-.empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
-.paginacion { display: flex; justify-content: center; align-items: center; gap: 1rem; padding: 1rem; }
-.btn-page { background: var(--color-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
-.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
-.page-info { font-size: 0.9rem; color: var(--text-muted); }
-.form-group { margin-bottom: 1rem; }
-.form-label { display: block; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
-.required { color: #d32f2f; }
-.error-msg { color: var(--color-active); font-size: 0.85rem; margin: 4px 0 0; }
-.help-text { color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0; }
-.aviso { font-size: 0.85rem; color: var(--text-muted); background: #f9fafb; border-left: 3px solid var(--color-primary); padding: 0.6rem 0.75rem; border-radius: 0 4px 4px 0; margin: 0; }
-@media (max-width: 820px) {
-    .panel-container { padding: 1.25rem; }
-    .header-section { flex-direction: column; align-items: stretch; }
-    .btn-primary { justify-content: center; }
-    .filtros { flex-direction: column; align-items: stretch; }
-    .data-table thead { display: none; }
-    .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
-    .data-table tr { border-bottom: 1px solid #e5e7eb; padding: 0.5rem 0; }
-    .data-table td { border: none; padding: 0.35rem 1rem; }
-    .data-table td::before { content: attr(data-label); display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #9ca3af; margin-bottom: 2px; }
-    .col-descripcion { max-width: none; }
+/* Contenedor Principal */
+.page-wrapper {
+    padding: 30px 40px;
+    max-width: 1100px;
+    margin: 0 auto;
+    font-family: var(--font-family);
 }
+
+/* Encabezado */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.titulo-principal {
+    font-family: 'Orbitron', var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0;
+}
+
+.badge-rol {
+    background-color: var(--color-primary);
+    color: var(--text-white);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: var(--radius-md, 4px);
+    letter-spacing: 1.5px;
+}
+
+/* Barra Superior */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.filtros-box {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    flex-grow: 1;
+}
+
+.btn-reportar {
+    font-weight: bold;
+    letter-spacing: 0.5px;
+}
+
+/* Alerta Info */
+.alerta-info {
+    background-color: #f0f4f8;
+    color: #4b6a8f;
+    border: 1px solid #d1dce5;
+    padding: 15px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 30px;
+}
+
+/* Tarjetas de Lista */
+.incidencias-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.incidencia-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    padding: 20px 25px;
+    border-top-width: 4px;
+    border-top-style: solid;
+}
+
+.border-red { border-top-color: #dc2626; }
+.border-yellow { border-top-color: #eab308; }
+.border-blue { border-top-color: #3b82f6; }
+.border-gray { border-top-color: #9ca3af; }
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.card-examen {
+    color: #8fa0b3;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.badge-tipo {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+}
+.color-red { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
+.color-yellow { color: #ca8a04; border-color: #fde047; background: #fef9c3; }
+.color-blue { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
+.color-gray { color: #4b5563; border-color: #d1d5db; background: #f3f4f6; }
+
+.card-estudiante {
+    font-family: 'Orbitron', var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 12px;
+}
+
+.card-estudiante-null {
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 12px;
+}
+
+.card-descripcion {
+    font-size: 15px;
+    color: #374151;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.card-footer {
+    display: flex;
+    gap: 20px;
+    font-size: 12px;
+    color: #8fa0b3;
+}
+
+/* Modal Formulario */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.bg-light-gray {
+    background-color: #f8fafc;
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.form-label-custom {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4b5563;
+    margin-bottom: 8px;
+    font-family: var(--font-family);
+}
+
+.textarea-custom {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-dark);
+    outline: none;
+    resize: vertical;
+    font-family: var(--font-family);
+}
+.textarea-custom:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 2px rgba(29, 54, 83, 0.15);
+}
+
+.select-html {
+    width: 100%;
+    padding: 10px 15px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--text-dark);
+    outline: none;
+    background-color: white;
+}
+.select-html:focus { border-color: var(--color-primary); }
+
+.error-msg {
+    color: #dc2626;
+    font-size: 13px;
+    margin-top: 5px;
+    font-weight: 600;
+}
+
+.modal-footer-custom {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 15px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #6b7280;
+    background: #f9fafb;
+    border-radius: 6px;
+    border: 1px dashed #d1d5db;
+}
+
+.mt-8 { margin-top: 2rem; }
+.mb-2 { margin-bottom: 0.5rem; }
 </style>
