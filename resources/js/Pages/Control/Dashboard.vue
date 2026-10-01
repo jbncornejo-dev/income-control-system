@@ -6,6 +6,24 @@ const props = defineProps({
     stats: Object,
     examenes: Array
 });
+
+// Mapa de estado_actual (del backend) a etiqueta visible
+const ESTADOS = {
+    programado:  { etiqueta: 'Programado',  clase: 'badge-programado' },
+    en_curso:    { etiqueta: 'En curso',     clase: 'badge-en-curso' },
+    finalizado:  { etiqueta: 'Finalizado',   clase: 'badge-finalizado' },
+    suspendido:  { etiqueta: 'Suspendido',   clase: 'badge-suspendido' },
+    cancelado:   { etiqueta: 'Cancelado',    clase: 'badge-cancelado' },
+    anulado:     { etiqueta: 'Anulado',      clase: 'badge-anulado' },
+};
+
+function estadoEtiqueta(estado) {
+    return ESTADOS[estado]?.etiqueta ?? (estado ?? 'Sin estado');
+}
+
+function estadoBadgeClass(estado) {
+    return ESTADOS[estado]?.clase ?? 'badge-pendiente';
+}
 </script>
 
 <template>
@@ -15,16 +33,18 @@ const props = defineProps({
         <div class="panel-container">
             <h1 class="panel-title">PANEL DE CONTROL</h1>
 
-            <!-- Call to Action Principal -->
-            <Link href="/registro-ingreso" class="cta-banner">
+            <!-- CTA Registrar Ingreso: funcionalidad pendiente de implementación backend -->
+            <!-- La ruta /ingreso/registrar no existe aún en web.php; el CTA se muestra     -->
+            <!-- en estado informativo para no romper el flujo del usuario.                  -->
+            <div class="cta-banner cta-banner--disabled" aria-disabled="true">
                 <div class="cta-icon">
                     <span>&crarr;</span>
                 </div>
                 <div class="cta-text">
                     <h2>Registrar Ingreso de Estudiante</h2>
-                    <p>Verificar habilitación y confirmar entrada al examen</p>
+                    <p>Esta funcionalidad estará disponible próximamente.</p>
                 </div>
-            </Link>
+            </div>
 
             <Link href="/incidencias" class="acceso-incidencias">
                 <div class="acceso-texto">
@@ -76,8 +96,9 @@ const props = defineProps({
                                 <span v-else>N/D</span>
                             </td>
                             <td>
-                                <!-- Estado temporal estático para el frontend -->
-                                <span class="badge badge-curso">En curso</span>
+                                <span :class="['badge', estadoBadgeClass(examen.estado_actual)]">
+                                    {{ estadoEtiqueta(examen.estado_actual) }}
+                                </span>
                             </td>
                             <td class="mono text-gray">--/--</td>
                         </tr>
@@ -253,4 +274,24 @@ const props = defineProps({
 .acceso-titulo { font-weight: 700; color: var(--color-primary); font-size: 1rem; }
 .acceso-desc { font-size: 0.875rem; color: var(--text-muted); }
 .acceso-flecha { color: var(--color-active); font-size: 1.25rem; }
+
+/* CTA deshabilitado: funcionalidad de registro de ingreso aún no implementada en backend */
+.cta-banner--disabled {
+    cursor: default;
+    opacity: 0.6;
+    pointer-events: none;
+}
+.cta-banner--disabled:hover {
+    transform: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Badges de estado alineados con los valores reales de estado_actual del backend */
+.badge-programado  { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+.badge-en-curso    { background: #f0fdf4; color: #15803d; border: 1px solid #86efac; }
+.badge-finalizado  { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.badge-suspendido  { background: #fefce8; color: #a16207; border: 1px solid #fde047; }
+.badge-cancelado   { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+.badge-anulado     { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.badge-pendiente   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
 </style>

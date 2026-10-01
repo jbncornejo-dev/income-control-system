@@ -10,6 +10,7 @@ use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PeriodoTipoExamenController;
+use App\Http\Controllers\PersonalControlController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TipoExamenController;
 use App\Http\Controllers\UserController;
@@ -173,6 +174,16 @@ Route::middleware('auth')->group(function () {
             [HabilitacionController::class, 'index']
         )->name('habilitaciones.index');
 
+        Route::post(
+            '/examenes/{examen}/personal-control',
+            [PersonalControlController::class, 'store']
+        )->name('personal-control.store');
+
+        Route::delete(
+            '/examenes/{examen}/personal-control/{usuario}',
+            [PersonalControlController::class, 'destroy']
+        )->name('personal-control.destroy');
+
         // Cambiar estado de una habilitación
         Route::patch(
             '/habilitaciones/{habilitacion}',
@@ -186,19 +197,25 @@ Route::middleware('auth')->group(function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
 
-    Route::get('/estudiante/panel', function () {
+    Route::get('/estudiante/panel', function (\Illuminate\Http\Request $request) {
+        $estudiante = $request->user()->estudiante;
+
+        if (! $estudiante) {
+            abort(404, 'No se encontró el perfil de estudiante.');
+        }
+
         return \Inertia\Inertia::render('Estudiantes/Panel', [
             'estudiante' => [
-                'nombres' => 'Juan Carlos',
-                'apellidos' => 'Quispe Mamani',
-                'codigo_universitario' => '201800001',
-                'ci' => '4829135',
-                'email' => '201800001@est.umss.edu',
-                'qr_token' => 'token-de-prueba-12345',
+                'nombres' => $estudiante->nombres,
+                'apellidos' => $estudiante->apellidos,
+                'codigo_universitario' => $estudiante->codigo_universitario,
+                'ci' => $estudiante->documento_identidad,
+                'email' => $estudiante->email,
+                'qr_token' => $estudiante->codigo_qr,
                 'foto_path' => null,
             ]
         ]);
-    })->name('estudiante.panel');
+    })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.panel');
 
     // Mocks para los botones (evitan el 404 al dar clic)
     Route::post('/estudiante/qr/regenerar', function () {
