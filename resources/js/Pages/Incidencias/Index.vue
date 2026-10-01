@@ -27,11 +27,15 @@ const userRole = computed(() => page.props.auth.user?.rol || 'CONTROL');
 // ==========================================
 const filterExamen = ref(props.filters?.id_examen || '');
 const filterTipo = ref(props.filters?.tipo_incidencia || '');
+const filterDesde = ref(props.filters?.desde || '');
+const filterHasta = ref(props.filters?.hasta || '');
 
 const applyFilters = () => {
     router.get('/incidencias', {
         id_examen: filterExamen.value || undefined,
         tipo_incidencia: filterTipo.value || undefined,
+        desde: filterDesde.value || undefined,
+        hasta: filterHasta.value || undefined,
     }, { preserveState: true, preserveScroll: true });
 };
 
@@ -143,7 +147,21 @@ const getColorClass = (tipo) => {
                         :options="tiposOptions" 
                         placeholder="Todos los tipos"
                         @change="applyFilters"
-                        class="w-full md:w-64"
+                        class="w-full md:w-48"
+                    />
+                    <TextInput 
+                        type="date"
+                        v-model="filterDesde"
+                        @change="applyFilters"
+                        class="w-full md:w-32"
+                        title="Desde"
+                    />
+                    <TextInput 
+                        type="date"
+                        v-model="filterHasta"
+                        @change="applyFilters"
+                        class="w-full md:w-32"
+                        title="Hasta"
                     />
                 </div>
                 
