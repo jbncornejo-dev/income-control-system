@@ -6,6 +6,7 @@ use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\Grupo;
 use App\Models\Habilitacion;
+use App\Models\User;
 use App\Models\Inscripcion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -82,6 +83,13 @@ class HabilitacionController extends Controller
             ],
             // Pasamos esAdmin por si necesitamos ocultar algún botón específico más adelante
             'esAdmin' => $request->user()->rol->nombre_rol === 'administrador',
+            'personalAsignado' => $examen->personalControl()->select(['users.id', 'users.name', 'users.username', 'users.email'])->orderBy('users.name')->get(),
+            'personalDisponible' => User::query()
+                ->select(['users.id', 'users.name', 'users.username'])
+                ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'personal de control de ingreso'))
+                ->whereDoesntHave('examenesAsignados', fn ($q) => $q->where('examen.id_examen', $examen->id_examen))
+                ->orderBy('users.name')
+                ->get(),
         ]);
     }
 

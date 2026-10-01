@@ -7,7 +7,7 @@ import EditPasswordForm from '@/components/forms/EditPasswordForm.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Button from '@/components/ui/Button.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
     user: { type: Object, required: true },
@@ -18,6 +18,7 @@ const props = defineProps({
 
 const showCreateModal = ref(false);
 const filtroRol = ref(props.filters?.id_rol ?? props.filters?.role ?? '');
+const searchQuery = ref(props.filters?.search ?? '');
 const showEditModal = ref(false);
 const showPasswordModal = ref(false);
 const selectedUser = ref(null);
@@ -47,10 +48,39 @@ const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : '?';
 };
 
+// Búsqueda server-side con debounce para no saturar el servidor con cada tecla.
+// El backend filtra por email usando el parámetro 'search' (UserController::index).
+let searchDebounce = null;
+
+const buscarUsuarios = () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+        router.get(
+            '/usuarios',
+            {
+                search: searchQuery.value.trim() || undefined,
+                id_rol: filtroRol.value || undefined,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            }
+        );
+    }, 300);
+};
+
+onBeforeUnmount(() => clearTimeout(searchDebounce));
+
+watch(searchQuery, buscarUsuarios);
+
 watch(filtroRol, (value) => {
     router.get(
         '/usuarios',
-        { id_rol: value || undefined },
+        {
+            id_rol: value || undefined,
+            search: searchQuery.value.trim() || undefined,
+        },
         {
             preserveState: true,
             preserveScroll: true,
@@ -70,9 +100,12 @@ watch(filtroRol, (value) => {
             <!-- Barra de Acciones Superior -->
             <div class="action-bar">
                 <input 
+                    id="buscar-usuario"
                     type="text" 
-                    placeholder="Buscar usuario..." 
+                    v-model="searchQuery"
+                    placeholder="Buscar por email..." 
                     class="search-input"
+                    aria-label="Buscar usuario por email"
                 >
                 <div class="action-controls">
                     <SelectInput

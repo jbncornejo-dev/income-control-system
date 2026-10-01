@@ -181,4 +181,16 @@ class Examen extends Model
             'id_examen_ambiente'
         );
     }
+
+    public function personalControl()
+    {
+        return $this->belongsToMany(
+            User::class,
+            'examen_personal_control',
+            'id_examen',
+            'id_usuario',
+            'id_examen',
+            'id'
+        );
+    }
 }
