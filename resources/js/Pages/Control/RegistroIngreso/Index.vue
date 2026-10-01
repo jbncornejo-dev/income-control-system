@@ -2,9 +2,12 @@
 import { ref, computed, nextTick } from 'vue';
 import { Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import SelectInput from '@/components/ui/SelectInput.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import Button from '@/components/ui/Button.vue';
+import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import axios from 'axios';
 
-// Recibimos los exámenes vigentes desde el backend
 const props = defineProps({
     examenes: {
         type: Array,
@@ -12,7 +15,7 @@ const props = defineProps({
     }
 });
 
-// Variables reactivas para el estado de la interfaz
+const currentStep = ref(1);
 const selectedExamenId = ref('');
 const selectedAmbienteId = ref('');
 const datoEstudiante = ref('');
@@ -20,16 +23,47 @@ const estudianteValidado = ref(null);
 const errorMessage = ref('');
 const successMessage = ref('');
 const isLoading = ref(false);
-const inputRef = ref(null); // Referencia para auto-enfocar el input
+const inputRef = ref(null);
 
-// Computed property para filtrar los ambientes según el examen seleccionado
+const ingresosRegistrados = ref(0);
+
+// Propiedades computadas para mostrar en la barra oscura
+const selectedExamenData = computed(() => {
+    const examen = props.examenes.find(e => e.id_examen == selectedExamenId.value);
+    return examen ? `${examen.asignatura} — ${examen.hora_inicio}` : '';
+});
+
+const selectedAmbienteData = computed(() => {
+    const ambiente = ambientesOptions.value.find(a => a.value == selectedAmbienteId.value);
+    return ambiente ? ambiente.label : '';
+});
+
 const ambientesDisponibles = computed(() => {
     if (!selectedExamenId.value) return [];
-    const examen = props.examenes.find(e => e.id_examen === selectedExamenId.value);
+    const examen = props.examenes.find(e => e.id_examen == selectedExamenId.value);
     return examen ? examen.ambientes : [];
 });
 
-// Método 1: Validar al estudiante antes del registro
+const examenesOptions = computed(() => props.examenes.map(e => ({
+    value: e.id_examen,
+    label: `${e.asignatura} - ${e.hora_inicio}`
+})));
+
+const ambientesOptions = computed(() => ambientesDisponibles.value.map(a => ({
+    value: a.id_examen_ambiente,
+    label: a.nombre_ambiente
+})));
+
+const iniciarRegistro = async () => {
+    if (selectedExamenId.value && selectedAmbienteId.value) {
+        currentStep.value = 2;
+        await nextTick();
+        if (inputRef.value?.$el?.querySelector('input')) {
+            inputRef.value.$el.querySelector('input').focus();
+        }
+    }
+};
+
 const validarEstudiante = async () => {
     if (!datoEstudiante.value) return;
 
@@ -43,23 +77,15 @@ const validarEstudiante = async () => {
             id_examen: selectedExamenId.value,
             dato_estudiante: datoEstudiante.value
         });
-        
-        // Si es exitoso, mostramos la tarjeta de confirmación visual
         estudianteValidado.value = response.data;
     } catch (error) {
-        // Capturamos los errores 404, 403 o 409 enviados desde el backend
-        if (error.response && error.response.data && error.response.data.error) {
-            errorMessage.value = error.response.data.error;
-        } else {
-            errorMessage.value = 'Ocurrió un error de conexión al validar.';
-        }
+        errorMessage.value = error.response?.data?.error || 'Error al validar al estudiante.';
     } finally {
         isLoading.value = false;
-        datoEstudiante.value = ''; // Limpiamos el input
+        datoEstudiante.value = '';
     }
 };
 
-// Método 2: Confirmar y guardar el registro de ingreso
 const registrarIngreso = async () => {
     isLoading.value = true;
     errorMessage.value = '';
@@ -70,127 +96,478 @@ const registrarIngreso = async () => {
             id_examen_ambiente: selectedAmbienteId.value
         });
         
-        successMessage.value = `Ingreso registrado correctamente para ${estudianteValidado.value.nombres}.`;
-        estudianteValidado.value = null; // Limpiamos la pantalla para el siguiente
+        successMessage.value = `Ingreso registrado para ${estudianteValidado.value.nombres}.`;
+        ingresosRegistrados.value++;
+        estudianteValidado.value = null;
         
-        // Auto-enfocar el input para el siguiente escaneo (prioriza velocidad)
         await nextTick();
-        if (inputRef.value) inputRef.value.focus();
-        
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
-            errorMessage.value = error.response.data.error;
-        } else {
-            errorMessage.value = 'Error al registrar el ingreso.';
+        if (inputRef.value?.$el?.querySelector('input')) {
+            inputRef.value.$el.querySelector('input').focus();
         }
+    } catch (error) {
+        errorMessage.value = error.response?.data?.error || 'Error al registrar el ingreso.';
     } finally {
         isLoading.value = false;
     }
 };
 
-// Método para cancelar la confirmación y seguir escaneando
 const cancelar = async () => {
     estudianteValidado.value = null;
     errorMessage.value = '';
     successMessage.value = '';
     await nextTick();
-    if (inputRef.value) inputRef.value.focus();
+    if (inputRef.value?.$el?.querySelector('input')) {
+        inputRef.value.$el.querySelector('input').focus();
+    }
 };
 </script>
 
 <template>
-    <Head title="Control de Ingreso" />
+    <Head title="Registro de Ingreso" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">Registro de Ingreso a Examen</h2>
-        </template>
+        <div class="registro-wrapper">
+            
+            <!-- Encabezado -->
+            <header class="registro-header">
+                <h1 class="titulo-principal">Registro de Ingreso</h1>
+                <span class="badge-control">CONTROL</span>
+            </header>
 
-        <div class="py-12">
-            <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            <!-- Paso 1: Selección de Examen y Ambiente -->
+            <div v-if="currentStep === 1" class="registro-card border-red">
+                <span class="paso-indicador">PASO 1 DE 2</span>
+                <h2 class="card-titulo">Seleccionar Examen y Ambiente</h2>
+
+                <div class="formulario-seccion">
+                    <div class="form-group">
+                        <SelectInput 
+                            label="EXAMEN ACTIVO"
+                            v-model="selectedExamenId" 
+                            :options="examenesOptions"
+                            @change="selectedAmbienteId = ''"
+                        />
+                    </div>
+
+                    <div class="form-group">
+                        <SelectInput 
+                            label="AMBIENTE"
+                            v-model="selectedAmbienteId" 
+                            :options="ambientesOptions"
+                            :disabled="!selectedExamenId"
+                        />
+                    </div>
+
+                    <Button 
+                        @click="iniciarRegistro" 
+                        :disabled="!selectedExamenId || !selectedAmbienteId"
+                        variant="primary"
+                        class="btn-full mt-10"
+                    >
+                        INICIAR REGISTRO
+                    </Button>
+                </div>
+            </div>
+
+            <!-- Paso 2: Escaneo y Verificación -->
+            <div v-if="currentStep === 2" class="step-section">
                 
-                <!-- Sección 1: Selección de Examen y Ambiente -->
-                <div class="bg-white p-6 shadow sm:rounded-lg">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="examen" class="block text-sm font-medium text-gray-700">1. Seleccionar Examen</label>
-                            <select id="examen" v-model="selectedExamenId" @change="selectedAmbienteId = ''" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <option value="" disabled>Seleccione un examen vigentes...</option>
-                                <option v-for="examen in examenes" :key="examen.id_examen" :value="examen.id_examen">
-                                    {{ examen.asignatura }} - {{ examen.hora_inicio }}
-                                </option>
-                            </select>
+                <!-- Barra oscura de resumen -->
+                <div class="resumen-bar">
+                    <div class="resumen-info">
+                        <div class="resumen-item">
+                            <span class="resumen-label">EXAMEN ACTIVO</span>
+                            <span class="resumen-valor">{{ selectedExamenData }}</span>
                         </div>
-                        <div>
-                            <label for="ambiente" class="block text-sm font-medium text-gray-700">2. Seleccionar Ambiente</label>
-                            <select id="ambiente" v-model="selectedAmbienteId" :disabled="!selectedExamenId" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm disabled:bg-gray-100">
-                                <option value="" disabled>Seleccione el ambiente...</option>
-                                <option v-for="ambiente in ambientesDisponibles" :key="ambiente.id_examen_ambiente" :value="ambiente.id_examen_ambiente">
-                                    {{ ambiente.nombre_ambiente }}
-                                </option>
-                            </select>
+                        <div class="resumen-item">
+                            <span class="resumen-label">AMBIENTE</span>
+                            <span class="resumen-valor text-red">{{ selectedAmbienteData }}</span>
                         </div>
                     </div>
+                    <button @click="currentStep = 1" class="btn-cambiar">
+                        CAMBIAR
+                    </button>
                 </div>
 
-                <!-- Sección 2: Escaneo/Búsqueda (Solo visible si hay examen y ambiente seleccionados) -->
-                <div v-if="selectedExamenId && selectedAmbienteId" class="bg-white p-6 shadow sm:rounded-lg text-center">
-                    <label for="datoEstudiante" class="block text-lg font-medium text-gray-700 mb-4">Escanear QR o ingresar código/CI</label>
+                <!-- Contador de ingresos -->
+                <div class="contador-ingresos">
+                    Ingresos registrados: <strong>{{ ingresosRegistrados }}</strong>
+                </div>
+
+                <!-- Lector (Formulario) -->
+                <div v-if="!estudianteValidado" class="formulario-card">
                     <form @submit.prevent="validarEstudiante">
-                        <input 
-                            ref="inputRef"
-                            id="datoEstudiante" 
-                            type="text" 
-                            v-model="datoEstudiante" 
-                            :disabled="isLoading || estudianteValidado"
-                            placeholder="Ingrese código aquí..." 
-                            class="mt-1 block w-full md:w-2/3 mx-auto rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-center text-xl p-3"
-                            autofocus
-                        >
-                        <button type="submit" :disabled="!datoEstudiante || isLoading" class="mt-4 inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 focus:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50">
-                            {{ isLoading && !estudianteValidado ? 'Buscando...' : 'Buscar' }}
-                        </button>
+                        <div class="flex-inline-input">
+                            <TextInput 
+                                ref="inputRef"
+                                label="CÓDIGO / CI / QR DEL ESTUDIANTE"
+                                v-model="datoEstudiante" 
+                                :disabled="isLoading"
+                                placeholder="Escanear o escribir..." 
+                                class="flex-1"
+                            />
+                            
+                            <Button 
+                                type="submit" 
+                                :disabled="!datoEstudiante || isLoading" 
+                                variant="primary"
+                                class="btn-buscar"
+                            >
+                                <span v-if="!isLoading">BUSCAR</span>
+                                <LoadingSpinner v-else size="small" />
+                            </Button>
+                        </div>
                     </form>
                 </div>
 
-                <!-- Mensajes de Error y Éxito -->
-                <div v-if="errorMessage" class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 shadow sm:rounded-lg" role="alert">
-                    <p class="font-bold">Error de ingreso</p>
-                    <p>{{ errorMessage }}</p>
-                </div>
-                <div v-if="successMessage" class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 shadow sm:rounded-lg" role="alert">
-                    <p>{{ successMessage }}</p>
+                <!-- Botones inferiores de acción secundaria -->
+                <div v-if="!estudianteValidado" class="acciones-inferiores">
+                    <Button variant="action" class="btn-limpiar" @click="datoEstudiante = ''">
+                        LIMPIAR
+                    </Button>
+                    <Button variant="danger" class="btn-incidencia">
+                        REPORTAR INCIDENCIA
+                    </Button>
                 </div>
 
-                <!-- Sección 3: Confirmación Visual del Estudiante -->
-                <div v-if="estudianteValidado" class="bg-white p-6 shadow sm:rounded-lg text-center">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Confirmar Identidad</h3>
-                    
-                    <div class="flex flex-col items-center justify-center space-y-4">
-                        <div class="w-32 h-32 rounded-full overflow-hidden bg-gray-200 border-2 border-gray-300 flex items-center justify-center">
-                            <img v-if="estudianteValidado.foto_url" :src="estudianteValidado.foto_url" alt="Foto del estudiante" class="w-full h-full object-cover">
-                            <svg v-else class="h-20 w-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                        </div>
-                        
-                        <div>
-                            <p class="text-2xl font-bold text-gray-800">{{ estudianteValidado.nombres }} {{ estudianteValidado.apellidos }}</p>
-                            <p class="text-gray-500">ID: {{ estudianteValidado.id_estudiante }}</p>
-                        </div>
+                <!-- Confirmación Visual -->
+                <div v-if="estudianteValidado" class="confirmacion-box">
+                    <div class="foto-contenedor">
+                        <img v-if="estudianteValidado.foto_url" :src="estudianteValidado.foto_url" class="foto-perfil">
+                        <div v-else class="foto-placeholder">Sin Foto</div>
                     </div>
+                    <div class="info-estudiante">
+                        <h3 class="nombre-estudiante">{{ estudianteValidado.nombres }} {{ estudianteValidado.apellidos }}</h3>
+                        <p class="id-estudiante">ID: {{ estudianteValidado.id_estudiante }}</p>
 
-                    <div class="mt-8 flex justify-center space-x-4">
-                        <button @click="cancelar" :disabled="isLoading" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
-                            Cancelar
-                        </button>
-                        <button @click="registrarIngreso" :disabled="isLoading" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50">
-                            {{ isLoading ? 'Registrando...' : 'Confirmar Ingreso' }}
-                        </button>
+                        <div class="botones-accion">
+                            <Button @click="cancelar" :disabled="isLoading" variant="action">
+                                Cancelar
+                            </Button>
+                            <Button @click="registrarIngreso" :disabled="isLoading" variant="primary">
+                                <span v-if="!isLoading">Confirmar ingreso</span>
+                                <LoadingSpinner v-else size="small" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
+                <!-- Alertas -->
+                <div v-if="errorMessage" class="alerta alerta-error">
+                    {{ errorMessage }}
+                </div>
+                <div v-if="successMessage" class="alerta alerta-exito">
+                    {{ successMessage }}
+                </div>
             </div>
+
         </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+/* Contenedor Base */
+.registro-wrapper {
+    padding: 40px 20px;
+    max-width: 800px;
+    margin: 0 auto;
+    font-family: var(--font-family);
+}
+
+/* Encabezado */
+.registro-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.titulo-principal {
+    font-family: 'Orbitron', var(--font-display);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.badge-control {
+    background-color: var(--color-primary);
+    color: var(--text-white);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    letter-spacing: 1.5px;
+}
+
+/* Tarjeta Principal */
+.registro-card {
+    background-color: var(--color-white);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    padding: 40px 50px;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.border-red { border-top: 5px solid var(--color-active); }
+.border-blue { border-top: 5px solid var(--color-primary); }
+
+/* Textos de la Tarjeta */
+.paso-indicador {
+    display: block;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.card-titulo {
+    font-family: 'Orbitron', var(--font-display);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+/* Formularios */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.btn-full {
+    width: 100%;
+    padding: 14px;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.mt-10 { margin-top: 10px; }
+.mt-15 { margin-top: 15px; }
+
+/* Paso 2: Escaneo */
+.header-paso2 {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    text-decoration: underline;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.btn-link:hover { color: var(--color-active); }
+
+.seccion-escaneo {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.input-central :deep(input) {
+    text-align: center;
+    font-size: 18px;
+    padding: 15px;
+    height: 55px;
+}
+
+/* Confirmación */
+.seccion-confirmacion {
+    text-align: center;
+    padding: 10px 0;
+}
+
+.foto-contenedor {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px auto;
+    border-radius: 50%;
+    border: 4px solid var(--color-primary);
+    overflow: hidden;
+    background-color: var(--color-gray-light);
+}
+
+.foto-perfil {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.foto-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.nombre-estudiante {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin: 0 0 5px 0;
+}
+
+.id-estudiante {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin: 0 0 30px 0;
+}
+
+.botones-accion {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+/* Alertas */
+.alerta {
+    margin-top: 25px;
+    padding: 15px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.alerta-error {
+    background-color: #fef2f2;
+    color: var(--color-danger);
+    border-left: 4px solid var(--color-danger);
+}
+
+.alerta-exito {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border-left: 4px solid #16a34a;
+}
+
+/* Barra oscura del Paso 2 */
+.resumen-bar {
+    background-color: var(--color-primary);
+    color: var(--text-white);
+    padding: 20px 30px;
+    border-radius: var(--radius-md);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.resumen-info {
+    display: flex;
+    gap: 40px;
+}
+
+.resumen-item {
+    display: flex;
+    flex-direction: column;
+}
+
+.resumen-label {
+    font-size: 11px;
+    color: #8fa0b3;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 5px;
+}
+
+.resumen-valor {
+    font-family: 'Orbitron', var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-white);
+}
+
+.text-red {
+    color: var(--color-active);
+}
+
+.btn-cambiar {
+    background: transparent;
+    border: 1px solid #8fa0b3;
+    color: var(--text-white);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.btn-cambiar:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.contador-ingresos {
+    text-align: right;
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 20px;
+}
+
+.contador-ingresos strong {
+    color: var(--color-primary);
+}
+
+/* Tarjeta del buscador */
+.formulario-card {
+    background: var(--color-white);
+    border: 1px solid var(--border-light);
+    padding: 30px;
+    border-radius: var(--radius-md);
+    margin-bottom: 20px;
+}
+
+.flex-inline-input {
+    display: flex;
+    gap: 15px;
+    align-items: flex-end;
+}
+
+.flex-1 {
+    flex: 1;
+}
+
+.btn-buscar {
+    padding: 0 40px !important;
+    height: 42px; /* Misma altura que el TextInput */
+}
+
+/* Botones inferiores de acción */
+.acciones-inferiores {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 15px;
+}
+
+.btn-limpiar {
+    background-color: var(--color-bg-base) !important;
+    border: 1px solid var(--border-light) !important;
+    color: var(--color-primary) !important;
+    font-weight: bold;
+}
+
+.btn-incidencia {
+    background-color: transparent !important;
+    color: var(--color-active) !important;
+    border: 1px solid var(--color-active) !important;
+    font-weight: bold;
+}
+
+.btn-incidencia:hover {
+    background-color: #fef2f2 !important;
+}
+</style>
