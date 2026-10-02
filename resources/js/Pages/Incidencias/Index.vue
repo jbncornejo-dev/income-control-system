@@ -289,10 +289,10 @@ const getColorClass = (tipo) => {
 
                 <!-- Footer Modal -->
                 <div class="modal-footer-custom">
-                    <Button type="button" variant="outline" @click="closeModal" class="text-gray-500 border-gray-300">
+                    <Button type="button" variant="action" @click="closeModal" class="btn-cancelar">
                         CANCELAR
                     </Button>
-                    <Button type="submit" variant="danger" :disabled="form.processing">
+                    <Button type="submit" variant="danger" :disabled="form.processing" class="btn-guardar">
                         <span v-if="!form.processing">GUARDAR INCIDENCIA</span>
                         <LoadingSpinner v-else size="small" />
                     </Button>
