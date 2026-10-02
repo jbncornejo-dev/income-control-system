@@ -67,12 +67,18 @@ const form = useForm({
 // Buscador/autocompletado sencillo en el cliente para estudiantes
 const estudiantesFiltrados = computed(() => {
     const q = busquedaEstudiante.value.trim().toLowerCase();
-    if (!q) return props.estudiantes.slice(0, 30);
+    if (!q) return props.estudiantes; // Muestra todos si no hay búsqueda
+    
     return props.estudiantes.filter((e) =>
         `${e.nombres} ${e.apellidos}`.toLowerCase().includes(q) ||
         String(e.codigo_universitario).toLowerCase().includes(q) ||
         String(e.documento_identidad).toLowerCase().includes(q)
-    ).slice(0, 30);
+    );
+});
+
+// Forzar el reseteo del select si el operador escribe una nueva búsqueda
+watch(busquedaEstudiante, () => {
+    form.id_estudiante = '';
 });
 
 const openModal = () => {
@@ -134,36 +140,37 @@ const getColorClass = (tipo) => {
 
             <!-- Barra de Filtros y Botón Reportar -->
             <div class="top-bar">
-                <div class="filtros-box">
-                    <SelectInput 
-                        v-model="filterExamen" 
-                        :options="examenesOptions" 
-                        placeholder="Todos los exámenes"
-                        @change="applyFilters"
-                        class="w-full md:w-64"
-                    />
-                    <SelectInput 
-                        v-model="filterTipo" 
-                        :options="tiposOptions" 
-                        placeholder="Todos los tipos"
-                        @change="applyFilters"
-                        class="w-full md:w-48"
-                    />
-                    <TextInput 
-                        type="date"
-                        v-model="filterDesde"
-                        @change="applyFilters"
-                        class="w-full md:w-32"
-                        title="Desde"
-                    />
-                    <TextInput 
-                        type="date"
-                        v-model="filterHasta"
-                        @change="applyFilters"
-                        class="w-full md:w-32"
-                        title="Hasta"
-                    />
-                </div>
+                <SelectInput 
+                    v-model="filterExamen" 
+                    :options="examenesOptions" 
+                    placeholder="Todos los exámenes"
+                    @change="applyFilters"
+                    class="filtro-examen"
+                />
+                
+                <SelectInput 
+                    v-model="filterTipo" 
+                    :options="tiposOptions" 
+                    placeholder="Todos los tipos"
+                    @change="applyFilters"
+                    class="filtro-tipo"
+                />
+                
+                <TextInput 
+                    type="date"
+                    v-model="filterDesde"
+                    @change="applyFilters"
+                    class="filtro-fecha"
+                    title="Desde"
+                />
+                
+                <TextInput 
+                    type="date"
+                    v-model="filterHasta"
+                    @change="applyFilters"
+                    class="filtro-fecha"
+                    title="Hasta"
+                />
                 
                 <Button variant="danger" @click="openModal" class="btn-reportar">
                     REPORTAR INCIDENCIA
@@ -282,10 +289,10 @@ const getColorClass = (tipo) => {
 
                 <!-- Footer Modal -->
                 <div class="modal-footer-custom">
-                    <Button type="button" variant="outline" @click="closeModal" class="text-gray-500 border-gray-300">
+                    <Button type="button" variant="action" @click="closeModal" class="btn-cancelar">
                         CANCELAR
                     </Button>
-                    <Button type="submit" variant="danger" :disabled="form.processing">
+                    <Button type="submit" variant="danger" :disabled="form.processing" class="btn-guardar">
                         <span v-if="!form.processing">GUARDAR INCIDENCIA</span>
                         <LoadingSpinner v-else size="small" />
                     </Button>
@@ -335,23 +342,45 @@ const getColorClass = (tipo) => {
 /* Barra Superior */
 .top-bar {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
+    align-items: flex-end;
     gap: 15px;
-    flex-wrap: wrap;
+    margin-bottom: 20px;
+    width: 100%;
+    flex-wrap: nowrap;
 }
 
-.filtros-box {
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    flex-grow: 1;
+.filtro-examen {
+    flex: 1;
+    min-width: 200px;
+}
+
+.filtro-tipo {
+    width: 220px;
+    flex-shrink: 0;
+}
+
+.filtro-fecha {
+    width: 140px;
+    flex-shrink: 0;
 }
 
 .btn-reportar {
     font-weight: bold;
     letter-spacing: 0.5px;
+    height: 42px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Responsividad: Permitir que colapsen en móviles y tablets */
+@media (max-width: 1024px) {
+    .top-bar {
+        flex-wrap: wrap;
+    }
+    .filtro-examen, .filtro-tipo, .filtro-fecha, .btn-reportar {
+        width: 100%;
+        flex: none;
+    }
 }
 
 /* Alerta Info */
