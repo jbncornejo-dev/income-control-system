@@ -21,6 +21,7 @@ const navItems = [
   { label: 'Asignaturas', href: '/asignaturas', roles: ['admin'] },
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'] },
   { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'] },
+  { label: 'Grupos', href: '/grupos', roles: ['admin'] },
   { label: 'Incidencias', href: '/incidencias', roles: ['admin', 'docente', 'control'] },
   { label: 'Registrar Ingreso', href: '/registro-ingreso', roles: ['control'], highlight: true },
   { label: 'Mi Código QR', href: '/estudiante/panel', roles: ['estudiante'] },
