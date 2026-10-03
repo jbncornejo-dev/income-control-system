@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
+use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
@@ -108,6 +109,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
+        Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
+        Route::post('/grupos', [GrupoController::class, 'store'])->name('grupos.store');
+        Route::patch('/grupos/{grupo}', [GrupoController::class, 'update'])->name('grupos.update');
+        Route::delete('/grupos/{grupo}', [GrupoController::class, 'destroy'])->name('grupos.destroy');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
