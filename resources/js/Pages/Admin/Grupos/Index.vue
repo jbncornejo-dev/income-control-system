@@ -205,6 +205,7 @@ function irAPagina(url) {
                             <td data-label="Docente">{{ nombreDocente(grupo.usuario) }}</td>
                             <td data-label="Inscritos">{{ grupo.inscripciones_count }}</td>
                             <td data-label="Acciones" class="col-acciones">
+                                <a :href="`/grupos/${grupo.id_grupo}`" class="btn-accion btn-ver">Ver inscritos</a>
                                 <button class="btn-accion btn-editar" @click="abrirEditar(grupo)">Reasignar docente</button>
                                 <button class="btn-accion btn-eliminar" @click="confirmarEliminar(grupo)">Eliminar</button>
                             </td>
@@ -326,6 +327,7 @@ function irAPagina(url) {
 .col-acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .badge { background: #eff6ff; color: var(--color-primary); padding: 3px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; }
 .btn-accion { padding: 0.35rem 0.75rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.btn-ver { background: var(--color-primary); color: #fff; border: 1px solid var(--color-primary); text-decoration: none; display: inline-block; }
 .btn-editar { background: #eff6ff; color: var(--color-primary); border: 1px solid var(--color-primary); }
 .btn-eliminar { background: #fdecea; color: var(--color-active); border: 1px solid var(--color-active); }
 .empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
