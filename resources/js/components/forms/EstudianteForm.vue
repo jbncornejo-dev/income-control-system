@@ -1,63 +1,63 @@
 <template>
   <div>
     <div class="form-group">
-      <label class="form-label">Nombres <span class="required">*</span></label>
-      <input
+      <TextInput
+        id="nombres"
         type="text"
         v-model="form.nombres"
+        label="Nombres *"
         placeholder="Nombres del estudiante"
-        class="form-input"
         :class="{ 'input-error': form.errors.nombres }"
       />
       <p v-if="form.errors.nombres" class="error-msg">{{ form.errors.nombres }}</p>
     </div>
     <div class="form-group">
-      <label class="form-label">Apellidos <span class="required">*</span></label>
-      <input
+      <TextInput
+        id="apellidos"
         type="text"
         v-model="form.apellidos"
+        label="Apellidos *"
         placeholder="Apellidos del estudiante"
-        class="form-input"
         :class="{ 'input-error': form.errors.apellidos }"
       />
       <p v-if="form.errors.apellidos" class="error-msg">{{ form.errors.apellidos }}</p>
     </div>
     <div class="form-group">
-      <label class="form-label">Código Universitario <span class="required">*</span></label>
-      <input
+      <TextInput
+        id="codigo_universitario"
         type="text"
         v-model="form.codigo_universitario"
+        label="Código Universitario *"
         placeholder="9 dígitos iniciando con el año de ingreso (ej: 201809372)"
         maxlength="9"
         inputmode="numeric"
         :disabled="isEdit"
-        class="form-input"
-        :class="{ 'input-error': form.errors.codigo_universitario, 'input-readonly': isEdit }"
+        :class="{ 'input-error': form.errors.codigo_universitario }"
       />
       <p v-if="form.errors.codigo_universitario" class="error-msg">{{ form.errors.codigo_universitario }}</p>
     </div>
     <div class="form-group">
-      <label class="form-label">Documento de Identidad <span class="required">*</span></label>
-      <input
+      <TextInput
+        id="documento_identidad"
         type="text"
         v-model="form.documento_identidad"
+        label="Documento de Identidad *"
         placeholder="6 a 8 dígitos (ej: 12590804)"
         maxlength="8"
         inputmode="numeric"
         :disabled="isEdit"
-        class="form-input"
-        :class="{ 'input-error': form.errors.documento_identidad, 'input-readonly': isEdit }"
+        :class="{ 'input-error': form.errors.documento_identidad }"
       />
       <p v-if="form.errors.documento_identidad" class="error-msg">{{ form.errors.documento_identidad }}</p>
     </div>
     <div class="form-group">
-      <label class="form-label">Correo institucional</label>
-      <input
+      <TextInput
+        id="email"
         type="email"
         v-model="form.email"
+        label="Correo institucional"
         placeholder="Ej: 201809372@est.umss.edu"
         maxlength="255"
-        class="form-input"
         :class="{ 'input-error': form.errors.email }"
       />
       <p v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</p>
@@ -72,6 +72,7 @@
 import { useForm } from '@inertiajs/vue3'
 import { useToastStore } from '@/stores/useToastStore'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -123,40 +124,5 @@ defineExpose({ emitirGuardado })
 </script>
 
 <style scoped>
-.form-group { margin-bottom: 16px; }
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-main);
-  margin-bottom: 6px;
-}
-.required { color: #d32f2f; }
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-white-soft);
-  border-radius: 6px;
-  font-size: 14px;
-  background: var(--color-bg-input);
-  color: var(--color-text-main);
-  box-sizing: border-box;
-  font-family: var(--font-main);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.form-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-input-focus);
-}
-.input-error { border-color: #d32f2f !important; }
-.input-readonly {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.input-readonly:focus {
-  border-color: var(--color-white-soft);
-  box-shadow: none;
-}
-.error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
+/* Los estilos son manejados por forms.css y TextInput globalmente */
 </style>

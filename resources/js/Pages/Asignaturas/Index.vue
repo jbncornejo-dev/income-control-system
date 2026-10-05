@@ -16,14 +16,14 @@
       <!-- La búsqueda consulta todo el catálogo antes de paginar. -->
       <div class="toolbar">
         <div class="filter-field">
-          <SearchInput v-model="filtroNombre" placeholder="Buscar asignaturas por nombre..." />
+          <TextInput v-model="filtroNombre" placeholder="Buscar asignaturas por nombre..." style="width: 100%; max-width: 400px;" />
           <p v-if="erroresBusqueda.nombre_asignatura" class="error-msg">{{ erroresBusqueda.nombre_asignatura }}</p>
         </div>
         <span class="result-count" aria-live="polite">{{ asignaturas.total }} asignatura(s)</span>
       </div>
 
       <!-- HU7: filas y total procedentes del paginador de Laravel. -->
-      <div class="table-card">
+      <div class="table-container">
         <div v-if="cargando" class="loading-center">
           <LoadingSpinner size="large" />
         </div>
@@ -75,14 +75,13 @@
       >
         <div class="form-group">
           <label for="nombre-asignatura" class="form-label">Nombre <span class="required">*</span></label>
-          <input
+          <TextInput
             id="nombre-asignatura"
             v-model="form.nombre_asignatura"
             maxlength="150"
             :disabled="form.processing"
             @keydown.enter.prevent="guardar"
             type="text"
-            class="form-input"
             :class="{ 'input-error': form.errors.nombre_asignatura }"
             placeholder="Ej: Cálculo I"
             @input="form.clearErrors('nombre_asignatura')"
@@ -92,7 +91,7 @@
 
         <div v-if="modoEdicion" class="form-group">
           <label class="form-label">ID</label>
-          <input :value="asignaturaEditando?.id_asignatura" type="text" class="form-input input-readonly" readonly />
+          <TextInput :value="asignaturaEditando?.id_asignatura" type="text" class="input-readonly" readonly />
           <p class="help-text">El ID no es editable.</p>
         </div>
 
@@ -131,7 +130,7 @@ import { router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Modal from '@/components/ui/Modal.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
-import SearchInput from '@/components/SearchInput.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import Button from '@/components/ui/Button.vue'
 import { useToastStore } from '@/stores/useToastStore'
 
@@ -289,120 +288,73 @@ function eliminar() {
 </script>
 
 <style scoped>
-.page-container { padding: 24px; }
+.page-container {
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background-color: transparent;
+    font-family: var(--font-family);
+}
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 24px;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
 }
+
 .page-title {
-  font-size: 22px;
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--color-primary);
   margin: 0 0 4px;
+  font-family: var(--font-display);
+  letter-spacing: 1px;
 }
-.page-subtitle { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
+
+.page-subtitle { font-size: 0.875rem; color: var(--text-muted); margin: 0; }
 
 .toolbar {
   flex-wrap: wrap;
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
 }
-.filter-field { flex: 1; min-width: 150px; }
-.filter-field :deep(.search-wrapper) { margin-bottom: 0; }
-.result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
+.filter-field { flex: 1; min-width: 250px; }
+.result-count { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
 
 .pagination {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
-  border-top: 1px solid var(--color-white-soft);
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-light);
+  background-color: var(--color-white);
 }
 
-.page-info { font-size: 13px; color: var(--color-text-secondary); }
+.page-info { font-size: 0.85rem; color: var(--text-muted); }
 
 .loading-center { display: flex; justify-content: center; padding: 48px; }
 
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-main); margin-bottom: 6px; }
-.required { color: #d32f2f; }
-.form-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-white-soft);
-  border-radius: 6px;
-  font-size: 14px;
-  background: var(--color-bg-input);
-  color: var(--color-text-main);
-  box-sizing: border-box;
-}
-.form-input:focus { outline: none; border-color: var(--color-primary); box-shadow: var(--shadow-input-focus); }
-.input-error { border-color: #d32f2f !important; }
-.input-readonly { opacity: 0.6; cursor: not-allowed; }
-.error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
-.help-text { color: var(--color-text-secondary); font-size: 12px; margin-top: 4px; }
 
-.confirm-text { font-size: 14px; color: var(--color-text-main); line-height: 1.6; }
-
-/* Estandarización de botones */
-.btn-modal {
-  padding: 10px 20px !important;
-  font-size: 14px !important;
-}
-
-/* Evitar que flex junte los botones de la tabla */
-.data-table td :deep(.btn-base) + :deep(.btn-base) {
-  margin-left: 8px;
-}
+.confirm-text { font-size: 0.9rem; color: var(--text-dark); line-height: 1.6; }
 
 /* Estandarización de Tabla */
-.table-card { 
-    background: white; 
-    border: 1px solid #e5e7eb; 
-    border-radius: 0.5rem; 
+.table-container { 
+    background: var(--color-white); 
+    border: 1px solid var(--border-light); 
+    border-radius: var(--radius-md); 
     overflow-x: auto; 
     width: 100%; 
-}
-
-.data-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 0.875rem; 
-}
-
-.data-table th { 
-    background-color: #f9fafb; 
-    text-align: left; 
-    padding: 0.75rem 0.85rem; 
-    font-weight: 600; 
-    color: #6b7280; 
-    border-bottom: 1px solid #e5e7eb; 
-    text-transform: uppercase; 
-    font-size: 0.75rem; 
-    white-space: nowrap; 
-}
-
-.data-table td { 
-    padding: 0.75rem 0.85rem; 
-    border-bottom: 1px solid #f3f4f6; 
-    color: #374151; 
-    vertical-align: middle; 
-}
-
-.data-table tr:hover td { 
-    background: #f9fafb; 
+    box-shadow: var(--shadow-card);
 }
 
 .id-cell { 
-    color: #6b7280; 
-    font-family: monospace; 
-    font-size: 0.8rem; 
+    color: var(--text-muted); 
+    font-family: var(--font-mono); 
+    font-size: 0.85rem; 
     width: 60px; 
 }
 
@@ -413,7 +365,7 @@ function eliminar() {
 
 .actions-cell {
     display: flex;
-    gap: 0.4rem;
+    gap: var(--spacing-sm);
     justify-content: center;
     align-items: center;
     white-space: nowrap;
@@ -421,7 +373,31 @@ function eliminar() {
 
 .empty-row { 
     text-align: center; 
-    color: #6b7280; 
+    color: var(--text-muted); 
     padding: 2rem !important; 
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-container {
+        padding: var(--spacing-md);
+    }
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .page-header > button {
+        width: 100%;
+    }
+    .toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-field {
+        width: 100%;
+    }
+    .filter-field > * {
+        max-width: 100% !important;
+    }
 }
 </style>

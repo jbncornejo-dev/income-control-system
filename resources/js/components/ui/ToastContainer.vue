@@ -19,32 +19,32 @@ const toastStore = useToastStore();
 <style scoped>
 .toast-container {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
   z-index: 9999;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--spacing-sm);
 }
 .toast {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 6px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
   min-width: 280px;
   font-family: var(--font-main);
   font-size: 14px;
-  box-shadow: var(--shadow-card);
-  animation: slideIn 0.3s ease;
+  box-shadow: var(--shadow-elevated);
+  animation: slideIn var(--transition-normal);
 }
 .toast.success {
-  background-color: var(--color-primary);
+  background-color: var(--color-success);
   color: var(--color-white);
 }
 .toast.error {
-  background-color: #d32f2f;
+  background-color: var(--color-danger);
   color: var(--color-white);
 }
 .toast button {
@@ -53,6 +53,16 @@ const toastStore = useToastStore();
   color: inherit;
   cursor: pointer;
   font-size: 16px;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background-color var(--transition-fast);
+}
+.toast button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+.toast button:focus-visible {
+  outline: 2px solid var(--color-white);
+  outline-offset: 2px;
 }
 @keyframes slideIn {
   from { opacity: 0; transform: translateX(50px); }

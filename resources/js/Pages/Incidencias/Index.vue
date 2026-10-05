@@ -7,7 +7,7 @@ import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
-import Pagination from '@/components/Pagination.vue';
+import Pagination from '@/components/ui/Pagination.vue';
 import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
@@ -131,21 +131,27 @@ const getColorClass = (tipo) => {
     <Head title="Gestión de Incidencias" />
 
     <AuthenticatedLayout>
-        <div class="page-wrapper">
+        <div class="panel-container">
             
             <!-- Encabezado Principal -->
-            <header class="page-header">
-                <h1 class="titulo-principal">Gestión de Incidencias</h1>
+            <header class="header-section">
+                <div>
+                    <h1 class="panel-title">GESTIÓN DE INCIDENCIAS</h1>
+                    <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
+                </div>
+                <Button variant="danger" @click="openModal" class="btn-reportar">
+                    + REPORTAR INCIDENCIA
+                </Button>
             </header>
 
-            <!-- Barra de Filtros y Botón Reportar -->
-            <div class="top-bar">
+            <!-- Barra de Filtros -->
+            <div class="filters-container mb-6">
                 <SelectInput 
                     v-model="filterExamen" 
                     :options="examenesOptions" 
                     placeholder="Todos los exámenes"
                     @change="applyFilters"
-                    class="filtro-examen"
+                    class="filter-input flex-grow"
                 />
                 
                 <SelectInput 
@@ -153,33 +159,26 @@ const getColorClass = (tipo) => {
                     :options="tiposOptions" 
                     placeholder="Todos los tipos"
                     @change="applyFilters"
-                    class="filtro-tipo"
+                    class="filter-input w-48"
                 />
                 
-                <TextInput 
-                    type="date"
-                    v-model="filterDesde"
-                    @change="applyFilters"
-                    class="filtro-fecha"
-                    title="Desde"
-                />
-                
-                <TextInput 
-                    type="date"
-                    v-model="filterHasta"
-                    @change="applyFilters"
-                    class="filtro-fecha"
-                    title="Hasta"
-                />
-                
-                <Button variant="danger" @click="openModal" class="btn-reportar">
-                    REPORTAR INCIDENCIA
-                </Button>
-            </div>
-
-            <!-- Alerta Inmutabilidad -->
-            <div class="alerta-info">
-                Las incidencias registradas son inmutables. Una vez guardadas no pueden editarse ni eliminarse.
+                <div class="flex gap-2 items-end">
+                    <TextInput 
+                        type="date"
+                        v-model="filterDesde"
+                        @change="applyFilters"
+                        class="filter-date w-36"
+                        title="Desde"
+                    />
+                    <span class="text-gray-400 mb-2">-</span>
+                    <TextInput 
+                        type="date"
+                        v-model="filterHasta"
+                        @change="applyFilters"
+                        class="filter-date w-36"
+                        title="Hasta"
+                    />
+                </div>
             </div>
 
             <!-- Lista de Incidencias (Tarjetas) -->
@@ -260,7 +259,7 @@ const getColorClass = (tipo) => {
 
                 <!-- Estudiante (Opcional - con mini buscador) -->
                 <div class="form-group bg-light-gray p-4 rounded">
-                    <label class="form-label-custom">ESTUDIANTE (OPCIONAL)</label>
+                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">ESTUDIANTE (OPCIONAL)</label>
                     <TextInput 
                         v-model="busquedaEstudiante" 
                         placeholder="Buscar por código, documento o nombre..." 
@@ -277,7 +276,7 @@ const getColorClass = (tipo) => {
 
                 <!-- Descripción (Obligatorio) -->
                 <div class="form-group">
-                    <label class="form-label-custom">DESCRIPCIÓN *</label>
+                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">DESCRIPCIÓN *</label>
                     <textarea 
                         v-model="form.descripcion_motivo" 
                         rows="4" 
@@ -305,200 +304,163 @@ const getColorClass = (tipo) => {
 </template>
 
 <style scoped>
-/* Contenedor Principal */
-.page-wrapper {
-    padding: 30px 40px;
-    max-width: 1100px;
-    margin: 0 auto;
+.panel-container {
     font-family: var(--font-family);
+    background-color: transparent;
 }
 
-/* Encabezado */
-.page-header {
+.header-section {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
 }
 
-.titulo-principal {
-    font-family: 'Orbitron', var(--font-display);
-    font-size: 32px;
+.panel-title {
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--color-primary);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    font-size: 0.95rem;
+    color: var(--text-muted);
     margin: 0;
 }
 
-.badge-rol {
-    background-color: var(--color-primary);
-    color: var(--text-white);
-    font-size: 12px;
-    font-weight: 700;
-    padding: 8px 16px;
-    border-radius: var(--radius-md, 4px);
-    letter-spacing: 1.5px;
-}
-
-/* Barra Superior */
-.top-bar {
+.filters-container {
     display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    background: var(--color-white);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
     align-items: flex-end;
-    gap: 15px;
-    margin-bottom: 20px;
-    width: 100%;
-    flex-wrap: nowrap;
-}
-
-.filtro-examen {
-    flex: 1;
-    min-width: 200px;
-}
-
-.filtro-tipo {
-    width: 220px;
-    flex-shrink: 0;
-}
-
-.filtro-fecha {
-    width: 140px;
-    flex-shrink: 0;
 }
 
 .btn-reportar {
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    height: 42px;
-    flex-shrink: 0;
     white-space: nowrap;
-}
-
-/* Responsividad: Permitir que colapsen en móviles y tablets */
-@media (max-width: 1024px) {
-    .top-bar {
-        flex-wrap: wrap;
-    }
-    .filtro-examen, .filtro-tipo, .filtro-fecha, .btn-reportar {
-        width: 100%;
-        flex: none;
-    }
-}
-
-/* Alerta Info */
-.alerta-info {
-    background-color: #f0f4f8;
-    color: #4b6a8f;
-    border: 1px solid #d1dce5;
-    padding: 15px 20px;
-    border-radius: 6px;
-    font-size: 14px;
-    margin-bottom: 30px;
 }
 
 /* Tarjetas de Lista */
 .incidencias-list {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: var(--spacing-md);
 }
 
 .incidencia-card {
     background-color: var(--color-white);
     border: 1px solid var(--border-light);
-    border-radius: 6px;
-    padding: 20px 25px;
-    border-top-width: 4px;
-    border-top-style: solid;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-lg);
+    border-left-width: 4px;
+    border-left-style: solid;
+    box-shadow: var(--shadow-card);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-.border-red { border-top-color: #dc2626; }
-.border-yellow { border-top-color: #eab308; }
-.border-blue { border-top-color: #3b82f6; }
-.border-gray { border-top-color: #9ca3af; }
+.incidencia-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-subtle);
+}
+
+.border-red { border-left-color: var(--color-active); }
+.border-yellow { border-left-color: var(--color-warning); }
+.border-blue { border-left-color: var(--color-primary); }
+.border-gray { border-left-color: var(--text-muted); }
 
 .card-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .card-examen {
-    color: #8fa0b3;
-    font-size: 13px;
-    font-weight: 700;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .badge-tipo {
-    font-size: 12px;
+    font-size: 0.75rem;
     font-weight: 700;
-    padding: 4px 12px;
-    border-radius: 12px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
     border: 1px solid transparent;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
-.color-red { color: #dc2626; border-color: #fca5a5; background: #fef2f2; }
-.color-yellow { color: #ca8a04; border-color: #fde047; background: #fef9c3; }
-.color-blue { color: #2563eb; border-color: #bfdbfe; background: #eff6ff; }
-.color-gray { color: #4b5563; border-color: #d1d5db; background: #f3f4f6; }
+.color-red { color: var(--color-active); border-color: #fca5a5; background: #fef2f2; }
+.color-yellow { color: #b45309; border-color: #fcd34d; background: #fffbeb; }
+.color-blue { color: var(--color-primary); border-color: #bfdbfe; background: #eff6ff; }
+.color-gray { color: var(--text-dark); border-color: var(--border-light); background: var(--bg-main); }
 
 .card-estudiante {
-    font-family: 'Orbitron', var(--font-display);
-    font-size: 16px;
+    font-family: var(--font-display);
+    font-size: 1.1rem;
     font-weight: 700;
     color: var(--color-primary);
-    margin-bottom: 12px;
+    margin-bottom: var(--spacing-sm);
 }
 
 .card-estudiante-null {
-    font-size: 14px;
-    color: #9ca3af;
-    margin-bottom: 12px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+    font-style: italic;
 }
 
 .card-descripcion {
-    font-size: 15px;
-    color: #374151;
-    margin-bottom: 20px;
-    line-height: 1.5;
+    font-size: 0.95rem;
+    color: var(--text-dark);
+    margin-bottom: var(--spacing-lg);
+    line-height: 1.6;
 }
 
 .card-footer {
     display: flex;
-    gap: 20px;
-    font-size: 12px;
-    color: #8fa0b3;
+    gap: var(--spacing-lg);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-light);
+    padding-top: var(--spacing-sm);
 }
 
 /* Modal Formulario */
 .form-group {
-    margin-bottom: 20px;
+    margin-bottom: var(--spacing-lg);
 }
 
 .bg-light-gray {
-    background-color: #f8fafc;
-    padding: 15px;
-    border-radius: 6px;
-    border: 1px solid #e2e8f0;
-}
-
-.form-label-custom {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: #4b5563;
-    margin-bottom: 8px;
-    font-family: var(--font-family);
+    background-color: var(--bg-main);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
 }
 
 .textarea-custom {
     width: 100%;
     padding: 12px 15px;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
     color: var(--text-dark);
     outline: none;
     resize: vertical;
     font-family: var(--font-family);
+    transition: border-color var(--transition-fast);
 }
 .textarea-custom:focus {
     border-color: var(--color-primary);
@@ -509,39 +471,69 @@ const getColorClass = (tipo) => {
     width: 100%;
     padding: 10px 15px;
     border: 1px solid var(--border-light);
-    border-radius: 6px;
-    font-size: 14px;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
     color: var(--text-dark);
     outline: none;
-    background-color: white;
+    background-color: var(--color-white);
+    transition: border-color var(--transition-fast);
 }
 .select-html:focus { border-color: var(--color-primary); }
 
 .error-msg {
-    color: #dc2626;
-    font-size: 13px;
-    margin-top: 5px;
+    color: var(--color-active);
+    font-size: 0.8rem;
+    margin-top: 4px;
     font-weight: 600;
 }
 
 .modal-footer-custom {
     display: flex;
     justify-content: flex-end;
-    gap: 15px;
-    margin-top: 30px;
-    padding-top: 15px;
-    border-top: 1px solid #e2e8f0;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-xl);
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-light);
 }
 
 .empty-state {
     text-align: center;
-    padding: 40px;
-    color: #6b7280;
-    background: #f9fafb;
-    border-radius: 6px;
-    border: 1px dashed #d1d5db;
+    padding: var(--spacing-xl);
+    color: var(--text-muted);
+    background: var(--color-white);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--border-light);
 }
 
-.mt-8 { margin-top: 2rem; }
+.mb-6 { margin-bottom: 1.5rem; }
 .mb-2 { margin-bottom: 0.5rem; }
+.flex { display: flex; }
+.flex-grow { flex-grow: 1; }
+.gap-2 { gap: 0.5rem; }
+.items-end { align-items: flex-end; }
+.w-48 { width: 12rem; }
+.w-36 { width: 9rem; }
+.text-gray-400 { color: #9ca3af; }
+.text-gray-500 { color: #6b7280; }
+.font-bold { font-weight: 700; }
+.text-xs { font-size: 0.75rem; }
+.block { display: block; }
+
+@media (max-width: 768px) {
+    .header-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filters-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .w-48, .w-36 {
+        width: 100%;
+    }
+    .btn-reportar {
+        width: 100%;
+        justify-content: center;
+    }
+}
 </style>

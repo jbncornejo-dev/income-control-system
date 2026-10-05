@@ -34,17 +34,22 @@ const variantClass = computed(() => {
 
 <style scoped>
 .btn-base {
-    padding: 10px 20px;
-    border: none;
-    border-radius: 4px;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     cursor: pointer;
     font-size: 14px;
     font-weight: 600;
-    transition: opacity 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+    transition: all var(--transition-fast);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-family: var(--font-family);
+}
+
+.btn-base:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-input-focus);
 }
 
 .btn-base:disabled {
@@ -57,53 +62,53 @@ const variantClass = computed(() => {
     color: var(--text-white);
 }
 
-.btn-primary:hover {
-    opacity: 0.9;
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
 }
 
 .btn-action {
-    padding: 5px 12px;
+    padding: var(--spacing-xs) var(--spacing-sm);
     background-color: var(--text-white);
-    border: 1px solid #9ca3af;
-    color: #4b5563;
+    border-color: var(--border-light);
+    color: var(--text-dark);
     font-size: 12px;
 }
 
-.btn-action:hover {
-    background-color: #f3f4f6;
+.btn-action:hover:not(:disabled) {
+    background-color: var(--color-gray-light);
 }
 
 .btn-action-delete {
-    padding: 5px 12px;
+    padding: var(--spacing-xs) var(--spacing-sm);
     background-color: transparent;
-    border: 1px solid #fca5a5;
-    color: #ef4444;
+    border-color: #fca5a5;
+    color: var(--color-danger);
     font-size: 12px;
 }
 
-.btn-action-delete:hover {
+.btn-action-delete:hover:not(:disabled) {
     background-color: #fef2f2;
-    border-color: #ef4444;
+    border-color: var(--color-danger);
 }
 
 .btn-outline-white {
     background-color: transparent;
     color: var(--text-white);
-    border: 1px solid var(--text-white);
+    border-color: var(--text-white);
 }
 
-.btn-outline-white:hover {
+.btn-outline-white:hover:not(:disabled) {
     background-color: var(--text-white);
     color: var(--color-primary);
 }
 
 .btn-danger {
     background-color: var(--color-danger);
-    color: var(--text-white, #ffffff);
-    border: 1px solid var(--color-danger);
+    color: var(--text-white);
+    border-color: var(--color-danger);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
     background-color: var(--color-danger-hover);
     border-color: var(--color-danger-hover);
 }

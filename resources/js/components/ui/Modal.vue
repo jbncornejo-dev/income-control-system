@@ -58,17 +58,18 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  padding: 16px;
+  padding: var(--spacing-md);
 }
 .modal-container {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
   width: 100%;
   max-width: 640px;
   max-height: 90dvh;
   overflow-y: auto;
   box-sizing: border-box;
+  box-shadow: var(--shadow-elevated);
 }
 .modal-container--wide {
   max-width: 860px;
@@ -77,7 +78,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
 }
 .modal-close {
   background: transparent;
@@ -90,17 +91,21 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 .modal-close:hover {
   background: var(--color-bg-input);
   color: var(--color-active);
 }
+.modal-close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-input-focus);
+}
 .modal-footer {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
 }
 </style>

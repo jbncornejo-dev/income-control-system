@@ -25,23 +25,46 @@
     --border-light: #d1d5db;
     
     /* Tipografía */
-    --font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --font-display: 'Rajdhani', sans-serif;
+    --font-main: 'Orbitron', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+    --font-mono: 'Courier New', Courier, monospace;
+    --font-family: var(--font-main); /* Fallback to prevent breaking existing uses */
 
     /* Tokens UI usados por los componentes Vue (botones, tablas, formularios) */
     --color-white: #ffffff;
     --color-white-soft: #eceff4;
-    --color-bg-base: #f8f9fb;
+
     --color-bg-input: #f1f3f6;
     --color-gray-light: #f0f0f0;
     --color-secondary: #a12b33;
     --color-text-main: #333333;
     --color-text-secondary: #6c757d;
-    --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+    /* Tamaños / Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 4px;
     --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-pill: 9999px;
+
+    /* Sombras */
+    --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.1);
     --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     --shadow-input-focus: 0 0 0 3px rgba(29, 54, 83, 0.15);
 
+    /* Transiciones */
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.2s ease;
+
     --color-danger: #dc3545;
-  --color-danger-hover: #b02a37;
+    --color-danger-hover: #b02a37;
+    --color-success: #198754;
+    --color-warning: #f59e0b;
 }

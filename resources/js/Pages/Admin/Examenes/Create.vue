@@ -563,36 +563,7 @@ function guardar() {
 .form-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
-}
-
-.form-group { margin-bottom: 1.25rem; }
-
-.form-label {
-    display: block;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 0.375rem;
-}
-
-.required { color: #d32f2f; }
-
-.form-input {
-    width: 100%;
-    padding: 0.625rem 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    background-color: #f9fafb;
-    color: #374151;
-    box-sizing: border-box;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: var(--shadow-input-focus);
+    gap: var(--spacing-md);
 }
 
 textarea.form-input { resize: vertical; }

@@ -1,5 +1,6 @@
 <script setup>
 import SelectInput from '@/components/ui/SelectInput.vue';
+import TextInput from '@/components/ui/TextInput.vue';
 import Modal from '@/components/ui/Modal.vue';
 import UsuarioForm from '@/components/forms/UsuarioForm.vue';
 import EditUsuarioForm from '@/components/forms/EditUsuarioForm.vue';
@@ -10,7 +11,6 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
-    user: { type: Object, required: true },
     usuarios: Object, // Paginador de Laravel
     roles: Array,
     filters: { type: Object, default: () => ({}) }
@@ -70,6 +70,11 @@ const buscarUsuarios = () => {
     }, 300);
 };
 
+const cambiarPagina = (url) => {
+    if (!url) return;
+    router.visit(url, { preserveState: true, preserveScroll: true });
+};
+
 onBeforeUnmount(() => clearTimeout(searchDebounce));
 
 watch(searchQuery, buscarUsuarios);
@@ -99,14 +104,12 @@ watch(filtroRol, (value) => {
 
             <!-- Barra de Acciones Superior -->
             <div class="action-bar">
-                <input 
+                <TextInput 
                     id="buscar-usuario"
-                    type="text" 
                     v-model="searchQuery"
                     placeholder="Buscar por email..." 
                     class="search-input"
-                    aria-label="Buscar usuario por email"
-                >
+                />
                 <div class="action-controls">
                     <SelectInput
                         v-model="filtroRol"
@@ -146,17 +149,20 @@ watch(filtroRol, (value) => {
                                 </span>
                             </td>
                             <td class="actions-cell">
-                                <!-- Botones enlazados a las funciones -->
-                                <button class="btn-action" @click="openEditModal(user)">Editar</button>
-                                <button class="btn-action" @click="openPasswordModal(user)">Clave</button>
-                                <!-- Pasar el ID correcto del usuario iterado -->
+                                <Button type="button" variant="action" @click="openEditModal(user)">Editar</Button>
+                                <Button type="button" variant="secondary" @click="openPasswordModal(user)">Clave</Button>
                                 <Button 
                                     type="button" 
-                                    variant="delete" 
+                                    variant="danger" 
                                     @click="eliminarUsuario(user.id)"
                                 >
                                     Eliminar
                                 </Button>
+                            </td>
+                        </tr>
+                        <tr v-if="!usuarios.data || usuarios.data.length === 0">
+                            <td colspan="4" class="empty-state">
+                                {{ searchQuery || filtroRol ? 'No se encontraron usuarios que coincidan con la búsqueda o filtro.' : 'No hay usuarios registrados.' }}
                             </td>
                         </tr>
                     </tbody>
@@ -164,7 +170,26 @@ watch(filtroRol, (value) => {
                 
                 <!-- Pie de tabla (Paginación base) -->
                 <div class="table-footer">
-                    <span>{{ usuarios.to || 0 }} de {{ usuarios.total || 0 }} usuarios</span>
+                    <div class="pagination-info">
+                        <span>{{ usuarios.from || 0 }} al {{ usuarios.to || 0 }} de {{ usuarios.total || 0 }} usuarios</span>
+                    </div>
+                    <div class="pagination-controls" v-if="usuarios.last_page > 1">
+                        <Button 
+                            variant="primary" 
+                            :disabled="!usuarios.prev_page_url" 
+                            @click="cambiarPagina(usuarios.prev_page_url)"
+                        >
+                            Anterior
+                        </Button>
+                        <span class="page-info">Página {{ usuarios.current_page }} de {{ usuarios.last_page }}</span>
+                        <Button 
+                            variant="primary" 
+                            :disabled="!usuarios.next_page_url" 
+                            @click="cambiarPagina(usuarios.next_page_url)"
+                        >
+                            Siguiente
+                        </Button>
+                    </div>
                 </div>
             </div>
             <Modal :open="showCreateModal" @close="showCreateModal = false">
@@ -210,18 +235,18 @@ watch(filtroRol, (value) => {
 <style scoped>
 /* Contenedor principal */
 .panel-container {
-    padding: 2rem;
-    background-color: #f3f4f6;
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: var(--font-family);
+    background-color: transparent;
 }
 
 .panel-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 1.5rem;
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-lg);
     text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
 }
 
 /* Barra de Acciones */
@@ -229,148 +254,132 @@ watch(filtroRol, (value) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    gap: 1rem;
+    margin-bottom: var(--spacing-lg);
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
 }
 
 .search-input {
     flex: 1;
-    max-width: 600px;
-    padding: 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
+    min-width: 250px;
+    max-width: 400px;
 }
 
 .action-controls {
     display: flex;
-    gap: 1rem;
-}
-
-.role-filter {
-    padding: 0.5rem 2rem 0.5rem 1rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.25rem;
-    font-size: 0.875rem;
-    background-color: white;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    align-items: center;
 }
 
 /* Tabla de Datos */
 .table-container {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.data-table th {
-    background-color: #f9fafb;
-    text-align: left;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.data-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-    color: #374151;
-    vertical-align: middle;
+    background: var(--color-white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    box-shadow: var(--shadow-card);
 }
 
 /* Celdas específicas */
 .name-cell {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    font-weight: 500;
+    gap: var(--spacing-md);
+    font-weight: 600;
+    color: var(--text-dark);
 }
 
 .avatar {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     flex-shrink: 0;
     border-radius: 50%;
-    background-color: #1e1b4b;
-    color: white;
+    background-color: var(--color-primary);
+    color: var(--color-white);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.875rem;
-    font-weight: 600;
+    font-size: 1rem;
+    font-weight: 700;
 }
 
 /* Badges (Etiquetas) */
 .badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
     font-size: 0.75rem;
-    font-weight: 500;
+    font-weight: 600;
     display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .badge-role {
-    border: 1px solid #d8b4fe;
-    color: #6b21a8;
-    background-color: #f3e8ff;
-}
-
-.badge-active {
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
-    background-color: #eff6ff;
-}
-
-.badge-inactive {
-    border: 1px solid #d1d5db;
-    color: #6b7280;
-    background-color: #f3f4f6;
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    background-color: var(--color-white-soft);
 }
 
 /* Botones de Acción de Fila */
 .actions-cell {
     display: flex;
-    gap: 0.5rem;
-    justify-content: flex-end;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
 }
 
-.btn-action {
-    background: transparent;
-    border: 1px solid #d1d5db;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-    font-size: 0.75rem;
-    color: #374151;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.btn-action:hover {
-    background-color: #f9fafb;
-}
-
-.btn-delete {
-    color: #ef4444;
-    border-color: #fca5a5;
-}
-
-.btn-delete:hover {
-    background-color: #fef2f2;
+/* Empty state */
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: var(--spacing-xl) !important;
+    font-style: italic;
 }
 
 /* Pie de Tabla */
 .table-footer {
-    padding: 1rem;
-    background-color: #ffffff;
-    border-top: 1px solid #e5e7eb;
-    color: #9ca3af;
-    font-size: 0.75rem;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--color-white);
+    border-top: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+}
+
+.pagination-info {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.pagination-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.page-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-input {
+        max-width: 100%;
+    }
+    .action-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .action-controls > * {
+        width: 100% !important;
+        margin: 0;
+    }
 }
 </style>

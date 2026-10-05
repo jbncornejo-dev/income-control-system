@@ -78,7 +78,6 @@ const submit = () => {
 
         <!-- Campo: Rol -->
         <div class="form-group">
-            <label for="id_rol">Rol del Usuario</label>
             <SelectInput
                 id="id_rol"
                 v-model="form.id_rol"
@@ -131,76 +130,28 @@ const submit = () => {
 .custom-form {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--spacing-lg);
     width: 100%;
-    padding: 0.25rem 0;
+    padding: var(--spacing-xs) 0;
 }
 
-/* Filas de dos columnas */
 .form-row {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.25rem;
+    gap: var(--spacing-lg);
     width: 100%;
 }
 
-/* Cada campo */
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    min-width: 0;
-}
-
-label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-dark);
-    line-height: 1.3;
-}
-
-/* Inputs y select: mismo look en todos los campos, usando tokens */
-.select-control {
-    width: 100%;
-    height: 42px;
-    padding: 0 0.8rem;
-    border: 1px solid var(--border-light);
-    border-radius: 0.45rem;
-    font-size: 0.875rem;
-    font-family: var(--font-family);
-    color: var(--text-dark);
-    background-color: var(--color-cream);
-    box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-/* Select */
-.select-control {
-    appearance: auto;
-    cursor: pointer;
-    text-transform: capitalize;
-}
-
-/* Mensajes de error */
-.error-msg {
-    color: var(--color-active);
-    font-size: 0.75rem;
-    line-height: 1.2;
-    margin-top: 0.1rem;
-}
-
-/* Botones */
 .form-actions {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-    padding-top: 1rem;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+    padding-top: var(--spacing-md);
     border-top: 1px solid var(--border-light);
 }
 
-/* Fuerza el mismo tamaño en ambos botones, sin importar la variante */
 .btn-uniform {
     min-width: 140px;
     height: 42px;
@@ -212,18 +163,15 @@ label {
     box-sizing: border-box;
 }
 
-/* Adaptación para pantallas pequeñas */
 @media (max-width: 640px) {
     .form-row {
         grid-template-columns: 1fr;
-        gap: 1.25rem;
+        gap: var(--spacing-lg);
     }
-
     .form-actions {
         flex-direction: column-reverse;
         align-items: stretch;
     }
-
     .btn-uniform {
         width: 100%;
     }
