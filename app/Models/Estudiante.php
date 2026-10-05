@@ -15,7 +15,7 @@ class Estudiante extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email'];
+    protected $fillable = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email', 'foto_url'];
 
     /**
      * Prefijo del payload del QR generado por el sistema. El resto del payload

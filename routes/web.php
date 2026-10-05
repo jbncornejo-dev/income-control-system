@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
+use App\Http\Controllers\GrupoController;
+use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
@@ -20,6 +22,7 @@ use App\Models\Estudiante;
 use App\Models\Examen;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\RegistroIngresoController;
 
 Route::get('/', function () {
     if (! Auth::check()) {
@@ -91,7 +94,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
         Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
-    });
+        Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
+        Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
+        Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
+        });
 
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
     // y habilitaciones). El controlador no recibe parámetros de la URL, así
@@ -104,6 +110,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
+        Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
+        Route::post('/grupos', [GrupoController::class, 'store'])->name('grupos.store');
+        Route::patch('/grupos/{grupo}', [GrupoController::class, 'update'])->name('grupos.update');
+        Route::delete('/grupos/{grupo}', [GrupoController::class, 'destroy'])->name('grupos.destroy');
+        Route::get('/grupos/{grupo}', [InscripcionController::class, 'show'])->name('grupos.show');
+        Route::post('/grupos/{grupo}/inscripciones', [InscripcionController::class, 'store'])->name('inscripciones.store');
+        Route::delete('/grupos/{grupo}/inscripciones/{inscripcion}', [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.

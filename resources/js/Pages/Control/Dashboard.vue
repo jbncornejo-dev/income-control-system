@@ -35,18 +35,16 @@ function estadoBadgeClass(estado) {
         <div class="panel-container">
             <h1 class="panel-title">PANEL DE CONTROL</h1>
 
-            <!-- CTA Registrar Ingreso: funcionalidad pendiente de implementación backend -->
-            <!-- La ruta /ingreso/registrar no existe aún en web.php; el CTA se muestra     -->
-            <!-- en estado informativo para no romper el flujo del usuario.                  -->
-            <div class="cta-banner cta-banner--disabled" aria-disabled="true">
+            <!-- CTA Registrar Ingreso -->
+            <Link href="/registro-ingreso" class="cta-banner">
                 <div class="cta-icon">
                     <span>&crarr;</span>
                 </div>
                 <div class="cta-text">
                     <h2>Registrar Ingreso de Estudiante</h2>
-                    <p>Esta funcionalidad estará disponible próximamente.</p>
+                    <p>Acceder a la terminal de control y verificación de estudiantes.</p>
                 </div>
-            </div>
+            </Link>
 
             <Link href="/incidencias" class="acceso-incidencias">
                 <div class="acceso-texto">
@@ -189,17 +187,6 @@ function estadoBadgeClass(estado) {
 .acceso-titulo { font-weight: 600; color: var(--color-primary); font-size: 1rem; margin-bottom: 2px; }
 .acceso-desc { font-size: 0.85rem; color: var(--text-muted); }
 .acceso-flecha { color: var(--color-active); font-size: 1.25rem; }
-
-/* CTA deshabilitado: funcionalidad de registro de ingreso aún no implementada en backend */
-.cta-banner--disabled {
-    cursor: default;
-    opacity: 0.6;
-    pointer-events: none;
-}
-.cta-banner--disabled:hover {
-    transform: none;
-    box-shadow: var(--shadow-card);
-}
 
 /* Estadísticas */
 .stats-grid {
