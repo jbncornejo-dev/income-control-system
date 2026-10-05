@@ -24,7 +24,7 @@ const submit = () => {
 
 <template>
     <form @submit.prevent="submit" class="custom-form">
-        <p class="text-sm text-gray-500 mb-2">Actualizando la contraseña para: <strong class="text-gray-800">{{ user.name }}</strong></p>
+        <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--spacing-md);">Actualizando la contraseña para: <strong style="color: var(--text-dark);">{{ user.name }}</strong></p>
         
         <div class="form-row password-box">
             <div class="form-group">
@@ -57,13 +57,14 @@ const submit = () => {
 </template>
 
 <style scoped>
-.custom-form { display: flex; flex-direction: column; gap: 1.5rem; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
-label { font-size: 0.875rem; font-weight: 600; color: #1f2937; }
-:deep(.input-control) { width: 100%; padding: 0.625rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 0.875rem; color: #374151; box-sizing: border-box; transition: border-color 0.2s; }
-:deep(.input-control):focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 1px #6366f1; }
-.password-box { background-color: #f8fafc; padding: 1.25rem; border-radius: 0.5rem; border: 1px solid #f1f5f9; }
-.error-msg { color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; }
-.form-actions { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem; padding-top: 1rem; border-top: 1px solid #e5e7eb; }
+.custom-form { display: flex; flex-direction: column; gap: var(--spacing-lg); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
+.password-box { background-color: var(--color-bg-input); padding: var(--spacing-lg); border-radius: var(--radius-md); border: 1px solid var(--border-light); }
+.form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-sm); padding-top: var(--spacing-md); border-top: 1px solid var(--border-light); }
+
+@media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+    .form-actions { flex-direction: column-reverse; }
+    .form-actions > button { width: 100%; }
+}
 </style>

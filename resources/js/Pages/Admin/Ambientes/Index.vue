@@ -5,7 +5,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
-import SearchInput from '@/components/SearchInput.vue';
+import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import { useToastStore } from '@/stores/useToastStore';
 
@@ -195,7 +195,7 @@ function eliminar() {
 
             <div class="search-section">
                 <div class="filter-field">
-                    <SearchInput v-model="busqueda" placeholder="Buscar ambientes por nombre..." />
+                    <TextInput v-model="busqueda" placeholder="Buscar ambientes por nombre..." style="width: 100%; max-width: 400px;" />
                 </div>
                 <span class="result-count" aria-live="polite">{{ ambientes.total }} ambiente(s)</span>
             </div>
@@ -241,18 +241,18 @@ function eliminar() {
         <Modal :open="modalAbierto" :title="modoEdicion ? 'Editar Ambiente' : 'Nuevo Ambiente'" @close="cerrarModal">
             <div class="form-group">
                 <label class="form-label">Nombre <span class="required">*</span></label>
-                <input v-model="form.nombre_ambiente" type="text" class="form-input" :class="{ 'input-error': errores.nombre_ambiente }" placeholder="Ej: Aula A-3" @input="errores.nombre_ambiente = ''" />
+                <TextInput v-model="form.nombre_ambiente" type="text" :class="{ 'input-error': errores.nombre_ambiente }" placeholder="Ej: Aula A-3" @input="errores.nombre_ambiente = ''" />
                 <p v-if="errores.nombre_ambiente" class="error-msg">{{ errores.nombre_ambiente }}</p>
             </div>
             <div class="form-group">
                 <label class="form-label">Capacidad <span class="required">*</span></label>
-                <input v-model.number="form.capacidad" type="number" min="1" class="form-input" :class="{ 'input-error': errores.capacidad }" placeholder="Ej: 80" @input="errores.capacidad = ''" />
+                <TextInput v-model.number="form.capacidad" type="number" min="1" :class="{ 'input-error': errores.capacidad }" placeholder="Ej: 80" @input="errores.capacidad = ''" />
                 <p v-if="errores.capacidad" class="error-msg">{{ errores.capacidad }}</p>
                 <p class="help-text">Debe ser un número entero mayor a 0.</p>
             </div>
             <div v-if="modoEdicion" class="form-group">
                 <label class="form-label">ID</label>
-                <input :value="ambienteEditando?.id_ambiente" type="text" class="form-input input-readonly" readonly />
+                <TextInput :value="ambienteEditando?.id_ambiente" type="text" class="input-readonly" readonly />
                 <p class="help-text">El ID no es editable.</p>
             </div>
             <template #footer>
@@ -281,110 +281,144 @@ function eliminar() {
 </template>
 
 <style scoped>
-.panel-container { padding: 2rem 3rem; background-color: var(--bg-main); min-height: 100vh; font-family: var(--font-family); }
-.header-section { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.panel-title { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin: 0 0 4px; letter-spacing: 0.05em; }
-.subtitle { font-size: 0.875rem; color: #6b7280; }
-.highlight-number { font-weight: 700; color: var(--color-primary); }
-.search-section { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-bottom: 16px; }
-.filter-field { flex: 1; min-width: 150px; }
-.search-section :deep(.search-wrapper) { margin-bottom: 0; }
-.result-count { font-size: 13px; color: var(--color-text-secondary); white-space: nowrap; }
-.capacity-badge { background: #eff6ff; color: var(--color-primary); padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-.empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
-.pagination { display: flex; justify-content: center; align-items: center; gap: 16px; padding: 16px; }
-.page-info { font-size: 13px; color: #6b7280; }
-.form-group { margin-bottom: 16px; }
-.form-label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-.required { color: #d32f2f; }
-.form-input { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; background: #f9fafb; color: #374151; box-sizing: border-box; }
-.form-input:focus { outline: none; border-color: var(--color-primary); }
-.input-error { border-color: #d32f2f !important; }
-.input-readonly { opacity: 0.6; cursor: not-allowed; }
-.error-msg { color: #d32f2f; font-size: 12px; margin-top: 4px; }
-.help-text { color: #6b7280; font-size: 12px; margin-top: 4px; }
-.confirm-text { font-size: 14px; color: #374151; line-height: 1.6; }
-/* Estandarización de botones */
-.btn-modal {
-  padding: 10px 20px !important;
-  font-size: 14px !important;
+/* Contenedor principal */
+.panel-container {
+    font-family: var(--font-family);
+    background-color: transparent;
 }
 
-/* Espaciado entre botones en la tabla */
-.data-table td :deep(.btn-base) + :deep(.btn-base) {
-  margin-left: 8px;
+.header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
 }
 
-/* Botón destructivo para confirmaciones */
-.btn-peligro {
-  background-color: #dc3545 !important;
-  color: #ffffff !important;
-}
-.btn-peligro:hover:not(:disabled) {
-  background-color: #b02a37 !important;
+.panel-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin: 0 0 4px;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
 }
 
-/* Estandarización de Tabla */
+.subtitle {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+}
+
+.highlight-number {
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.search-section {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.filter-field {
+    flex: 1;
+    min-width: 250px;
+}
+
+.result-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.capacity-badge {
+    background: var(--color-white-soft);
+    color: var(--color-primary);
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid var(--border-light);
+}
+
+.empty-state {
+    text-align: center;
+    color: var(--text-muted);
+    padding: 2rem !important;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--border-light);
+    background-color: var(--color-white);
+}
+
+.page-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+
+.confirm-text {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+    line-height: 1.6;
+}
+
+/* Tabla */
 .table-container { 
-    background: white; 
-    border: 1px solid #e5e7eb; 
-    border-radius: 0.5rem; 
+    background: var(--color-white); 
+    border: 1px solid var(--border-light); 
+    border-radius: var(--radius-md); 
     overflow-x: auto; 
     width: 100%; 
-}
-
-.data-table { 
-    width: 100%; 
-    border-collapse: collapse; 
-    font-size: 0.875rem; 
-}
-
-.data-table th { 
-    background-color: #f9fafb; 
-    text-align: left; 
-    padding: 0.75rem 0.85rem; 
-    font-weight: 600; 
-    color: #6b7280; 
-    border-bottom: 1px solid #e5e7eb; 
-    text-transform: uppercase; 
-    font-size: 0.75rem; 
-    white-space: nowrap; 
-}
-
-.data-table td { 
-    padding: 0.75rem 0.85rem; 
-    border-bottom: 1px solid #f3f4f6; 
-    color: #374151; 
-    vertical-align: middle; 
-}
-
-.data-table tr:hover td { 
-    background: #f9fafb; 
+    box-shadow: var(--shadow-card);
 }
 
 .col-id { 
-    color: #6b7280; 
-    font-family: monospace; 
-    font-size: 0.8rem; 
+    color: var(--text-muted); 
+    font-family: var(--font-mono); 
+    font-size: 0.85rem; 
     width: 60px; 
 }
 
-/* Columna de Acciones Centralizadas */
 .actions-col {
     text-align: center !important;
 }
 
 .actions-cell {
     display: flex;
-    gap: 0.4rem;
+    gap: var(--spacing-sm);
     justify-content: center;
     align-items: center;
     white-space: nowrap;
 }
 
-/* Estandarización de botones del modal */
-.btn-modal {
-  padding: 10px 20px !important;
-  font-size: 14px !important;
+/* Responsive */
+@media (max-width: 768px) {
+    .header-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .header-section > button {
+        width: 100%;
+    }
+    .search-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-field {
+        width: 100%;
+    }
+    .filter-field > * {
+        max-width: 100% !important;
+    }
 }
 </style>

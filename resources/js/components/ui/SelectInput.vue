@@ -1,9 +1,11 @@
 <template>
     <div class="select-wrapper">
-        <label v-if="label" class="select-label">{{ label }}</label>
+        <label v-if="label" :for="inputId" class="select-label">{{ label }}</label>
 
         <div class="select-control-wrapper">
             <select
+                v-bind="$attrs"
+                :id="inputId"
                 :value="modelValue"
                 @change="$emit('update:modelValue', $event.target.value)"
                 class="filter-select"
@@ -35,6 +37,13 @@
 </template>
 
 <script setup>
+import { computed, useAttrs } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const inputId = computed(() => attrs.id || `select-${Math.random().toString(36).substring(2, 9)}`);
+
 const props = defineProps({
     modelValue: [String, Number],
     label: String,

@@ -2,7 +2,6 @@
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import ToastContainer from '../components/ui/ToastContainer.vue';
-import '../../css/layout.css';
 
 const page = usePage();
 
@@ -37,6 +36,14 @@ const currentMenuLabel = computed(() => {
   return activeItem ? activeItem.label : 'Panel Principal';
 });
 
+import { ref } from 'vue';
+
+const isMobileMenuOpen = ref(false);
+
+function toggleMobileMenu() {
+  isMobileMenuOpen.value = !isMobileMenuOpen.value;
+}
+
 function logout() {
   router.post('/logout');
 }
@@ -44,8 +51,15 @@ function logout() {
 
 <template>
   <div class="app-layout">
+    <!-- Overlay Móvil -->
+    <div 
+      v-if="isMobileMenuOpen" 
+      class="sidebar-overlay" 
+      @click="isMobileMenuOpen = false"
+    ></div>
+
     <!-- NAVEGACIÓN LATERAL -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'sidebar-open': isMobileMenuOpen }">
       <div class="sidebar-header">
         <img src="/images/umss-logo.png" alt="UMSS Logo" class="sidebar-logo" />
         <div class="brand-text">
@@ -67,18 +81,20 @@ function logout() {
           </li>
         </ul>
       </nav>
-      <div class="sidebar-footer">
-          <p>&copy; {{ new Date().getFullYear() }} TexCorp.<br>Todos los derechos reservados.</p>
-      </div>
     </aside>
 
     <!-- ÁREA PRINCIPAL -->
     <div class="main-wrapper">
       <header class="topbar">
-        <div class="topbar-title">
+        <div class="topbar-left">
+          <button class="btn-mobile-toggle" @click="toggleMobileMenu" aria-label="Toggle Menu">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          </button>
+          <div class="topbar-title">
           <span class="topbar-section">CIE</span>
           <span class="topbar-separator">/</span>
           <span class="topbar-current">{{ currentMenuLabel }}</span>
+          </div>
         </div>
 
         <div class="topbar-actions">
@@ -113,7 +129,7 @@ function logout() {
       </main>
 
       <footer class="app-footer">
-        <p>&copy; 2026 CEI. Desarrollado por Texcorp. Todos los derechos reservados.</p>
+        <p>&copy; {{ new Date().getFullYear() }} CIE. Desarrollado por TexCorp. Todos los derechos reservados.</p>
       </footer>
     </div>
     <ToastContainer />
@@ -121,12 +137,55 @@ function logout() {
 </template>
 
 <style scoped>
+/* =========================
+   LAYOUT BASE
+   ========================= */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--bg-main);
+}
+
+.main-wrapper {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Evita que el contenido desborde horizontalmente */
+}
+
+.content-area {
+  flex-grow: 1;
+  /* El padding se delega a las vistas (.panel-container, .page-container) por ahora */
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================
+   FIX LEGACY CONTAINERS
+   Evitar scroll doble causado por vistas que definen min-height: 100vh
+   ========================= */
+.content-area :deep(.panel-container),
+.content-area :deep(.page-container) {
+  min-height: auto !important;
+  background-color: transparent !important;
+}
+
+/* =========================
+   SIDEBAR
+   ========================= */
 .sidebar {
   width: 260px;
   background-color: var(--bg-sidebar); 
   color: var(--text-white);
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 40;
+  transition: transform var(--transition-normal);
 }
 
 .sidebar-header {
@@ -205,17 +264,39 @@ function logout() {
 
 .topbar {
   height: 72px;
-  padding: 0 30px;
+  padding: 0 var(--spacing-xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
-
-  /* Adaptado a fondo claro */
-  background-color: #ffffff;
-  border-bottom: 1px solid var(--border-light, #d1d5db);
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0) 85%), linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 20%, #2a4f7c 55%, #4d77a3 100%);
+  border-bottom: 2px solid var(--color-active);
+  box-shadow: 0 2px 0 rgba(77, 119, 163, 0.35), 0 6px 20px rgba(15, 34, 56, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  flex-shrink: 0;
 }
 
 /* Título / breadcrumb */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.btn-mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--color-white);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-mobile-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
 
 .topbar-title {
   display: flex;
@@ -225,17 +306,21 @@ function logout() {
 }
 
 .topbar-section {
-  color: var(--text-muted, #7b93ab);
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-size: 1rem;
 }
 
 .topbar-separator {
-  color: #9ca3af;
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .topbar-current {
-  color: var(--text-dark, #333333);
-  font-weight: 600;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.15rem;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* Elementos de la derecha */
@@ -255,15 +340,17 @@ function logout() {
 }
 
 .topbar-link {
-  color: #4b5563; /* Elimina el morado por defecto de los enlaces */
+  color: #ffffff;
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
-  transition: color 0.2s ease;
+  font-size: 1rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  opacity: 0.9;
+  transition: opacity 0.2s ease;
 }
 
 .topbar-link:hover {
-  color: var(--color-primary, #1d3653);
+  opacity: 1;
 }
 
 /* Perfil */
@@ -284,14 +371,18 @@ function logout() {
 }
 
 .user-name {
-  color: var(--text-dark, #333333);
-  font-size: 14px;
-  font-weight: 600;
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
 }
 
 .role-badge {
-  color: var(--text-muted, #7b93ab);
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.45);
   font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -301,18 +392,18 @@ function logout() {
 .btn-logout {
   padding: 8px 14px;
   background: transparent;
-  border: 1px solid var(--border-light, #d1d5db);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   border-radius: 6px;
-  color: #4b5563;
+  color: #ffffff;
   font-size: 13px;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
 .btn-logout:hover {
-  color: #ef4444; /* Rojo para indicar una acción de salida */
-  border-color: #fca5a5;
-  background-color: #fef2f2;
+  color: #ffffff;
+  border-color: var(--color-active, #a12b33);
+  background-color: var(--color-active, #a12b33);
 }
 
 /* =========================
@@ -333,18 +424,66 @@ function logout() {
   font-weight: 500;
   letter-spacing: 0.5px;
 }
-.topbar { background: linear-gradient(115deg, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.08) 70%, rgba(255, 255, 255, 0) 85%), linear-gradient(90deg, #1d3653 0%, #1d3653 20%, #2a4f7c 55%, #4d77a3 100%); border-bottom: 2px solid var(--color-active, #a12b33); box-shadow: 0 2px 0 rgba(77, 119, 163, 0.35), 0 6px 20px rgba(15, 34, 56, 0.3); }
-.topbar-section { color: rgba(255, 255, 255, 0.8); font-weight: 700; letter-spacing: 0.1em; font-size: 1rem; }
-.topbar-separator { color: rgba(255, 255, 255, 0.55); }
-.topbar-current { color: #ffffff; font-weight: 700; font-size: 1.15rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
-.topbar-link { color: #ffffff; font-weight: 600; font-size: 1rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); opacity: 0.9; transition: opacity 0.2s ease; }
-.topbar-link:hover { opacity: 1; }
-.user-name { color: #ffffff; font-weight: 700; font-size: 1rem; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35); }
-.role-badge { background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.45); font-weight: 700; }
-.btn-logout { background: transparent; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.6); transition: background 0.2s ease, border-color 0.2s ease; }
-.btn-logout:hover { background: var(--color-active, #a12b33); border-color: var(--color-active, #a12b33); color: #ffffff; }
-.nav-link { color: rgba(255, 255, 255, 0.75) !important; font-size: 1.1rem !important; font-weight: 600 !important; letter-spacing: 0.02em; transition: color 0.2s ease; }
-.nav-link:hover, .active .nav-link { color: #ffffff !important; }
-.brand-text span { color: rgba(255, 255, 255, 0.75); }
-.sidebar-footer { color: rgba(255, 255, 255, 0.75); padding: 1rem 1.5rem; text-align: center; font-size: 0.8rem; line-height: 1.5; }
+.nav-link {
+  color: rgba(255, 255, 255, 0.75) !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em;
+  transition: color 0.2s ease;
+}
+.nav-link:hover, .active .nav-link {
+  color: #ffffff !important;
+}
+.brand-text span {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* =========================
+   RESPONSIVE BASE
+   ========================= */
+@media (max-width: 1024px) {
+  .topbar {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .content-area {
+    padding: var(--spacing-md);
+  }
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    transform: translateX(-100%);
+    z-index: 910;
+  }
+  
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 900;
+  }
+  
+  .btn-mobile-toggle {
+    display: flex;
+  }
+  
+  .topbar-nav {
+    display: none; /* Ocultamos los links del topbar en móvil para ahorrar espacio */
+  }
+  
+  .user-profile {
+    padding-left: 0;
+    border-left: none;
+  }
+  
+  .user-name {
+    display: none; /* Ocultamos el nombre para ahorrar espacio, solo mostramos el rol o nada */
+  }
+}
 </style>

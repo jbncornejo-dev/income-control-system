@@ -7,6 +7,8 @@ const props = defineProps({
     examenes: Array
 });
 
+import StatCard from '@/components/ui/StatCard.vue';
+
 // Mapa de estado_actual (del backend) a etiqueta visible
 const ESTADOS = {
     programado:  { etiqueta: 'Programado',  clase: 'badge-programado' },
@@ -56,18 +58,9 @@ function estadoBadgeClass(estado) {
 
             <!-- Tarjetas de Estadísticas -->
             <div class="stats-grid">
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">Exámenes hoy</span>
-                    <span class="stat-value">{{ stats.hoy }}</span>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">En curso ahora</span>
-                    <span class="stat-value">{{ stats.en_curso }}</span>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--color-danger);">
-                    <span class="stat-label">Ingresos registrados</span>
-                    <span class="stat-value">{{ stats.ingresos }}</span>
-                </div>
+                <StatCard label="Exámenes hoy" :value="stats.hoy" desc="programados" color="var(--color-primary)" />
+                <StatCard label="En curso ahora" :value="stats.en_curso" desc="activos" color="var(--color-success)" />
+                <StatCard label="Ingresos" :value="stats.ingresos" desc="registrados" color="var(--color-active)" />
             </div>
 
             <!-- Tabla de Exámenes del Día -->
@@ -115,18 +108,18 @@ function estadoBadgeClass(estado) {
 <style scoped>
 /* Contenedor principal */
 .panel-container {
-    padding: 2rem;
-    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif);
-    background-color: var(--bg-main, #f3f4f6);
-    min-height: 100vh;
+    font-family: var(--font-family);
+    background-color: transparent;
 }
 
 .panel-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--color-primary);
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-lg);
     text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
 }
 
 /* Banner CTA */
@@ -134,18 +127,18 @@ function estadoBadgeClass(estado) {
     display: flex;
     align-items: center;
     background-color: var(--color-primary);
-    color: var(--text-white, #ffffff);
-    padding: 2rem;
-    border-radius: 0.5rem;
+    color: var(--color-white);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    margin-bottom: 2rem;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: var(--spacing-lg);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow: var(--shadow-card);
 }
 
 .cta-banner:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--shadow-elevated);
 }
 
 .cta-icon {
@@ -157,122 +150,44 @@ function estadoBadgeClass(estado) {
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     font-size: 1.5rem;
-    margin-right: 1.5rem;
+    margin-right: var(--spacing-md);
+    flex-shrink: 0;
 }
 
 .cta-text h2 {
-    margin: 0 0 0.25rem 0;
+    margin: 0 0 4px 0;
     font-size: 1.25rem;
     font-weight: 600;
 }
 
 .cta-text p {
     margin: 0;
-    font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
 }
 
-/* Estadísticas */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+/* Acceso Incidencias */
+.acceso-incidencias { 
+    display: flex; 
+    align-items: center; 
+    justify-content: space-between; 
+    gap: var(--spacing-md); 
+    background: var(--color-white); 
+    border: 1px solid var(--border-light); 
+    border-left: 4px solid var(--color-active); 
+    border-radius: var(--radius-md); 
+    padding: var(--spacing-md) var(--spacing-lg); 
+    text-decoration: none; 
+    margin-bottom: var(--spacing-xl); 
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-
-.stat-card {
-    background: #ffffff;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    display: flex;
-    flex-direction: column;
-    border-top: 4px solid var(--color-primary);
+.acceso-incidencias:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-subtle);
 }
-
-.stat-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.stat-value {
-    font-size: 2.25rem;
-    font-weight: 700;
-    color: #111827;
-    margin-top: 0.25rem;
-}
-
-/* Tabla */
-.table-container {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    overflow-x: auto;
-}
-
-.table-header {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.table-header h3 {
-    margin: 0;
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #1f2937;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.data-table th {
-    background-color: #f9fafb;
-    text-align: left;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-    text-transform: uppercase;
-}
-
-.data-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-    vertical-align: middle;
-}
-
-.font-bold { font-weight: 600; color: #1f2937; }
-.text-gray { color: #6b7280; }
-.mono { font-family: monospace; font-size: 0.8rem; }
-
-.badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    display: inline-block;
-}
-
-.badge-curso {
-    background-color: #f9fafb;
-    color: var(--color-primary);
-    border: 1px solid var(--color-primary);
-}
-
-.empty-state {
-    text-align: center;
-    color: #6b7280;
-    padding: 2rem !important;
-}
-.acceso-incidencias { display: flex; align-items: center; justify-content: space-between; gap: 1rem; background: #fff; border: 1px solid #e5e7eb; border-left: 4px solid var(--color-active); border-radius: 0.5rem; padding: 1rem 1.25rem; text-decoration: none; margin-bottom: 2rem; }
 .acceso-texto { display: flex; flex-direction: column; }
-.acceso-titulo { font-weight: 700; color: var(--color-primary); font-size: 1rem; }
-.acceso-desc { font-size: 0.875rem; color: var(--text-muted); }
+.acceso-titulo { font-weight: 600; color: var(--color-primary); font-size: 1rem; margin-bottom: 2px; }
+.acceso-desc { font-size: 0.85rem; color: var(--text-muted); }
 .acceso-flecha { color: var(--color-active); font-size: 1.25rem; }
 
 /* CTA deshabilitado: funcionalidad de registro de ingreso aún no implementada en backend */
@@ -283,7 +198,52 @@ function estadoBadgeClass(estado) {
 }
 .cta-banner--disabled:hover {
     transform: none;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-card);
+}
+
+/* Estadísticas */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
+}
+
+/* Tabla */
+.table-container {
+    background: var(--color-white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
+    box-shadow: var(--shadow-card);
+}
+
+.table-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-bottom: 1px solid var(--border-light);
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-family: var(--font-display);
+}
+
+/* Elementos de tabla locales */
+.font-bold { font-weight: 600; color: var(--text-dark); }
+.text-gray { color: var(--text-muted); }
+.mono { font-family: var(--font-mono); font-size: 0.85rem; }
+
+.badge {
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Badges de estado alineados con los valores reales de estado_actual del backend */
@@ -294,4 +254,15 @@ function estadoBadgeClass(estado) {
 .badge-cancelado   { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
 .badge-anulado     { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
 .badge-pendiente   { background: #f9fafb; color: #6b7280; border: 1px solid #e5e7eb; }
+
+/* Responsive Dashboard */
+@media (max-width: 992px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: var(--spacing-md); }
+}
+@media (max-width: 768px) {
+    .stats-grid { grid-template-columns: repeat(1, 1fr); }
+    .cta-banner { flex-direction: column; align-items: flex-start; gap: var(--spacing-md); }
+    .cta-icon { margin-right: 0; }
+    .acceso-incidencias { flex-direction: column; align-items: flex-start; }
+}
 </style>

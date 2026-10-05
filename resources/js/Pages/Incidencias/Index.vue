@@ -269,26 +269,16 @@ function irAPagina(url) {
 .btn-primary { background: var(--color-primary); color: #fff; border: none; padding: 0.6rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .btn-secundario { background: #fff; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 0.5rem 1rem; border-radius: 0.25rem; font-size: 0.95rem; cursor: pointer; font-family: inherit; }
 .btn-cancelar { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; padding: 0.6rem 1rem; font-family: inherit; }
-.table-container { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-.data-table th { background-color: var(--color-primary); color: #fff; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }
-.data-table td { padding: 0.9rem 1rem; border-bottom: 1px solid #c7d0da; vertical-align: top; color: var(--text-dark); }
-.data-table tr:last-child td { border-bottom: none; }
+.table-container { background: #fff; border: 1px solid var(--border-light); border-radius: var(--radius-md); overflow: hidden; margin-top: var(--spacing-md); }
 .col-fecha { white-space: nowrap; color: var(--text-muted); }
 .col-descripcion { max-width: 320px; }
 .badge { padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; display: inline-block; }
 .badge-normal { background: #eff6ff; color: var(--color-primary); }
 .badge-critico { background: #fdecea; color: var(--color-active); }
-.empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
 .paginacion { display: flex; justify-content: center; align-items: center; gap: 1rem; padding: 1rem; }
 .btn-page { background: var(--color-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
 .btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
 .page-info { font-size: 0.9rem; color: var(--text-muted); }
-.form-group { margin-bottom: 1rem; }
-.form-label { display: block; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
-.required { color: #d32f2f; }
-.error-msg { color: var(--color-active); font-size: 0.85rem; margin: 4px 0 0; }
-.help-text { color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0; }
 .aviso { font-size: 0.85rem; color: var(--text-muted); background: #f9fafb; border-left: 3px solid var(--color-primary); padding: 0.6rem 0.75rem; border-radius: 0 4px 4px 0; margin: 0; }
 @media (max-width: 820px) {
     .panel-container { padding: 1.25rem; }

@@ -1,5 +1,7 @@
 /* resources/css/app.css */
 @import './tokens.css';
+@import './tables.css';
+@import './forms.css';
 
 /* Reset base */
 * {
@@ -12,7 +14,16 @@ body {
     background-color: var(--bg-main);
     color: var(--text-dark);
     font-family: var(--font-family);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
-/* Aquí puedes importar otros archivos si decides dividirlos, por ejemplo: */
-/* @import './layout.css'; */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

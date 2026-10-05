@@ -5,6 +5,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Modal from '@/components/ui/Modal.vue';
 import Button from '@/components/ui/Button.vue';
+import TextInput from '@/components/ui/TextInput.vue';
+import SelectInput from '@/components/ui/SelectInput.vue';
 
 const toast = useToastStore();
 
@@ -470,17 +472,12 @@ onBeforeUnmount(() => {
                 <div class="action-bar-main">
                     <form class="search-row" @submit.prevent="buscar">
                         <div class="search-wrapper">
-                            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <input
+                            <TextInput
                                 v-model="busqueda"
-                                type="text"
                                 placeholder="Buscar por asignatura..."
-                                class="search-input"
                                 :disabled="cargando"
-                            >
+                                style="width: 100%; min-width: 250px;"
+                            />
                         </div>
                         <div class="search-actions">
                             <Button type="submit" variant="primary" class="btn-toolbar" :disabled="cargando">Buscar</Button>
@@ -495,29 +492,29 @@ onBeforeUnmount(() => {
                 <div class="filter-row">
                     <label class="filter-field">
                         <span class="filter-label">Periodo</span>
-                        <select v-model="idPeriodo" class="filter-input" :disabled="cargando">
-                            <option value="">Todos</option>
-                            <option v-for="periodo in periodos" :key="periodo.id_periodo" :value="String(periodo.id_periodo)" :title="periodo.nombre">
-                                {{ periodo.codigo }}
-                            </option>
-                        </select>
+                        <SelectInput 
+                            v-model="idPeriodo" 
+                            :disabled="cargando"
+                            :options="periodos.map(p => ({ value: String(p.id_periodo), label: p.codigo }))"
+                            placeholder="Todos"
+                        />
                     </label>
                     <label class="filter-field">
                         <span class="filter-label">Tipo</span>
-                        <select v-model="idTipo" class="filter-input" :disabled="cargando">
-                            <option value="">Todos</option>
-                            <option v-for="tipo in tipos" :key="tipo.id_tipo_examen" :value="String(tipo.id_tipo_examen)" :title="tipo.codigo">
-                                {{ tipo.nombre }}
-                            </option>
-                        </select>
+                        <SelectInput 
+                            v-model="idTipo" 
+                            :disabled="cargando"
+                            :options="tipos.map(t => ({ value: String(t.id_tipo_examen), label: t.nombre }))"
+                            placeholder="Todos"
+                        />
                     </label>
                     <label class="filter-field">
                         <span class="filter-label">Fecha</span>
-                        <input v-model="fecha" type="date" class="filter-input" :disabled="cargando" />
+                        <TextInput v-model="fecha" type="date" :disabled="cargando" />
                     </label>
                     <label class="filter-field">
                         <span class="filter-label">Hora</span>
-                        <input v-model="horaInicio" type="time" class="filter-input" :disabled="cargando" />
+                        <TextInput v-model="horaInicio" type="time" :disabled="cargando" />
                     </label>
                 </div>
             </div>
@@ -743,18 +740,18 @@ onBeforeUnmount(() => {
 <style scoped>
 /* Contenedor y Título */
 .panel-container {
-    padding: 2rem;
-    background-color: #f3f4f6;
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    font-family: var(--font-family);
+    background-color: transparent;
 }
 
 .panel-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
-    color: #1f2937;
-    margin-bottom: 1.5rem;
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-lg);
     text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
 }
 
 /* Barra de Acciones */
@@ -815,8 +812,8 @@ onBeforeUnmount(() => {
 .filter-row {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 1rem;
+    align-items: center;
+    gap: var(--spacing-md);
 }
 
 /* Pestañas por estado: filtro con conteos, colores coherentes con los badges.
@@ -911,14 +908,15 @@ onBeforeUnmount(() => {
 .filter-field {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 4px;
     min-width: 140px;
+    flex: 1;
 }
 
 .filter-label {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 600;
-    color: #6b7280;
+    color: var(--text-muted);
     text-transform: uppercase;
 }
 
@@ -933,36 +931,12 @@ onBeforeUnmount(() => {
 
 /* Tabla de Datos */
 .table-container {
-    background: white;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    overflow-x: auto; /* Permite visualizar las columnas completas */
+    background: var(--color-white);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    overflow-x: auto;
     width: 100%;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.data-table th {
-    background-color: #f9fafb;
-    text-align: left;
-    padding: 0.75rem 0.85rem; /* Ajustado para ganar espacio */
-    font-weight: 600;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    white-space: nowrap;
-}
-
-.data-table td {
-    padding: 0.75rem 0.85rem;
-    border-bottom: 1px solid #f3f4f6;
-    color: #374151;
-    vertical-align: middle;
+    box-shadow: var(--shadow-card);
 }
 
 /* Tipografías específicas de celdas */
@@ -1246,16 +1220,18 @@ onBeforeUnmount(() => {
 
 /* Pie de Tabla */
 .table-footer {
-    padding: 1rem;
-    background-color: #ffffff;
-    border-top: 1px solid #e5e7eb;
-    color: #9ca3af;
-    font-size: 0.75rem;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--color-white);
+    border-top: 1px solid var(--border-light);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .empty-state {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-muted);
     padding: 2rem !important;
 }
 
@@ -1271,15 +1247,15 @@ onBeforeUnmount(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1rem;
-    padding: 1rem;
-    border-top: 1px solid #e5e7eb;
-    background-color: #ffffff;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-top: 1px solid var(--border-light);
+    background-color: var(--color-white);
 }
 
 .page-info {
-    font-size: 0.8rem;
-    color: #6b7280;
+    font-size: 0.85rem;
+    color: var(--text-muted);
 }
 
 /* Estandarización geométrica global */

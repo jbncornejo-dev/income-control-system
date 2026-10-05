@@ -9,39 +9,9 @@ const props = defineProps({
     proximosExamenes: Array
 });
 
-const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-const diasSemana = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-const hoy = new Date();
-const mesActual = ref(hoy.getMonth());
-const anioActual = ref(hoy.getFullYear());
-const diaSeleccionado = ref(null);
-const pad = (n) => String(n).padStart(2, '0');
-const claveFecha = (a, m, d) => `${a}-${pad(m + 1)}-${pad(d)}`;
-const examenesPorFecha = computed(() => {
-    const mapa = {};
-    (props.proximosExamenes || []).forEach((e) => {
-        const f = String(e.fecha || '').slice(0, 10);
-        if (f) (mapa[f] ||= []).push(e);
-    });
-    return mapa;
-});
-const celdas = computed(() => {
-    const offset = (new Date(anioActual.value, mesActual.value, 1).getDay() + 6) % 7;
-    const total = new Date(anioActual.value, mesActual.value + 1, 0).getDate();
-    const lista = Array(offset).fill(null);
-    for (let d = 1; d <= total; d++) lista.push(d);
-    return lista;
-});
-const esHoy = (d) => d === hoy.getDate() && mesActual.value === hoy.getMonth() && anioActual.value === hoy.getFullYear();
-const tieneExamen = (d) => !!examenesPorFecha.value[claveFecha(anioActual.value, mesActual.value, d)];
-const examenesDelDia = computed(() => diaSeleccionado.value ? examenesPorFecha.value[claveFecha(anioActual.value, mesActual.value, diaSeleccionado.value)] || [] : []);
-const cambiarMes = (delta) => {
-    const f = new Date(anioActual.value, mesActual.value + delta, 1);
-    mesActual.value = f.getMonth();
-    anioActual.value = f.getFullYear();
-    diaSeleccionado.value = null;
-};
-const seleccionarDia = (d) => { if (d) diaSeleccionado.value = diaSeleccionado.value === d ? null : d; };
+import ExamenesCalendar from '@/components/ui/ExamenesCalendar.vue';
+import StatCard from '@/components/ui/StatCard.vue';
+
 const enlaces = [
     { titulo: 'Portal UMSS', desc: 'Sitio oficial de la universidad', url: 'https://www.umss.edu.bo' },
     { titulo: 'FCyT', desc: 'Facultad de Ciencias y Tecnología', url: 'https://www.fcyt.umss.edu.bo' },
@@ -63,32 +33,11 @@ const noticias = [
 
             <!-- Fila de Tarjetas de Estadísticas -->
             <div class="stats-grid">
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">Estudiantes</span>
-                    <span class="stat-value">{{ stats.estudiantes }}</span>
-                    <span class="stat-desc">registrados</span>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--color-danger);">
-                    <span class="stat-label">Exámenes</span>
-                    <span class="stat-value">{{ stats.examenes }}</span>
-                    <span class="stat-desc">programados</span>
-                </div>
-                <!-- Para las demás, puedes usar primary o crear variables secundarias en tu tokens.css -->
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">Asignaturas</span>
-                    <span class="stat-value">{{ stats.asignaturas }}</span>
-                    <span class="stat-desc">activas</span>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">Ambientes</span>
-                    <span class="stat-value">{{ stats.ambientes }}</span>
-                    <span class="stat-desc">habilitados</span>
-                </div>
-                <div class="stat-card" style="border-top-color: var(--color-primary);">
-                    <span class="stat-label">Usuarios</span>
-                    <span class="stat-value">{{ stats.usuarios }}</span>
-                    <span class="stat-desc">personal</span>
-                </div>
+                <StatCard label="Estudiantes" :value="stats.estudiantes" desc="registrados" color="var(--color-primary)" />
+                <StatCard label="Exámenes" :value="stats.examenes" desc="programados" color="var(--color-danger)" />
+                <StatCard label="Asignaturas" :value="stats.asignaturas" desc="activas" color="var(--color-primary)" />
+                <StatCard label="Ambientes" :value="stats.ambientes" desc="habilitados" color="var(--color-primary)" />
+                <StatCard label="Usuarios" :value="stats.usuarios" desc="personal" color="var(--color-primary)" />
             </div>
 
             <!-- Sección Inferior: Tabla y Accesos Rápidos -->
@@ -112,20 +61,18 @@ const noticias = [
                         </thead>
                         <tbody>
                             <!-- Iteración sobre datos reales -->
-                            <tr v-for="examen in proximosExamenes" :key="examen.id">
-                                <!-- Ajusta 'nombre' según las propiedades reales de tus modelos -->
-                                <td>{{ examen.asignatura?.nombre || 'N/D' }}</td>
+                            <tr v-for="examen in proximosExamenes" :key="examen.id_examen">
+                                <td>{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</td>
                                 <td>{{ examen.fecha }}</td>
-                                <td>{{ examen.hora }}</td>
+                                <td>{{ examen.hora_inicio }}</td>
                                 <td>
-                                    <!-- Si tienes múltiples ambientes por examen -->
-                                    <span v-if="examen.ambientes && examen.ambientes.length > 0">
-                                        {{ examen.ambientes.map(a => a.nombre).join(', ') }}
+                                    <span v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0">
+                                        {{ examen.examenes_ambientes.map(ea => ea.ambiente?.nombre_ambiente).filter(Boolean).join(', ') }}
                                     </span>
-                                    <span v-else>{{ examen.ambiente?.nombre || 'N/D' }}</span>
+                                    <span v-else>N/D</span>
                                 </td>
                                 <td>
-                                    <span class="status-badge">{{ examen.estado || 'Pendiente' }}</span>
+                                    <span class="status-badge">{{ examen.estado_actual || 'Pendiente' }}</span>
                                 </td>
                             </tr>
                             
@@ -170,22 +117,7 @@ const noticias = [
             <div class="extras-grid">
                 <div class="content-box">
                     <div class="box-header"><h2>Calendario de exámenes</h2></div>
-                    <div class="cal-nav">
-                        <button class="cal-btn" @click="cambiarMes(-1)" aria-label="Mes anterior">&lsaquo;</button>
-                        <span class="cal-mes">{{ meses[mesActual] }} {{ anioActual }}</span>
-                        <button class="cal-btn" @click="cambiarMes(1)" aria-label="Mes siguiente">&rsaquo;</button>
-                    </div>
-                    <div class="cal-grid">
-                        <span v-for="(d, i) in diasSemana" :key="'h' + i" class="cal-head">{{ d }}</span>
-                        <button v-for="(dia, i) in celdas" :key="i" class="cal-day" :class="{ vacio: !dia, hoy: esHoy(dia), examen: dia && tieneExamen(dia), activo: dia && dia === diaSeleccionado }" :disabled="!dia" @click="seleccionarDia(dia)">{{ dia || '' }}</button>
-                    </div>
-                    <div v-if="diaSeleccionado" class="cal-detalle">
-                        <p v-if="!examenesDelDia.length" class="cal-vacio">Sin exámenes este día.</p>
-                        <div v-for="e in examenesDelDia" :key="e.id_examen" class="cal-examen">
-                            <strong>{{ e.asignatura?.nombre_asignatura || 'Examen' }}</strong>
-                            <span>{{ String(e.hora_inicio || '').slice(0, 5) }}</span>
-                        </div>
-                    </div>
+                    <ExamenesCalendar :examenes="proximosExamenes" />
                 </div>
                 <div class="content-box">
                     <div class="box-header"><h2>Enlaces</h2></div>
@@ -212,89 +144,64 @@ const noticias = [
 </template>
 
 <style scoped>
+<style scoped>
 /* Contenedor principal */
 .panel-container {
-    padding: 2rem;
-    font-family: var(--font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif);
-    background-color: var(--bg-main, #f3f4f6);
-    min-height: 100vh;
+    /* El padding y min-height globales ahora los maneja AuthenticatedLayout */
+    font-family: var(--font-family);
+    background-color: transparent;
 }
 
 .panel-title {
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--color-primary);
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--spacing-lg);
     text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 1px;
 }
 
 /* Cuadrícula de Tarjetas Superiores */
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card {
-    background: #ffffff;
-    border-radius: 0.5rem;
-    padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    border-top: 4px solid var(--color-primary);
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0.5rem 0;
-}
-
-.stat-desc {
-    font-size: 0.75rem;
-    color: #9ca3af;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
 }
 
 /* Cuadrícula Inferior (Tabla + Accesos Rápidos) */
 .content-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
+    gap: var(--spacing-lg);
 }
 
 /* Cajas de Contenido (Paneles blancos) */
 .content-box {
-    background: #ffffff;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
-    padding: 1.5rem;
-    overflow-x: auto;
+    background: var(--color-white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-card);
+    overflow-x: auto; /* Para tablas en resoluciones menores */
 }
 
 .box-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: var(--spacing-lg);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-light);
 }
 
 .box-header h2 {
-    font-size: 1.125rem;
-    font-weight: 700;
-    color: #1f2937;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--color-primary);
     margin: 0;
+    font-family: var(--font-display);
 }
 
 .link-action {
@@ -308,109 +215,111 @@ const noticias = [
     text-decoration: underline;
 }
 
-/* Estilos de Tabla Estandarizados */
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.875rem;
-}
-
-.data-table th {
-    background-color: #f9fafb;
-    text-align: left;
-    padding: 0.75rem 1rem;
-    font-weight: 600;
-    color: #6b7280;
-    border-bottom: 1px solid #e5e7eb;
-    text-transform: uppercase;
-}
-
-.data-table td {
-    padding: 1rem;
-    border-bottom: 1px solid #f3f4f6;
-    color: #374151;
-    vertical-align: middle;
-}
 
 .status-badge {
-    background-color: #f9fafb;
+    background-color: var(--color-white-soft);
     color: var(--color-primary);
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
     font-size: 0.75rem;
     font-weight: 600;
     border: 1px solid var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 /* Estilos de Accesos Rápidos */
 .quick-access-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--spacing-md);
 }
 
 .qa-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.375rem;
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    color: #374151;
-    font-size: 0.875rem;
-    transition: all 0.2s ease;
+    color: var(--text-dark);
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: var(--color-white);
+    transition: all var(--transition-fast);
 }
 
 .qa-item:hover {
-    background-color: #f9fafb;
+    background-color: var(--color-white-soft);
     border-color: var(--color-primary);
     transform: translateX(4px);
+    box-shadow: var(--shadow-subtle);
 }
 
 .qa-meta {
-    color: #9ca3af;
-    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 400;
 }
-.extras-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 1.5rem; }
-@media (max-width: 1100px) { .extras-grid { grid-template-columns: 1fr; } }
-.cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.cal-mes { font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85rem; }
-.cal-btn { background: none; border: 1px solid #e5e7eb; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; color: var(--color-primary); font-size: 1.1rem; line-height: 1; }
-.cal-btn:hover { background: #f3f4f6; }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
-.cal-head { font-size: 0.7rem; font-weight: 700; color: #6b7280; padding: 4px 0; }
-.cal-day { position: relative; border: none; background: none; padding: 6px 0; border-radius: 4px; font-size: 0.85rem; color: #374151; cursor: pointer; }
-.cal-day:hover:not(.vacio) { background: #f3f4f6; }
-.cal-day.vacio { cursor: default; }
-.cal-day.hoy { font-weight: 700; color: var(--color-primary); background: #eef2f7; }
-.cal-day.examen::after { content: ''; position: absolute; bottom: 2px; left: 50%; translate: -50% 0; width: 5px; height: 5px; border-radius: 50%; background: var(--color-danger, #d32f2f); }
-.cal-day.activo { background: var(--color-primary); color: #fff; }
-.cal-detalle { margin-top: 0.75rem; border-top: 1px solid #f0f0f0; padding-top: 0.75rem; display: flex; flex-direction: column; gap: 6px; }
-.cal-examen { display: flex; justify-content: space-between; font-size: 0.85rem; color: #374151; }
-.cal-vacio { font-size: 0.85rem; color: #6b7280; margin: 0; }
-.link-list, .news-list { display: flex; flex-direction: column; gap: 0.5rem; }
-.link-item { display: flex; flex-direction: column; padding: 0.75rem; border: 1px solid #f0f0f0; border-radius: 6px; text-decoration: none; transition: background 0.2s ease, border-color 0.2s ease; }
-.link-item:hover { background: #f9fafb; border-color: var(--color-primary); }
-.link-title { font-weight: 600; color: var(--color-primary); font-size: 0.9rem; }
-.link-desc { font-size: 0.8rem; color: #6b7280; }
-.news-item { padding: 0.75rem; border-left: 3px solid var(--color-primary); background: #f9fafb; border-radius: 0 6px 6px 0; }
-.news-fecha { display: block; font-size: 0.7rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.06em; }
-.news-titulo { display: block; font-weight: 600; color: var(--color-primary); font-size: 0.9rem; margin: 2px 0; }
-.news-texto { font-size: 0.8rem; color: #4b5563; margin: 0; }
-.extras-grid .content-box { border-top: 4px solid var(--color-primary); }
-.extras-grid .content-box:nth-child(3) { border-top-color: var(--color-danger, #d32f2f); }
-.cal-btn { transition: background 0.2s ease, color 0.2s ease; }
-.cal-btn:hover { background: var(--color-primary); color: #fff; }
-.cal-day { transition: background 0.2s ease, color 0.2s ease, scale 0.2s ease; }
-.cal-day.hoy { box-shadow: inset 0 0 0 2px var(--color-primary); }
-.cal-day.examen { color: #b91c1c; font-weight: 600; }
-.cal-day.activo { background: var(--color-primary); color: #fff; }
-.cal-examen { padding: 0.5rem 0.75rem; border-left: 3px solid var(--color-danger, #d32f2f); background: #f9fafb; border-radius: 0 6px 6px 0; }
-.link-item { border-left: 3px solid transparent; }
-.cal-day, .cal-examen, .link-item, .news-item { transition: background 0.2s ease, box-shadow 0.2s ease; }
-.cal-day:hover:not(.vacio) { box-shadow: 0 0 8px rgba(29, 54, 83, 0.25); }
-.cal-examen:hover { box-shadow: 0 0 10px rgba(211, 47, 47, 0.18); }
-.link-item:hover { box-shadow: 0 0 12px rgba(29, 54, 83, 0.15); }
-.news-item:hover { background: #eef2f7; box-shadow: 0 0 12px rgba(29, 54, 83, 0.12); }
+
+/* Bloque Inferior */
+.extras-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+    gap: var(--spacing-lg); 
+    margin-top: var(--spacing-xl); 
+}
+
+/* Listas Informativas */
+.link-list, .news-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.link-item { 
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md);
+    background: var(--color-white-soft);
+    border-left: 4px solid var(--color-primary); 
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--text-dark);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+.link-item:hover { 
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-subtle); 
+}
+.link-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+.link-desc { font-size: 0.85rem; color: var(--text-muted); }
+
+.news-item { 
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-md) 0;
+    border-bottom: 1px solid var(--border-light);
+    transition: background var(--transition-fast); 
+}
+.news-item:last-child { border-bottom: none; padding-bottom: 0; }
+.news-item:first-child { padding-top: 0; }
+.news-item:hover { background: rgba(0,0,0,0.02); }
+.news-fecha { font-size: 0.75rem; color: var(--color-active); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+.news-titulo { font-weight: 600; font-size: 1rem; color: var(--color-primary); margin-bottom: 4px; }
+.news-texto { font-size: 0.9rem; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+/* Responsive Dashboard */
+@media (max-width: 1200px) {
+    .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 992px) {
+    .content-grid { grid-template-columns: 1fr; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 640px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .content-box { padding: var(--spacing-md); }
+}
 </style>

@@ -1,7 +1,9 @@
 <template>
     <div class="input-wrapper">
-        <label v-if="label" class="input-label">{{ label }}</label>
+        <label v-if="label" :for="inputId" class="input-label">{{ label }}</label>
         <input 
+            v-bind="$attrs"
+            :id="inputId"
             :type="type"
             :value="modelValue"
             @input="$emit('update:modelValue', $event.target.value)"
@@ -12,6 +14,13 @@
 </template>
 
 <script setup>
+import { computed, useAttrs } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const inputId = computed(() => attrs.id || `input-${Math.random().toString(36).substring(2, 9)}`);
+
 defineProps({
     modelValue: [String, Number],
     label: String,
@@ -35,28 +44,28 @@ defineEmits(['update:modelValue']);
     font-size: 12px;
     font-weight: 600;
     color: var(--text-muted);
-    margin-bottom: 8px;
+    margin-bottom: var(--spacing-sm);
     font-family: var(--font-family);
 }
 
 .input-control {
     width: 100%;
     height: 42px;
-    padding: 0 0.8rem;
+    padding: 0 12px;
     border: 1px solid var(--border-light);
-    border-radius: 0.45rem;
+    border-radius: var(--radius-md);
     font-size: 14px;
     color: var(--text-dark);
     background-color: var(--color-cream);
     outline: none;
     box-sizing: border-box;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
     font-family: var(--font-family);
 }
 
 .input-control:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(29, 54, 83, 0.15);
+    box-shadow: var(--shadow-input-focus);
 }
 
 /* Modificador para el buscador heredado de styles.css */
@@ -72,12 +81,12 @@ defineEmits(['update:modelValue']);
 
 /* Modificador para campos deshabilitados (solo texto grisáceo) */
 .input-disabled {
-    background-color: transparent; /* Quitamos el color de fondo */
-    border: 1px solid transparent; /* Ocultamos el borde */
-    color: #9ca3af; /* Texto grisáceo */
-    box-shadow: none; /* Quitamos sombras */
-    cursor: not-allowed; /* Indicador de que no se puede interactuar */
-    padding: 0; /* Removemos el padding para que se alinee perfectamente a la izquierda con el label */
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    padding: 0;
 }
 
 .input-disabled:focus {

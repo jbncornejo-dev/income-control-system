@@ -1,104 +1,164 @@
 <template>
-  <div class="login-body">
-    <!-- Navbar público reutilizado -->
-    <PublicNavbar />
+  <Head title="Acceso al Sistema | CIE UMSS" />
 
-    <main class="login-main">
-      <div class="auth-container">
+  <div class="login-page antialiased">
+    <!-- Fondos -->
+    <div class="bg-campus">
+      <img src="/paseoUniversitario.jpg" alt="Campus Universitario" class="campus-img" />
+    </div>
+    <div class="bg-overlay"></div>
+
+    <nav class="public-nav">
+      <Link href="/" class="back-link group">
+        <svg class="back-icon group-hover-translate" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+        </svg>
+        <div class="back-text font-display">
+          Volver al <span class="text-brand-gold">Portal</span>
+        </div>
+      </Link>
+    </nav>
+
+    <main class="main-content">
+      <div class="auth-card fade-in-up">
         
-        <!-- Panel Izquierdo: Formulario de Login -->
-        <div class="login-panel">
+        <!-- PANEL IZQUIERDO: FORMULARIO -->
+        <div class="left-panel">
+          
+          <!-- Encabezado del Formulario -->
           <div class="panel-header">
-            <div class="logo-large">CIE</div>
-            <h2>Iniciar Sesión</h2>
-            <p>Acceso para personal autorizado</p>
+            <div class="brand-header">
+              <div class="gold-line"></div>
+              <h1 class="brand-title font-display">CIE</h1>
+            </div>
+            <h2 class="section-title">Acceso Restringido</h2>
+            <p class="section-desc">Ingrese sus credenciales administrativas para continuar al panel de control de evaluaciones.</p>
           </div>
 
+          <!-- Formulario -->
           <form @submit.prevent="handleLogin" class="login-form">
+            
+            <!-- Input Identificador (Correo, código o documento) -->
             <div class="form-group">
-              <label>Correo, código o documento</label>
-              <input 
-                type="text" 
-                v-model.trim="loginForm.identificador" 
-                required 
-                autocomplete="username" 
-                class="input-control"
-                placeholder="ej: 201809372"
-              />
+              <label for="identificador" class="form-label">Correo Electrónico Institucional</label>
+              <div class="input-wrapper">
+                <div class="input-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                </div>
+                <input 
+                  type="text" 
+                  id="identificador" 
+                  v-model.trim="loginForm.identificador"
+                  required 
+                  autocomplete="username"
+                  placeholder="nombre@umss.edu.bo" 
+                  class="form-input"
+                >
+              </div>
               <p v-if="loginForm.errors.identificador" class="form-error" role="alert">{{ loginForm.errors.identificador }}</p>
             </div>
 
+            <!-- Input Password -->
             <div class="form-group">
-              <label>Contraseña</label>
-              <div class="password-input-container">
-                <input
-                  :type="showPassword ? 'text' : 'password'"
+              <div class="password-header">
+                <label for="password" class="form-label">Contraseña</label>
+                <!-- <a href="#" @click.prevent class="forgot-link">¿Olvidó su clave?</a> -->
+              </div>
+              <div class="input-wrapper">
+                <div class="input-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                </div>
+                <input 
+                  :type="showPassword ? 'text' : 'password'" 
+                  id="password" 
                   v-model="loginForm.password"
-                  required
+                  required 
                   autocomplete="current-password"
-                  class="input-control"
-                />
+                  placeholder="••••••••" 
+                  class="form-input password-input"
+                >
                 
-                <button type="button" class="btn-eye" @click="showPassword = !showPassword" aria-label="Mostrar contraseña">
-                  <!-- Icono de Ojo Abierto -->
-                  <svg v-if="showPassword" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
+                <!-- Toggle Visibilidad Contraseña -->
+                <button type="button" @click="showPassword = !showPassword" class="toggle-password" :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'">
+                  <svg v-if="!showPassword" class="eye-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                   </svg>
-                  <!-- Icono de Ojo Cerrado -->
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  <svg v-else class="eye-icon text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
                   </svg>
                 </button>
               </div>
               <p v-if="loginForm.errors.password" class="form-error" role="alert">{{ loginForm.errors.password }}</p>
-              
-              <div class="forgot-link">
-                <a href="#" @click.prevent>¿Olvidaste tu contraseña?</a>
-              </div>
             </div>
 
             <p v-if="loginError" class="form-error global-error" role="alert">{{ loginError }}</p>
 
-            <Button type="submit" variant="primary" class="btn-submit" :disabled="loginForm.processing">
-              <LoadingSpinner v-if="loginForm.processing" size="small" />
-              <span v-else>Ingresar</span>
-            </Button>
+            <!-- Botón Submit -->
+            <div class="submit-wrapper">
+              <button type="submit" class="btn-submit font-display" :disabled="loginForm.processing">
+                <template v-if="loginForm.processing">
+                  AUTENTICANDO...
+                </template>
+                <template v-else>
+                  Autenticar
+                  <svg class="submit-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                </template>
+              </button>
+            </div>
           </form>
+
         </div>
 
-        <!-- Panel Derecho: Información (Sin opción de crear cuenta) -->
-        <div class="info-panel">
-          <div class="logos-container">
-            <img src="/images/umss-logo.png" alt="Logotipo UMSS" class="umss-logo" />
+        <!-- PANEL DERECHO: IDENTIDAD INSTITUCIONAL -->
+        <div class="right-panel">
+          <!-- Decoración de fondo abstracta -->
+          <div class="bg-deco-top"></div>
+          <div class="bg-deco-bottom"></div>
+
+          <div class="right-content">
             
-            <div class="dev-container">
-              <span class="dev-text">Desarrollado por</span>
-              <div class="texcorp-brand" aria-label="TexCorp"><svg class="texcorp-x" viewBox="0 0 160 96" xmlns="http://www.w3.org/2000/svg"><polygon points="0,0 30,0 95,48 65,48" fill="#1f2d4f"/><polygon points="65,48 95,48 160,96 130,96" fill="#c8641f"/><polygon points="112,0 160,0 48,96 0,96" fill="#d6d1ca"/></svg><span class="texcorp-text">TEXCORP</span></div>
+            <!-- Emblema Principal UMSS -->
+            <div class="umss-emblem-container">
+              <div class="umss-circle">
+                <span class="umss-text font-display">U<span class="text-brand-gold">M</span>SS</span>
+              </div>
+              <h3 class="umss-subtitle font-display">Universidad Mayor</h3>
+              <p class="umss-subtext font-display text-brand-gold">De San Simón</p>
+              <div class="umss-divider"></div>
+              <p class="umss-desc">
+                Sistema Central de Control de Ingresos para Procesos de Evaluación.
+              </p>
             </div>
+
+            <!-- Footer / Agencia -->
+            <div class="agency-footer">
+              <span class="agency-label">Desarrollado por</span>
+              <div class="agency-logo-container">
+                <img src="/images/TexCorp.png" alt="TEXCORP" class="texcorp-img" />
+                <span class="texcorp-text font-display">TEXCORP</span>
+              </div>
+            </div>
+
           </div>
         </div>
 
       </div>
     </main>
 
-    <footer class="login-footer">
-      Copyright &copy; {{ new Date().getFullYear() }} TexCorp. Todos los derechos reservados.
+    <footer class="public-footer">
+      &copy; {{ new Date().getFullYear() }} TexCorp. Todos los derechos reservados.
     </footer>
-    
+
     <ToastContainer />
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
-import { useForm } from '@inertiajs/vue3'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 import { useToastStore } from '@/stores/useToastStore'
-import PublicNavbar from '@/components/ui/PublicNavbar.vue'
 import ToastContainer from '@/components/ui/ToastContainer.vue'
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
-import Button from '@/components/ui/Button.vue'
 
 const toastStore = useToastStore()
 const showPassword = ref(false)
@@ -121,252 +181,520 @@ function handleLogin() {
 </script>
 
 <style scoped>
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&display=swap");
-/* Hereda el fondo base del sistema */
-.login-body {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    background-color: var(--bg-main, #f4f4f4);
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;900&display=swap');
+
+/* Reset base variables mapped to mockup */
+.login-page {
+  font-family: 'Inter', sans-serif;
+  color: #1f2937;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
-.login-main {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
+.font-display {
+  font-family: 'Orbitron', sans-serif;
 }
 
-/* Tarjeta principal dividida */
-.auth-container {
-    display: flex;
-    background-color: var(--text-white, #ffffff);
-    border-radius: 8px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
-    overflow: hidden;
-    width: 100%;
-    max-width: 850px;
-    border-top: 4px solid var(--color-active, #a12b33);
+.text-brand-gold { color: #C5A059; }
+.text-brand-primary { color: #1D3653; }
+
+/* Fondos Inmersivos */
+.bg-campus {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
 }
 
-/* --- Panel del Formulario (Izquierda) --- */
-.login-panel {
-    flex: 1.2;
-    padding: 50px 60px;
-    display: flex;
-    flex-direction: column;
+.campus-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: blur(8px);
+  transform: scale(1.05); /* Evita bordes por el blur */
 }
 
+.bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(135deg, rgba(10,25,47,0.75) 0%, rgba(29,54,83,0.5) 100%);
+}
+
+/* Navbar de retroceso */
+.public-nav {
+  width: 100%;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ffffff;
+  z-index: 10;
+  position: relative;
+}
+@media (min-width: 1024px) {
+  .public-nav { padding: 1.5rem 3rem; }
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: #ffffff;
+}
+
+.back-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #C5A059;
+  transition: transform 0.3s ease;
+}
+
+.group-hover-translate {
+  transform: translateX(0);
+}
+.back-link:hover .group-hover-translate {
+  transform: translateX(-4px);
+}
+
+.back-text {
+  font-weight: 700;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Contenido Principal */
+.main-content {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+  position: relative;
+}
+@media (min-width: 640px) {
+  .main-content { padding: 1.5rem; }
+}
+
+/* Tarjeta Principal */
+.auth-card {
+  width: 100%;
+  max-width: 64rem; /* max-w-5xl */
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px -10px rgba(10, 25, 47, 0.5);
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .auth-card { flex-direction: row; }
+}
+
+/* Panel Izquierdo */
+.left-panel {
+  width: 100%;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  position: relative;
+}
+@media (min-width: 768px) {
+  .left-panel { width: 60%; padding: 3rem; }
+}
+@media (min-width: 1024px) {
+  .left-panel { padding: 4rem; }
+}
+
+/* Encabezado Panel Izquierdo */
 .panel-header {
-    text-align: center;
-    margin-bottom: 35px;
+  margin-bottom: 2.5rem;
 }
 
-.logo-large {
-    font-size: 32px;
-    font-weight: 900;
-    letter-spacing: 1.5px;
-    margin-bottom: 8px;
-    color: var(--color-primary, #1d3653);
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
-.panel-header h2 {
-    font-size: 20px;
-    color: var(--text-dark, #333333);
-    margin-bottom: 5px;
+.gold-line {
+  height: 2px;
+  width: 2rem;
+  background-color: #C5A059;
 }
 
-.panel-header p {
-    font-size: 13px;
-    color: #6b7280;
+.brand-title {
+  font-weight: 900;
+  font-size: 1.875rem;
+  letter-spacing: 0.025em;
+  color: #1D3653;
+  margin: 0;
 }
 
-/* Inputs y Formularios */
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+  font-family: 'Inter', sans-serif;
+}
+
+.section-desc {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Formulario */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .form-group {
-    margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 }
 
-.form-group label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: #4b5563;
-    margin-bottom: 8px;
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
 }
 
-.input-control {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid var(--border-light, #d1d5db);
-    border-radius: 4px;
-    font-size: 14px;
-    outline: none;
-    transition: border-color 0.2s;
-    color: var(--text-dark, #333333);
+.password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
 }
-
-.input-control:focus {
-    border-color: var(--color-primary, #1d3653);
-}
-
-/* Contenedor de contraseña con ojo integrado */
-.password-input-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.password-input-container input {
-    padding-right: 45px; /* Espacio para que el texto no pise el icono */
-}
-
-.btn-eye {
-    position: absolute;
-    right: 12px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    color: #9ca3af;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: color 0.2s;
-}
-
-.btn-eye:hover {
-    color: var(--color-primary, #1d3653);
-}
-
-.btn-eye svg {
-    width: 20px;
-    height: 20px;
-}
+.password-header .form-label { margin-bottom: 0; }
 
 .forgot-link {
-    text-align: right;
-    margin-top: 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #3A5A7E;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.forgot-link:hover {
+  color: #1D3653;
+  text-decoration: underline;
 }
 
-.forgot-link a {
-    font-size: 12px;
-    color: #2563eb;
-    text-decoration: none;
+.input-wrapper {
+  position: relative;
 }
 
-.forgot-link a:hover {
-    text-decoration: underline;
+.input-icon {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  padding-left: 1rem;
+  display: flex;
+  align-items: center;
+  pointer-events: none;
+  color: #9ca3af;
+}
+.input-icon svg { width: 1.25rem; height: 1.25rem; }
+
+.form-input {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.75rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  color: #111827;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-input:focus {
+  border-color: #1D3653;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(29, 54, 83, 0.15);
+}
+
+.password-input {
+  padding-right: 3rem;
+}
+
+.toggle-password {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  padding-right: 1rem;
+  display: flex;
+  align-items: center;
+  color: #9ca3af;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  outline: none;
+}
+.toggle-password:hover { color: #1D3653; }
+.eye-icon { width: 1.25rem; height: 1.25rem; }
+
+.form-error {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #A12B33;
+}
+.global-error {
+  font-weight: 600;
+  background-color: #fef2f2;
+  border-left: 3px solid #A12B33;
+  padding: 0.5rem 0.75rem;
+}
+
+/* Botón Submit */
+.submit-wrapper {
+  padding-top: 1rem;
 }
 
 .btn-submit {
-    width: 100%;
-    margin-top: 10px;
-    padding: 12px !important;
-    font-size: 14px !important;
-}
-
-.btn-submit:hover:not(:disabled) {
-    opacity: 0.9;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #1D3653;
+  color: #ffffff;
+  padding: 0.875rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  outline: none;
 }
 
 .btn-submit:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
-.form-error { 
-    color: #b3261e; 
-    font-size: 12px; 
-    margin: 6px 0 0; 
-    font-weight: 500;
+.btn-submit::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 0%; height: 100%;
+  background-color: #0A192F;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: -1;
 }
 
-.global-error {
-    text-align: center;
-    margin-bottom: 15px;
+.btn-submit:not(:disabled):hover::before {
+  width: 100%;
 }
 
-/* --- Panel de Información (Derecha) --- */
-.info-panel {
-    flex: 1;
-    background-color: var(--color-primary, #1d3653);
-    padding: 50px 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
+.btn-submit:not(:disabled):hover {
+  box-shadow: 0 8px 20px rgba(10, 25, 47, 0.3);
+  transform: translateY(-1px);
 }
 
-.logos-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4rem;
+.submit-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
-.umss-logo {
-    width: 100%;
-    max-width: 220px;
-    height: auto;
+/* Panel Derecho */
+.right-panel {
+  width: 100%;
+  background-color: #0A192F;
+  padding: 2rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .right-panel { width: 40%; padding: 3rem; }
 }
 
-.dev-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
+.bg-deco-top {
+  position: absolute;
+  top: 0; right: 0;
+  margin-right: -4rem; margin-top: -4rem;
+  width: 16rem; height: 16rem;
+  border-radius: 9999px;
+  background-color: #1D3653;
+  opacity: 0.2;
+  filter: blur(40px);
 }
 
-.dev-text {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
+.bg-deco-bottom {
+  position: absolute;
+  bottom: 0; left: 0;
+  margin-left: -4rem; margin-bottom: -4rem;
+  width: 12rem; height: 12rem;
+  border-radius: 9999px;
+  background-color: #C5A059;
+  opacity: 0.1;
+  filter: blur(32px);
 }
 
-.texcorp-logo {
-    width: 100%;
-    max-width: 160px;
-    height: auto;
+.right-content {
+  position: relative;
+  z-index: 10;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 4rem;
 }
 
-.info-panel h2 {
-    font-size: 24px;
-    margin-bottom: 20px;
-    font-weight: 600;
+/* Emblema UMSS */
+.umss-emblem-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.info-panel p {
-    font-size: 14px;
-    margin-bottom: 15px;
-    line-height: 1.6;
-    color: #e5e7eb;
+.umss-circle {
+  width: 5rem;
+  height: 5rem;
+  border: 2px solid rgba(197, 160, 89, 0.3);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
 }
 
-.info-subtext {
-    font-size: 12px !important;
-    opacity: 0.8;
-    margin-top: 2x0px;
+.umss-text {
+  font-weight: 700;
+  font-size: 1.875rem;
+  color: #ffffff;
+  letter-spacing: -0.05em;
 }
 
-/* Footer */
-.login-footer {
-    text-align: center;
-    padding: 20px;
-    font-size: 13px;
-    color: #9ca3af;
+.umss-subtitle {
+  color: #ffffff;
+  font-size: 1.125rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
 }
-.logo-large { font-family: "Orbitron", sans-serif; letter-spacing: 0.12em; }
-.info-panel { background: radial-gradient(circle at 30% 20%, #2b4f78 0%, #1d3653 45%, #0f2238 100%); }
-.umss-logo { transition: scale 0.35s ease, filter 0.35s ease; }
-.umss-logo:hover { scale: 1.08; filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.35)); }
-.dev-text { font-family: "Orbitron", sans-serif; font-size: 0.75rem; letter-spacing: 0.3em; color: rgba(255, 255, 255, 0.75); }
-.input-control { transition: border-color 0.25s ease, box-shadow 0.25s ease; }
-.input-control:focus { border-color: #1d3653 !important; box-shadow: 0 0 0 3px rgba(29, 54, 83, 0.15), 0 0 14px rgba(29, 54, 83, 0.2) !important; outline: none; }
-.btn-submit { font-family: "Orbitron", sans-serif !important; text-transform: uppercase; letter-spacing: 0.2em; clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%); transition: letter-spacing 0.3s ease, background 0.3s ease !important; }
-.btn-submit:hover { letter-spacing: 0.26em; background: #a12b33 !important; }
-.texcorp-brand { display: flex; flex-direction: column; align-items: center; gap: 14px; transition: scale 0.35s ease, filter 0.35s ease; cursor: default; }
-.texcorp-brand:hover { scale: 1.08; filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.7)) drop-shadow(0 0 28px rgba(255, 255, 255, 0.35)); }
-.texcorp-x { width: 90px; height: auto; filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)); }
-.texcorp-text { font-family: "Orbitron", sans-serif; font-weight: 800; font-size: 2.2rem; letter-spacing: 0.22em; background: linear-gradient(90deg, #e8e4de 0%, #d6d1ca 35%, #c8641f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.umss-subtext {
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.umss-divider {
+  height: 1px;
+  width: 3rem;
+  background-color: rgba(255, 255, 255, 0.2);
+  margin: 1.5rem auto;
+}
+
+.umss-desc {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  line-height: 1.625;
+  max-width: 250px;
+  font-weight: 300;
+  margin: 0;
+}
+
+/* Agency Footer */
+.agency-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.8;
+  transition: opacity 0.3s ease;
+}
+.agency-footer:hover { opacity: 1; }
+
+.agency-label {
+  font-size: 0.625rem;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.agency-logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.texcorp-img {
+  height: 24px;
+  object-fit: contain;
+}
+
+.texcorp-text {
+  color: #ffffff;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  font-size: 0.875rem;
+}
+
+/* Global Footer */
+.public-footer {
+  width: 100%;
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.5);
+  z-index: 10;
+  position: relative;
+}
+
+/* Animaciones */
+.fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>

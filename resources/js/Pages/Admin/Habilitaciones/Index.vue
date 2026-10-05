@@ -7,6 +7,7 @@ import { Head, Link } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import { useToastStore } from '@/stores/useToastStore';
 import Button from '@/components/ui/Button.vue';
+import TextInput from '@/components/ui/TextInput.vue';
 
 const props = defineProps({
     examen: Object,
@@ -230,13 +231,12 @@ function guardarNormas(hab) {
  
             <!-- Barra de Búsqueda y Filtros -->
             <div class="action-bar">
-                <div style="display: flex; gap: 1rem; flex: 1;">
-                    <input
+                <div style="display: flex; gap: var(--spacing-md); flex: 1; flex-wrap: wrap;">
+                    <TextInput
                         v-model="busqueda"
-                        type="text"
                         placeholder="Buscar estudiante..."
-                        class="search-input"
-                    >
+                        style="flex: 1; min-width: 200px; max-width: 500px;"
+                    />
                     <div class="filter-group">
                         <Button variant="action" :class="['filter-btn', filtroActivo === 'todos' ? 'active' : '']" @click="cargarFiltro('todos')">Todos</Button>
                         <Button variant="action" :class="['filter-btn', filtroActivo === 'habilitados' ? 'active' : '']" @click="cargarFiltro('habilitados')">Habilitados</Button>
@@ -247,8 +247,8 @@ function guardarNormas(hab) {
             <div v-if="filtroActivo !== 'todos'" class="bulk-bar">
                 <span><strong>{{ coincidencias }}</strong> estudiantes coinciden con el filtro. La acción incluye todas las páginas.</span>
                 <div class="bulk-buttons">
-                    <Button v-if="filtroActivo === 'inhabilitados'" variant="action" class="bulk-action" :disabled="!acciones?.habilitar || procesando" @click="abrirBloque('habilitar')">Habilitar a los {{ acciones?.habilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
-                    <Button v-if="filtroActivo === 'habilitados'" variant="delete" class="bulk-action" :disabled="!acciones?.inhabilitar || procesando" @click="abrirBloque('inhabilitar')">Inhabilitar a los {{ acciones?.inhabilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
+                    <Button v-if="filtroActivo === 'inhabilitados'" variant="primary" class="bulk-action" :disabled="!acciones?.habilitar || procesando" @click="abrirBloque('habilitar')">Habilitar a los {{ acciones?.habilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
+                    <Button v-if="filtroActivo === 'habilitados'" variant="danger" class="bulk-action" :disabled="!acciones?.inhabilitar || procesando" @click="abrirBloque('inhabilitar')">Inhabilitar a los {{ acciones?.inhabilitar ?? 0 }} resultados <span aria-hidden="true">→</span></Button>
                 </div>
             </div>
  
@@ -283,11 +283,11 @@ function guardarNormas(hab) {
                                 {{ hab.estudiante?.ya_ingreso ? 'Registrado' : 'Pendiente' }}
                             </td>
                             <td>
-                                <textarea v-model="hab.normas_particulares" rows="1" style="width:100%; font-size:0.75rem; border:1px solid #d1d5db; border-radius:3px; padding:2px 6px; resize:vertical;" @change="guardarNormas(hab)"></textarea>
+                                <textarea v-model="hab.normas_particulares" rows="1" class="form-input" style="font-size:0.8rem; padding:4px 8px; resize:vertical;" @change="guardarNormas(hab)"></textarea>
                             </td>
                             <td>
                                 <Button
-                                    :variant="hab.estado_habilitado ? 'delete' : 'action'"
+                                    :variant="hab.estado_habilitado ? 'danger' : 'primary'"
                                     :disabled="procesando || !!hab.estudiante?.ya_ingreso"
                                     :title="hab.estudiante?.ya_ingreso ? 'No se puede modificar: el estudiante ya ingresó al examen' : ''"
                                     @click="clickToggle(hab)"
@@ -340,27 +340,27 @@ function guardarNormas(hab) {
  
         <!-- Modal motivo inhabilitación -->
         <Modal :open="modalMotivo" title="Motivo de Inhabilitación" @close="cancelarMotivo">
-            <div class="form-group" style="margin-bottom: 12px;">
-                <label style="display:block; font-weight:600; margin-bottom:6px; font-size:13px;">
-                    Motivo <span style="color:#d32f2f;">*</span>
+            <div class="form-group">
+                <label class="form-label">
+                    Motivo <span class="required">*</span>
                 </label>
                 <textarea
                     v-model="motivo"
                     rows="3"
                     placeholder="Ej: Documentación incompleta..."
-                    style="width:100%; padding:10px; border-radius:6px; font-size:14px; box-sizing:border-box;"
-                    :style="{ border: errorMotivo ? '1px solid #d32f2f' : '1px solid #d1d5db' }"
+                    class="form-input"
+                    :class="{ 'input-error': errorMotivo }"
                     @input="errorMotivo = ''"
                 ></textarea>
-                <p v-if="errorMotivo" style="color:#d32f2f; font-size:12px; margin-top:4px;">{{ errorMotivo }}</p>
+                <p v-if="errorMotivo" class="error-msg">{{ errorMotivo }}</p>
             </div>
             <template #footer>
                 <Button variant="action" class="btn-modal" @click="cancelarMotivo">
                     Cancelar
                 </Button>
                 <Button 
-                    variant="primary" 
-                    class="btn-modal btn-peligro" 
+                    variant="danger" 
+                    class="btn-modal" 
                     @click="confirmarInhabilitar"
                     :disabled="procesando || !!habPendiente?.estudiante?.ya_ingreso"
                 >
@@ -370,16 +370,16 @@ function guardarNormas(hab) {
         </Modal>
 
         <Modal :open="modalBloque" :title="accionBloque === 'habilitar' ? 'Habilitar en bloque' : 'Inhabilitar en bloque'" @close="modalBloque = false">
-            <p>Se {{ accionBloque === 'habilitar' ? 'habilitarán' : 'inhabilitarán' }} <strong>{{ cantidadBloque }}</strong> estudiantes del examen {{ examen.asignatura?.nombre_asignatura }} que coinciden con el filtro y la búsqueda actuales, en todas las páginas.</p>
-            <p>Los estudiantes que ya registraron ingreso quedan excluidos.</p>
+            <p class="confirm-text" style="margin-bottom: var(--spacing-sm);">Se {{ accionBloque === 'habilitar' ? 'habilitarán' : 'inhabilitarán' }} <strong>{{ cantidadBloque }}</strong> estudiantes del examen {{ examen.asignatura?.nombre_asignatura }} que coinciden con el filtro y la búsqueda actuales, en todas las páginas.</p>
+            <p class="confirm-text" style="margin-bottom: var(--spacing-md);">Los estudiantes que ya registraron ingreso quedan excluidos.</p>
             <div v-if="accionBloque === 'inhabilitar'" class="form-group">
-                <label for="motivo-bloque">Motivo común de inhabilitación *</label>
-                <textarea id="motivo-bloque" v-model="motivo" rows="3" class="bulk-motivo" @input="errorMotivo = ''"></textarea>
-                <p v-if="errorMotivo" class="text-red">{{ errorMotivo }}</p>
+                <label for="motivo-bloque" class="form-label">Motivo común de inhabilitación <span class="required">*</span></label>
+                <textarea id="motivo-bloque" v-model="motivo" rows="3" class="form-input" @input="errorMotivo = ''" :class="{ 'input-error': errorMotivo }"></textarea>
+                <p v-if="errorMotivo" class="error-msg">{{ errorMotivo }}</p>
             </div>
             <template #footer>
-                <Button variant="action" @click="modalBloque = false">Cancelar</Button>
-                <Button :variant="accionBloque === 'habilitar' ? 'action' : 'delete'" class="bulk-action" :disabled="procesando || !cantidadBloque" @click="confirmarBloque"><span v-if="procesando" class="bulk-spinner" aria-hidden="true"></span>{{ procesando ? 'Procesando cambios...' : `Confirmar ${accionBloque} a ${cantidadBloque}` }}</Button>
+                <Button variant="action" class="btn-modal" @click="modalBloque = false">Cancelar</Button>
+                <Button :variant="accionBloque === 'habilitar' ? 'primary' : 'danger'" class="bulk-action btn-modal" :disabled="procesando || !cantidadBloque" @click="confirmarBloque"><span v-if="procesando" class="bulk-spinner" aria-hidden="true"></span>{{ procesando ? 'Procesando cambios...' : `Confirmar ${accionBloque} a ${cantidadBloque}` }}</Button>
             </template>
         </Modal>
  
@@ -388,137 +388,93 @@ function guardarNormas(hab) {
  
 <style scoped>
 .panel-container {
-    padding: 2rem;
-    background-color: var(--bg-main);
-    min-height: 100vh;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background-color: transparent;
+    font-family: var(--font-family);
 }
-.back-link-container { margin-bottom: 1rem; }
+.back-link-container { margin-bottom: var(--spacing-md); }
 .back-link { color: var(--color-primary); text-decoration: none; font-size: 0.875rem; font-weight: 500; }
 .exam-header-card {
-    background: #ffffff;
-    border-radius: 0.5rem;
-    border: 1px solid #e5e7eb;
-    border-top: 4px solid #4f46e5;
-    padding: 1.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    background: var(--color-white);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-light);
+    border-top: 4px solid var(--color-primary);
+    padding: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: var(--shadow-card);
 }
-.header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
-.eyebrow { font-size: 0.75rem; color: #9ca3af; letter-spacing: 0.05em; text-transform: uppercase; }
-.exam-title { font-size: 1.75rem; font-weight: 700; color: #1f2937; margin: 0.25rem 0 0 0; }
-.exam-meta-row { display: flex; gap: 1.5rem; font-size: 0.875rem; color: #6b7280; margin-bottom: 1.5rem; }
-.exam-meta-row strong { color: #374151; }
-.mono { font-family: monospace; }
-.stats-row { display: flex; gap: 1rem; }
-.stat-box { flex: 1; background-color: #f9fafb; border-radius: 0.375rem; padding: 1rem; text-align: center; border: 1px solid #f3f4f6; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); }
+.eyebrow { font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.exam-title { font-size: 1.75rem; font-weight: 700; color: var(--color-primary); margin: 0.25rem 0 0 0; font-family: var(--font-display); }
+.exam-meta-row { display: flex; gap: var(--spacing-lg); font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--spacing-lg); }
+.exam-meta-row strong { color: var(--text-dark); }
+.mono { font-family: var(--font-mono); }
+.stats-row { display: flex; gap: var(--spacing-md); }
+.stat-box { flex: 1; background-color: var(--color-bg-input); border-radius: var(--radius-sm); padding: var(--spacing-md); text-align: center; border: 1px solid var(--border-light); }
 .stat-number { display: block; font-size: 1.5rem; font-weight: 700; }
-.stat-label { font-size: 0.75rem; color: #9ca3af; }
-.text-blue { color: #1e3a8a; }
-.text-red { color: #b91c1c; }
-.text-gray { color: #4b5563; }
+.stat-label { font-size: 0.75rem; color: var(--text-muted); }
+.text-blue { color: var(--color-primary); }
+.text-red { color: var(--color-danger); }
+.text-gray { color: var(--text-muted); }
 .text-purple { color: var(--color-primary); }
-.action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; gap: 1rem; }
-.bulk-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.9rem 1rem; margin-bottom: 1rem; color: #1f2937; font-size: 0.875rem; }
-.bulk-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-.bulk-action { gap: 0.55rem; min-height: 2.7rem; transition: background-color 180ms ease, transform 180ms ease, box-shadow 180ms ease !important; }
-.bulk-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,0.12); }
-.bulk-action:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
-.bulk-action:focus-visible { outline: 3px solid #1d4ed8; outline-offset: 2px; }
+.action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-md); gap: var(--spacing-md); }
+.bulk-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); background: var(--color-white); border: 1px solid var(--color-primary); border-radius: var(--radius-md); padding: var(--spacing-sm) var(--spacing-md); margin-bottom: var(--spacing-md); color: var(--text-dark); font-size: 0.875rem; box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.1); }
+.bulk-buttons { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+.bulk-action { gap: 0.55rem; min-height: 2.7rem; }
 .bulk-spinner { width: 0.9rem; height: 0.9rem; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: bulk-spin 700ms linear infinite; }
 @keyframes bulk-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bulk-action { transition: none !important; } .bulk-spinner { animation: none; } }
-.bulk-motivo { display: block; width: 100%; min-height: 5rem; margin-top: 0.4rem; padding: 0.6rem; border: 1px solid #d1d5db; border-radius: 0.4rem; box-sizing: border-box; }
-.pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin-top: 1rem; }
-.page-link { padding: 0.45rem 0.7rem; background: white; border: 1px solid #d1d5db; border-radius: 0.3rem; color: var(--color-primary); text-decoration: none; }
-.page-link.active { background: var(--color-primary); color: white; }
+.pagination { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; margin-top: var(--spacing-lg); }
+.page-link { padding: 0.45rem 0.7rem; background: var(--color-white); border: 1px solid var(--border-light); border-radius: var(--radius-sm); color: var(--color-primary); text-decoration: none; }
+.page-link.active { background: var(--color-primary); color: var(--color-white); }
 .page-link.disabled { pointer-events: none; opacity: 0.5; }
-@media (max-width: 720px) { .action-bar, .bulk-bar, .action-bar > div { flex-direction: column; align-items: stretch !important; } .search-input { max-width: none; } .bulk-buttons > * { flex: 1; } .exam-meta-row, .stats-row { flex-wrap: wrap; } }
-.search-input { flex: 1; max-width: 500px; padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-size: 0.875rem; }
-.filter-group { display: flex; border: 1px solid #d1d5db; border-radius: 0.25rem; overflow: hidden; }
-.filter-btn { background: white; border: none; padding: 0.5rem 1rem; font-size: 0.875rem; color: #374151; cursor: pointer; border-right: 1px solid #d1d5db; }
+@media (max-width: 720px) { .action-bar, .bulk-bar, .action-bar > div { flex-direction: column; align-items: stretch !important; } .bulk-buttons > * { flex: 1; } .exam-meta-row, .stats-row { flex-wrap: wrap; } }
+.filter-group { display: flex; border: 1px solid var(--border-light); border-radius: var(--radius-md); overflow: hidden; }
+.filter-btn { background: var(--color-white); border: none; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-dark); cursor: pointer; border-right: 1px solid var(--border-light); }
 .filter-btn:last-child { border-right: none; }
-.filter-btn.active { background: #1d3653; color: white; }
-.table-container { background: white; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-.data-table th { background-color: var(--color-primary); color: white; text-align: left; padding: 0.75rem 1rem; font-weight: 600; border-bottom: 1px solid #e5e7eb; }
-.data-table td { padding: 1rem; border-bottom: 1px solid #f3f4f6; vertical-align: middle; }
-.col-mono { font-family: monospace; font-size: 0.8rem; }
-.student-name { font-weight: 500; color: #1f2937; }
+.filter-btn.active { background: var(--color-primary); color: var(--color-white); border-color: var(--color-primary); }
+.table-container { background: var(--color-white); border: 1px solid var(--border-light); border-radius: var(--radius-md); overflow-x: auto; box-shadow: var(--shadow-card); }
+.col-mono { font-family: var(--font-mono); font-size: 0.85rem; }
+.student-name { font-weight: 500; color: var(--text-dark); }
 .student-reason { font-size: 0.75rem; margin-top: 0.25rem; }
 .badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; display: inline-block; }
-.badge-hab { background-color: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-.badge-inhab { background-color: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+.badge-hab { background-color: rgba(79, 70, 229, 0.1); color: var(--color-primary); border: 1px solid rgba(79, 70, 229, 0.2); }
+.badge-inhab { background-color: rgba(220, 53, 69, 0.1); color: var(--color-danger); border: 1px solid rgba(220, 53, 69, 0.2); }
 .badge-confirmado { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
-.empty-state { text-align: center; color: #6b7280; padding: 2rem !important; }
-/* Estandarización de Modales y Peligro */
-.btn-modal {
-  padding: 10px 20px !important;
-  font-size: 14px !important;
-}
+.empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
 
-.btn-peligro {
-  background-color: #dc3545 !important;
-  color: #ffffff !important;
-}
-.btn-peligro:hover:not(:disabled) {
-  background-color: #b02a37 !important;
-}
+/* Estandarización de Modales */
+.btn-modal { padding: 10px 20px !important; font-size: 14px !important; }
+.confirm-text { color: var(--text-dark); font-size: 0.9rem; line-height: 1.6; }
 
 /* Fix para agrupar botones como solapas (Tabs) */
-.filter-group {
-    display: flex;
-    gap: 0;
-}
+.filter-group { display: flex; gap: 0; }
+.filter-btn { border-radius: 0 !important; margin-left: -1px; }
+.filter-btn:first-child { border-top-left-radius: 4px !important; border-bottom-left-radius: 4px !important; }
+.filter-btn:last-child { border-top-right-radius: 4px !important; border-bottom-right-radius: 4px !important; }
+.filter-btn.active { background-color: var(--color-primary) !important; color: var(--color-white) !important; border-color: var(--color-primary) !important; z-index: 2; }
 
-/* Modificamos la variante "action" cuando se usa en filtros */
-.filter-btn {
-    border-radius: 0 !important;
-    margin-left: -1px; /* Solapa los bordes adyacentes */
-}
-
-.filter-btn:first-child {
-    border-top-left-radius: 4px !important;
-    border-bottom-left-radius: 4px !important;
-}
-
-.filter-btn:last-child {
-    border-top-right-radius: 4px !important;
-    border-bottom-right-radius: 4px !important;
-}
-
-.filter-btn.active {
-    background-color: var(--color-primary) !important;
-    color: white !important;
-    border-color: var(--color-primary) !important;
-    z-index: 2;
-}
-
-/* Permitir scroll en tablas pequeñas */
-.table-container { 
-    background: white; 
-    border: 1px solid #e5e7eb; 
-    border-radius: 0.5rem; 
-    overflow-x: auto; 
-}
-.personal-seccion { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1.25rem; margin-top: 1.5rem; }
-.personal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; padding-bottom: 0.75rem; margin-bottom: 1rem; }
-.personal-titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary); margin: 0; }
+/* Sección Personal de Control */
+.personal-seccion { background: var(--color-white); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: var(--spacing-lg); margin-top: var(--spacing-lg); box-shadow: var(--shadow-card); }
+.personal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: var(--spacing-sm); margin-bottom: var(--spacing-md); }
+.personal-titulo { font-size: 1rem; font-weight: 700; color: var(--color-primary); margin: 0; font-family: var(--font-display); }
 .personal-contador { font-size: 0.85rem; color: var(--text-muted); }
-.personal-form { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-.personal-select { flex: 1; min-width: 240px; padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.95rem; font-family: inherit; background: #fff; }
-.personal-select-error { border-color: var(--color-active); }
-.personal-btn { background: var(--color-primary); color: #fff; border: none; padding: 0.5rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.personal-form { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+.personal-select { flex: 1; min-width: 240px; padding: var(--spacing-sm) 12px; border: 1px solid var(--border-light); border-radius: var(--radius-md); font-size: 0.95rem; font-family: inherit; background: var(--color-bg-input); }
+.personal-select-error { border-color: var(--color-danger); }
+.personal-btn { background: var(--color-primary); color: var(--color-white); border: none; padding: 0.5rem 1.25rem; border-radius: var(--radius-md); font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+.personal-btn:hover:not(:disabled) { background: var(--color-secondary); }
 .personal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.personal-error { color: var(--color-active); font-size: 0.85rem; margin: 0.5rem 0 0; }
-.personal-nota { color: var(--text-muted); font-size: 0.85rem; margin: 0.5rem 0 0; }
-.personal-lista { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.personal-item { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem; border: 1px solid #f0f0f0; border-left: 3px solid var(--color-primary); border-radius: 0 0.25rem 0.25rem 0; background: #f9fafb; }
+.personal-error { color: var(--color-danger); font-size: 0.85rem; margin: var(--spacing-xs) 0 0; }
+.personal-nota { color: var(--text-muted); font-size: 0.85rem; margin: var(--spacing-xs) 0 0; }
+.personal-lista { margin-top: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm); }
+.personal-item { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); padding: var(--spacing-md); border: 1px solid var(--border-light); border-left: 3px solid var(--color-primary); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; background: var(--color-bg-input); }
 .personal-datos { display: flex; flex-direction: column; }
 .personal-nombre { font-weight: 600; color: var(--text-dark); font-size: 0.95rem; }
 .personal-usuario { font-size: 0.85rem; color: var(--text-muted); }
-.personal-quitar { background: #fff; color: var(--color-active); border: 1px solid var(--color-active); padding: 0.35rem 0.85rem; border-radius: 0.25rem; font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+.personal-quitar { background: var(--color-white); color: var(--color-danger); border: 1px solid var(--color-danger); padding: 0.35rem 0.85rem; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.personal-quitar:hover:not(:disabled) { background: var(--color-danger); color: var(--color-white); }
 .personal-quitar:disabled { opacity: 0.5; cursor: not-allowed; }
-.personal-vacio { color: var(--text-muted); font-size: 0.9rem; margin: 0; }
+.personal-vacio { color: var(--text-muted); font-size: 0.9rem; margin: 0; text-align: center; padding: var(--spacing-md); }
 </style>
  
