@@ -11,6 +11,7 @@ use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
+use App\Http\Controllers\PanelAsistenciaController;
 use App\Http\Controllers\PeriodoTipoExamenController;
 use App\Http\Controllers\PersonalControlController;
 use App\Http\Controllers\StudentController;
@@ -97,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
+        Route::get('/panel-asistencia', [PanelAsistenciaController::class, 'index'])->name('panel-asistencia.index');
         });
 
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones

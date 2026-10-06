@@ -23,6 +23,17 @@ class ExamenSeeder extends Seeder
         $examenes = [
             [
                 'asignatura' => 'Cálculo II',
+                'tipo' => 'Segundo Parcial',
+                'dias_desde_hoy' => 0,
+                'hora_inicio_relativa' => true,
+                'hora_inicio' => now()->subHour()->format('H:i'),
+                'duracion_minutos' => 180,
+                'ambientes' => ['Aula 201', 'Aula 202'],
+                'grupos' => ['A', 'B'],
+                'normas_generales' => 'Examen en curso para probar el panel de asistencia en vivo.',
+            ],
+            [
+                'asignatura' => 'Cálculo II',
                 'tipo' => 'Primer Parcial',
                 'dias_desde_hoy' => 0,
                 'hora_inicio' => '08:00',
