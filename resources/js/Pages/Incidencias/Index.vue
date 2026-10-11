@@ -489,7 +489,9 @@ const getColorClass = (tipo) => {
 
 .modal-footer-custom {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
     gap: var(--spacing-md);
     margin-top: var(--spacing-xl);
     padding-top: var(--spacing-md);
@@ -535,5 +537,21 @@ const getColorClass = (tipo) => {
         width: 100%;
         justify-content: center;
     }
+    .filter-date {
+        width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .date-range, .filters-container > div {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+.filter-date {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 </style>

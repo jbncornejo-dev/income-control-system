@@ -191,6 +191,7 @@ function logout() {
 }
 
 .sidebar-header {
+  flex-shrink: 0;
   padding: 30px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
@@ -229,6 +230,20 @@ function logout() {
 .sidebar-nav {
   flex-grow: 1;
   margin-top: 20px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
 }
 
 .sidebar-nav ul {
