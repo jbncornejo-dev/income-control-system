@@ -24,9 +24,13 @@ class UserController extends Controller
             $query->where('id_rol', $request->role);
         }
 
-        // Búsqueda por email
+        // Búsqueda por email o nombre
         if ($request->filled('search')) {
-            $query->where('email', 'like', '%' . $request->search . '%');
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('email', 'like', '%' . $search . '%')
+                  ->orWhere('name', 'like', '%' . $search . '%');
+            });
         }
 
         // Paginar y anexar los parámetros de la URL para no perderlos al cambiar de página

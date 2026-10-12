@@ -1,9 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import Button from '@/components/ui/Button.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import { Camera, RefreshCw, Info } from 'lucide-vue-next';
 import { useToastStore } from '@/stores/useToastStore';
 
 const props = defineProps({
@@ -18,21 +17,18 @@ const fileInput = ref(null);
 const previewFoto = ref(null);
 const fileError = ref('');
 
-// Formulario reactivo para la subida de foto
 const photoForm = useForm({
     foto: null,
 });
 
-// Estado de carga para regeneración de QR
 const isRegeneratingQr = ref(false);
 
-// Construcción del QR nítido para escaneo
+// Fallback de URL de QR si no viniese el SVG desde el backend
 const qrUrl = computed(() => {
     if (!props.estudiante?.qr_token) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(props.estudiante.qr_token)}`;
+    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(props.estudiante.qr_token)}`;
 });
 
-// Imagen de perfil actual o null para mostrar iniciales
 const fotoActualUrl = computed(() => {
     if (previewFoto.value) return previewFoto.value;
     if (props.estudiante?.foto_url) return props.estudiante.foto_url;
@@ -40,11 +36,22 @@ const fotoActualUrl = computed(() => {
     return null;
 });
 
-// Iniciales para el estado sin foto
 const iniciales = computed(() => {
     const n = props.estudiante?.nombres?.trim()?.[0] ?? '';
     const a = props.estudiante?.apellidos?.trim()?.[0] ?? '';
     return `${n}${a}`.toUpperCase();
+});
+
+const formattedToken = computed(() => {
+    if (!props.estudiante?.codigo_universitario) return 'CIE-000000000-0';
+    if (props.estudiante.qr_token && props.estudiante.qr_token.includes('-')) {
+        const parts = props.estudiante.qr_token.split('-');
+        const lastPart = parts[parts.length - 1];
+        if (lastPart && /^\d+$/.test(lastPart)) {
+            return `CIE-${props.estudiante.codigo_universitario}-${lastPart.slice(-4)}`;
+        }
+    }
+    return `CIE-${props.estudiante.codigo_universitario}-0`;
 });
 
 const triggerFileInput = () => {
@@ -52,7 +59,6 @@ const triggerFileInput = () => {
     fileInput.value?.click();
 };
 
-// Subida de fotografía
 const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     fileError.value = '';
@@ -79,12 +85,11 @@ const handleFileChange = (e) => {
     previewFoto.value = URL.createObjectURL(file);
     photoForm.foto = file;
 
-    // Ruta directa sin ziggy
     photoForm.post('/estudiante/foto', {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
-            toast.success('Tu fotografía de perfil se ha guardado correctamente.');
+            toast.success('Tu fotografía de perfil se ha actualizado correctamente.');
             photoForm.reset('foto');
             if (fileInput.value) fileInput.value.value = '';
         },
@@ -96,12 +101,10 @@ const handleFileChange = (e) => {
     });
 };
 
-// Regeneración de QR
 const handleRegenerateQr = () => {
     if (isRegeneratingQr.value) return;
 
     isRegeneratingQr.value = true;
-    // Ruta correcta: /estudiante/qr/regenerar (definida en web.php)
     router.post('/estudiante/qr/regenerar', {}, {
         preserveScroll: true,
         onSuccess: () => {
@@ -115,415 +118,497 @@ const handleRegenerateQr = () => {
         }
     });
 };
-
-// Navegación y Cierre de sesión directo
-const handleLogout = () => {
-    router.post('/logout');
-};
 </script>
 
 <template>
-    <AuthenticatedLayout title="Panel del Estudiante">
+    <Head title="Mi Credencial - Estudiante" />
+
+    <AuthenticatedLayout>
         <div class="panel-container">
+            <div class="credential-wrapper">
+                
+                <h1 class="panel-title">Identidad Digital</h1>
 
-            <!-- Cabecera Superior -->
-            <div class="panel-header">
-                <h1 class="panel-title">Mi Panel de Estudiante</h1>
-            </div>
+                <!-- Tarjeta ID -->
+                <div class="id-card">
+                    
+                    <!-- Panel Izquierdo: Datos Personales -->
+                    <div class="personal-info-panel">
+                        
+                        <!-- Marca de agua sutil UMSS -->
+                        <div class="watermark-bg">
+                            <span>UMSS</span>
+                        </div>
 
-            <!-- Tarjeta Central de la Credencial -->
-            <div class="credential-card">
-                <!-- Línea decorativa superior: color primario a degradado rojo -->
-                <div class="card-gradient-bar"></div>
+                        <span class="status-top-label">Estudiante Registrado</span>
+                        
+                        <!-- Avatar con botón de edición -->
+                        <div class="avatar-container">
+                            <div class="avatar-photo-circle">
+                                <img
+                                    v-if="fotoActualUrl"
+                                    :src="fotoActualUrl"
+                                    :alt="`Foto de ${estudiante.nombres}`"
+                                    class="avatar-photo-img"
+                                />
+                                <span v-else class="avatar-initials-text">{{ iniciales }}</span>
+                            </div>
 
-                <!-- Cabecera de Identidad -->
-                <div class="student-identity-row">
-                    <!-- Avatar con botón de edición -->
-                    <div class="avatar-wrapper">
-                        <div class="avatar-circle">
-                            <img
-                                v-if="fotoActualUrl"
-                                :src="fotoActualUrl"
-                                :alt="`Foto de ${estudiante.nombres}`"
-                                class="avatar-img"
+                            <button
+                                type="button"
+                                @click="triggerFileInput"
+                                :disabled="photoForm.processing"
+                                class="btn-camera-upload"
+                                title="Cambiar fotografía"
+                                aria-label="Cambiar fotografía"
+                            >
+                                <Camera :size="16" />
+                            </button>
+
+                            <input
+                                type="file"
+                                ref="fileInput"
+                                @change="handleFileChange"
+                                accept="image/png, image/jpeg, image/jpg"
+                                class="hidden-file-input"
                             />
-                            <span v-else class="avatar-initials">{{ iniciales }}</span>
                         </div>
 
-                        <!-- Botón circular rojo con lápiz -->
-                        <button
-                            type="button"
-                            @click="triggerFileInput"
-                            :disabled="photoForm.processing"
-                            class="btn-edit-photo"
-                            title="Cambiar fotografía"
-                            aria-label="Cambiar fotografía"
-                        >
-                            <LoadingSpinner v-if="photoForm.processing" size="small" />
-                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                        </button>
-                        <input
-                            type="file"
-                            ref="fileInput"
-                            @change="handleFileChange"
-                            accept="image/png, image/jpeg, image/jpg"
-                            class="hidden"
-                        />
-                    </div>
-
-                    <!-- Datos Académicos Principales -->
-                    <div class="student-info">
-                        <span class="student-status-label">ESTUDIANTE REGISTRADO</span>
-                        <h2 class="student-name">
-                            {{ estudiante.nombres }} {{ estudiante.apellidos }}
+                        <!-- Nombre Completo -->
+                        <h2 class="student-full-name">
+                            {{ estudiante.nombres }}<br>{{ estudiante.apellidos }}
                         </h2>
-                        <span class="student-career">
+                        
+                        <!-- Carrera -->
+                        <p class="student-career-text">
                             {{ estudiante.carrera || 'Ingeniería de Sistemas' }}
+                        </p>
+                        
+                        <!-- Código SIS -->
+                        <div class="sis-code-box">
+                            <span class="sis-code-label">Código SIS</span>
+                            <div class="sis-code-badge">
+                                {{ estudiante.codigo_universitario }}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Panel Derecho: Código QR -->
+                    <div class="qr-access-panel">
+                        
+                        <span class="qr-access-label">Código de Acceso</span>
+                        
+                        <!-- Contenedor QR -->
+                        <div class="qr-frame-box">
+                            <!-- Si viene SVG generado desde el backend -->
+                            <div 
+                                v-if="estudiante.qr_svg" 
+                                class="qr-svg-content" 
+                                v-html="estudiante.qr_svg"
+                            ></div>
+                            
+                            <!-- Fallback si no viniese el SVG -->
+                            <img 
+                                v-else-if="qrUrl"
+                                :src="qrUrl" 
+                                alt="Código QR de Identificación" 
+                                class="qr-img-fallback"
+                            />
+
+                            <div v-else class="qr-empty-placeholder">
+                                <span>No disponible</span>
+                            </div>
+                        </div>
+
+                        <span class="qr-token-string">
+                            {{ formattedToken }}
                         </span>
-                        <div class="student-code-badge">
-                            {{ estudiante.codigo_universitario }}
-                        </div>
+
+                        <!-- Botón Regenerar Código QR -->
+                        <button 
+                            type="button" 
+                            class="btn-regenerate-qr" 
+                            :disabled="isRegeneratingQr"
+                            @click="handleRegenerateQr"
+                            title="Generar un nuevo código invalida el actual"
+                        >
+                            <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
+                            <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO' }}</span>
+                        </button>
+
                     </div>
                 </div>
 
-                <!-- Notificación de error de archivo -->
-                <p v-if="fileError" class="file-error-msg">
-                    {{ fileError }}
-                </p>
+                <!-- Notificación de error de archivo si ocurre -->
+                <p v-if="fileError" class="file-error-alert">{{ fileError }}</p>
 
-                <!-- Sección de Código QR -->
-                <div class="qr-section">
-                    <span class="qr-subtitle">CÓDIGO QR DE IDENTIFICACIÓN</span>
-
-                    <!-- Marco azul marino sólido del QR -->
-                    <div class="qr-box">
-                        <img
-                            v-if="qrUrl"
-                            :src="qrUrl"
-                            alt="Código QR de Verificación"
-                            class="qr-image"
-                        />
-                        <div v-else class="qr-loading">
-                            <LoadingSpinner size="medium" />
-                        </div>
+                <!-- Caja de Aviso Inferior -->
+                <div class="notice-info-banner">
+                    <div class="notice-icon-wrapper">
+                        <Info :size="20" />
                     </div>
-
-                    <!-- Código alfanumérico inferior -->
-                    <span class="qr-code-label">
-                        CIE-{{ estudiante.codigo_universitario }}-0
-                    </span>
-
-                    <!-- Botón Estandarizado: Regenerar QR -->
-                    <Button
-                        variant="delete"
-                        class="btn-regenerar"
-                        :disabled="isRegeneratingQr"
-                        @click="handleRegenerateQr"
-                    >
-                        <LoadingSpinner v-if="isRegeneratingQr" size="small" />
-                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        <span>{{ isRegeneratingQr ? 'REGENERANDO CÓDIGO...' : 'REGENERAR CÓDIGO QR' }}</span>
-                    </Button>
-
-                    <p class="qr-note">
-                        Al regenerar, el código anterior queda inválido.
-                    </p>
+                    <div class="notice-text-content">
+                        <p>
+                            Presenta este código QR al personal de control al momento de ingresar a tu examen. Asegúrate de mantener la pantalla de tu dispositivo con el brillo al máximo para agilizar la lectura.
+                        </p>
+                    </div>
                 </div>
+
             </div>
-
-            <!-- Caja Informativa -->
-            <div class="notice-card">
-                <p>
-                    Presenta este código QR al personal de control al momento de ingresar a tu examen. Mantén la pantalla visible y con brillo al máximo.
-                </p>
-            </div>
-
-            <!-- Botón Estandarizado: Cerrar Sesión -->
-            <Button
-                variant="action"
-                class="btn-logout"
-                @click="handleLogout"
-            >
-                CERRAR SESIÓN
-            </Button>
-
-            <!-- Pie de página -->
-            <div class="panel-footer">
-                © 2026 TexCorp. Todos los derechos reservados.
-            </div>
-
         </div>
     </AuthenticatedLayout>
 </template>
 
 <style scoped>
+/* Contenedor principal con padding responsivo */
 .panel-container {
-    max-width: 620px;
-    margin: 0 auto;
-    padding: 2.5rem 1rem 3rem 1rem;
+    font-family: var(--font-family);
+    background-color: transparent;
+    padding: 1rem; /* p-4 móvil */
+    flex: 1 1 0%;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    font-family: var(--font-family);
 }
 
-/* Header */
-.panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+@media (min-width: 640px) {
+    .panel-container {
+        padding: 1.5rem; /* sm:p-6 */
+    }
+}
+
+@media (min-width: 1024px) {
+    .panel-container {
+        padding: 2rem; /* lg:p-8 */
+    }
+}
+
+.credential-wrapper {
     width: 100%;
+    max-width: 56rem; /* max-w-4xl (896px) */
+    margin: auto;
 }
 
 .panel-title {
-    font-size: 1.65rem;
-    font-weight: 800;
-    color: var(--color-primary);
-    letter-spacing: -0.01em;
-}
-
-/* Tarjeta Principal */
-.credential-card {
-    background-color: var(--text-white, #ffffff);
-    border: 1px solid var(--border-light, #e2e8f0);
-    border-radius: var(--radius-md, 6px);
-    position: relative;
-    overflow: hidden;
-    padding: 2.25rem 2rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-}
-
-.card-gradient-bar {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 4px;
-    background: linear-gradient(90deg, var(--color-primary) 0%, var(--color-primary) 65%, var(--color-danger, #ef4444) 100%);
-}
-
-/* Fila de Identidad */
-.student-identity-row {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.avatar-wrapper {
-    position: relative;
-    flex-shrink: 0;
-}
-
-.avatar-circle {
-    width: 90px;
-    height: 90px;
-    border-radius: 50%;
-    background-color: var(--color-primary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.avatar-img {
-    width: 100%;
-    height: 100%;
-    object-cover: cover;
-}
-
-.avatar-initials {
-    color: var(--text-white, #ffffff);
-    font-size: 2rem;
+    font-size: 1.5rem; /* text-2xl */
+    line-height: 2rem;
     font-weight: 700;
+    color: var(--color-primary);
+    margin-bottom: 1.5rem;
+    text-transform: uppercase;
+    font-family: var(--font-display);
+    letter-spacing: 0.05em;
+    text-align: center;
 }
 
-.btn-edit-photo {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    background-color: var(--color-danger, #ef4444);
-    border: 2px solid var(--text-white, #ffffff);
-    color: var(--text-white, #ffffff);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.2s ease;
+@media (min-width: 768px) {
+    .panel-title {
+        text-align: left;
+    }
 }
 
-.btn-edit-photo:hover {
-    background-color: var(--color-danger-hover, #dc2626);
-}
-
-.student-info {
+/* Tarjeta Principal ID */
+.id-card {
+    background-color: #ffffff;
+    border-radius: 1rem; /* rounded-2xl (16px) */
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e5e7eb;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
-    text-align: left;
 }
 
-.student-status-label {
-    font-size: 10px;
-    font-weight: 700;
-    color: #94a3b8;
-    letter-spacing: 0.12em;
-    margin-bottom: 0.25rem;
+@media (min-width: 768px) {
+    .id-card {
+        flex-direction: row;
+    }
 }
 
-.student-name {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--color-primary);
-    line-height: 1.25;
-    margin-bottom: 0.25rem;
-}
-
-.student-career {
-    font-size: 13px;
-    color: #64748b;
-    margin-bottom: 0.65rem;
-}
-
-.student-code-badge {
-    background-color: #edf2f7;
-    border: 1px solid #cbd5e1;
-    color: var(--color-primary);
-    font-family: monospace;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 2px 10px;
-    border-radius: 3px;
-    width: fit-content;
-}
-
-.file-error-msg {
-    font-size: 12px;
-    color: var(--color-danger, #ef4444);
-    background-color: #fef2f2;
-    padding: 6px 12px;
-    border-radius: 4px;
+/* Panel Izquierdo: Datos Personales */
+.personal-info-panel {
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     text-align: center;
+    border-bottom: 1px solid #f3f4f6;
+    background-color: rgba(249, 250, 251, 0.6);
+    position: relative;
+    overflow: hidden;
+}
+
+@media (min-width: 768px) {
+    .personal-info-panel {
+        width: 55%;
+        align-items: flex-start;
+        text-align: left;
+        border-bottom: none;
+        border-right: 1px solid #f3f4f6;
+    }
+}
+
+.watermark-bg {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    opacity: 0.04;
+    pointer-events: none;
+}
+
+.watermark-bg span {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 4rem;
+    letter-spacing: -0.05em;
+    color: var(--color-primary);
+}
+
+.status-top-label {
+    font-size: 0.625rem; /* text-[10px] */
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     margin-bottom: 1.5rem;
 }
 
-/* Sección QR */
-.qr-section {
+/* Avatar */
+.avatar-container {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.avatar-photo-circle {
+    width: 6rem; /* w-24 (96px) */
+    height: 6rem; /* h-24 */
+    border-radius: 9999px;
+    background-color: var(--color-primary);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+    border: 4px solid #ffffff;
+    overflow: hidden;
+}
+
+.avatar-photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.avatar-initials-text {
+    font-size: 1.875rem; /* text-3xl */
+    font-family: var(--font-display);
+    font-weight: 700;
+}
+
+.btn-camera-upload {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 2rem; /* w-8 */
+    height: 2rem; /* h-8 */
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    color: #6b7280;
+    border-radius: 9999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.btn-camera-upload:hover {
+    color: var(--color-primary);
+    border-color: var(--color-primary);
+    transform: scale(1.05);
+}
+
+.hidden-file-input {
+    display: none;
+}
+
+.student-full-name {
+    font-size: 1.5rem; /* text-2xl */
+    font-weight: 700;
+    color: #111827;
+    line-height: 1.25;
+    margin: 0 0 0.25rem 0;
+}
+
+.student-career-text {
+    font-size: 0.875rem; /* text-sm */
+    font-weight: 500;
+    color: #6b7280;
+    margin: 0 0 1.5rem 0;
+}
+
+.sis-code-box {
+    margin-top: auto;
+}
+
+.sis-code-label {
+    font-size: 0.625rem; /* text-[10px] */
+    color: #9ca3af;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.sis-code-badge {
+    display: inline-block;
+    background-color: rgba(29, 54, 83, 0.08);
+    border: 1px solid rgba(29, 54, 83, 0.2);
+    color: var(--color-primary);
+    padding: 0.375rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    font-family: var(--font-mono, monospace);
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+/* Panel Derecho: Código QR */
+.qr-access-panel {
+    padding: 2rem;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    position: relative;
 }
 
-.qr-subtitle {
-    font-size: 11px;
+@media (min-width: 768px) {
+    .qr-access-panel {
+        width: 45%;
+    }
+}
+
+.qr-access-label {
+    font-size: 0.625rem; /* text-[10px] */
     font-weight: 700;
-    color: #94a3b8;
-    letter-spacing: 0.14em;
-    margin-bottom: 1.25rem;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 1.5rem;
 }
 
-.qr-box {
-    border: 3.5px solid var(--color-primary);
-    padding: 4px;
-    background-color: var(--text-white, #ffffff);
-    line-height: 0;
-}
-
-.qr-image {
-    width: 210px;
-    height: 210px;
-    object-fit: contain;
-}
-
-.qr-loading {
-    width: 210px;
-    height: 210px;
+.qr-frame-box {
+    padding: 0.75rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 20px -4px rgba(29, 54, 83, 0.15);
+    margin-bottom: 1rem;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.qr-code-label {
-    margin-top: 1rem;
-    margin-bottom: 1.25rem;
-    font-family: monospace;
-    font-size: 13px;
+.qr-svg-content :deep(svg),
+.qr-img-fallback {
+    width: 180px;
+    height: 180px;
+    display: block;
+}
+
+.qr-empty-placeholder {
+    width: 180px;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.qr-token-string {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.875rem;
     font-weight: 700;
-    letter-spacing: 0.22em;
-    color: #5c7094;
+    color: #6b7280;
+    letter-spacing: 0.2em;
+    margin-bottom: 1.5rem;
 }
 
-/* Modificadores para los botones reutilizables */
-.btn-regenerar {
-    border: 1px solid var(--color-danger, #ef4444) !important;
-    color: var(--color-danger, #ef4444) !important;
-    background-color: var(--text-white, #ffffff) !important;
-    font-size: 12px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.06em !important;
-    padding: 8px 24px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 0.5rem !important;
+.btn-regenerate-qr {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #A12B33;
+    background: transparent;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: var(--font-family);
+    outline: none;
 }
 
-.btn-regenerar:hover {
-    background-color: #fef2f2 !important;
+.btn-regenerate-qr:hover:not(:disabled) {
+    background-color: rgba(161, 43, 51, 0.05);
+    color: #8B0000;
 }
 
-.qr-note {
-    font-size: 11px;
-    color: #7d90b8;
+.btn-regenerate-qr:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.file-error-alert {
+    color: #dc2626;
+    font-size: 0.875rem;
     margin-top: 0.75rem;
     text-align: center;
-}
-
-/* Cuadro de Aviso Inferior */
-.notice-card {
-    background-color: #edf2f9;
-    border: 1px solid #d8e2ef;
-    border-radius: var(--radius-md, 6px);
-    padding: 1.1rem 1.5rem;
-    text-align: center;
-}
-
-.notice-card p {
-    font-size: 13px;
-    line-height: 1.5;
-    color: #4a5f87;
     font-weight: 500;
+}
+
+/* Caja de Aviso Inferior */
+.notice-info-banner {
+    margin-top: 1.5rem;
+    background-color: rgba(29, 54, 83, 0.05);
+    border: 1px solid rgba(29, 54, 83, 0.12);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.notice-icon-wrapper {
+    color: var(--color-primary);
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
+.notice-text-content p {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-primary);
+    line-height: 1.6;
     margin: 0;
-}
-
-/* Botón Cerrar Sesión */
-.btn-logout {
-    width: 100% !important;
-    padding: 12px 20px !important;
-    font-size: 13px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.1em !important;
-    color: #4a5f87 !important;
-    border: 1px solid #d8e2ef !important;
-    background-color: var(--text-white, #ffffff) !important;
-    border-radius: var(--radius-md, 6px) !important;
-}
-
-.btn-logout:hover {
-    background-color: #f8fafc !important;
-    border-color: #cbd5e1 !important;
-}
-
-.panel-footer {
-    text-align: right;
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: -0.25rem;
 }
 </style>

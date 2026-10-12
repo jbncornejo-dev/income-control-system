@@ -219,25 +219,67 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
+        if ($estudiante->codigo_qr === null) {
+            $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
+        }
+
+        $qrSvg = null;
+        try {
+            $result = (new \Endroid\QrCode\Builder\Builder(
+                data: $estudiante->codigo_qr,
+                size: 200,
+                margin: 4,
+                writer: new \Endroid\QrCode\Writer\SvgWriter,
+            ))->build();
+            $rawSvg = $result->getString();
+            $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
+        } catch (\Exception $e) {
+            $qrSvg = null;
+        }
+
         return \Inertia\Inertia::render('Estudiantes/Panel', [
             'estudiante' => [
+                'id' => $estudiante->id_estudiante,
                 'nombres' => $estudiante->nombres,
                 'apellidos' => $estudiante->apellidos,
                 'codigo_universitario' => $estudiante->codigo_universitario,
                 'ci' => $estudiante->documento_identidad,
                 'email' => $estudiante->email,
+                'carrera' => 'Ingeniería de Sistemas',
                 'qr_token' => $estudiante->codigo_qr,
+                'qr_svg' => $qrSvg,
+                'foto_url' => $estudiante->foto_url,
                 'foto_path' => null,
             ]
         ]);
     })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.panel');
 
     // Mocks para los botones (evitan el 404 al dar clic)
-    Route::post('/estudiante/qr/regenerar', function () {
+    Route::post('/estudiante/qr/regenerar', function (\Illuminate\Http\Request $request) {
+        $estudiante = $request->user()->estudiante;
+        if ($estudiante) {
+            $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
+            $estudiante->update(['codigo_qr' => $nuevoToken]);
+        }
         return back();
     })->name('estudiante.qr.regenerate');
 
-    Route::post('/estudiante/foto', function () {
+    Route::post('/estudiante/foto', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+        ], [
+            'foto.required' => 'Debe seleccionar una imagen.',
+            'foto.image' => 'El archivo debe ser una imagen válida.',
+            'foto.mimes' => 'La imagen debe tener formato JPEG, JPG o PNG.',
+            'foto.max' => 'La imagen no debe superar los 2 MB.',
+        ]);
+
+        $estudiante = $request->user()->estudiante;
+        if ($estudiante && $request->hasFile('foto')) {
+            $path = $request->file('foto')->store('estudiantes', 'public');
+            $estudiante->update(['foto_url' => '/storage/' . $path]);
+        }
+
         return back();
     })->name('estudiante.foto.upload');
 });
