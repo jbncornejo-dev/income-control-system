@@ -281,10 +281,27 @@ function eliminar() {
 </template>
 
 <style scoped>
-/* Contenedor principal */
+/* Contenedor principal con padding responsivo estándar */
 .panel-container {
     font-family: var(--font-family);
     background-color: transparent;
+    padding: 1rem;
+    flex: 1 1 0%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 640px) {
+    .panel-container {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .panel-container {
+        padding: 2rem;
+    }
 }
 
 .header-section {
@@ -356,8 +373,11 @@ function eliminar() {
     align-items: center;
     gap: var(--spacing-md);
     padding: var(--spacing-md);
-    border-top: 1px solid var(--border-light);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
     background-color: var(--color-white);
+    margin-top: var(--spacing-md);
+    box-shadow: var(--shadow-card);
 }
 
 .page-info {

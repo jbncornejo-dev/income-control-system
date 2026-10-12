@@ -25,8 +25,8 @@
     --border-light: #d1d5db;
     
     /* Tipografía */
-    --font-main: 'Orbitron', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    --font-display: 'Rajdhani', 'Segoe UI', sans-serif;
+    --font-main: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-display: 'Orbitron', 'Segoe UI', sans-serif;
     --font-mono: 'Courier New', Courier, monospace;
     --font-family: var(--font-main); /* Fallback to prevent breaking existing uses */
 

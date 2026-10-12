@@ -8,6 +8,8 @@ use App\Models\Estudiante;
 use App\Models\Examen;
 use App\Models\User;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
 
 class DashboardController extends Controller
 {
@@ -16,19 +18,53 @@ class DashboardController extends Controller
      */
     public function admin()
     {
+        $mes = request('mes', now()->month);
+        $anio = request('anio', now()->year);
+
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'estudiantes' => Estudiante::count(),
                 'examenes' => Examen::count(),
-                'asignaturas' => Asignatura::count(), // Keeping existing
+                'asignaturas' => Asignatura::count(),
                 'ambientes' => Ambiente::count(),
                 'usuarios' => User::count(),
             ],
+            'calendarioData' => [
+                'mes' => (int) $mes,
+                'anio' => (int) $anio,
+            ],
+            'examenesCalendario' => Examen::with(['asignatura'])
+                ->whereMonth('fecha', $mes)
+                ->whereYear('fecha', $anio)
+                ->get(),
             // Corregida la relación de ambientes para coincidir con tu controlador
             'proximosExamenes' => Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
                 ->orderBy('fecha', 'asc')
+                ->where('fecha', '>=', now()->toDateString())
                 ->take(4)
                 ->get(),
+            'noticias' => Cache::remember('umss_noticias', 3600, function () {
+                try {
+                    $response = Http::timeout(5)->get('https://www.umss.edu.bo/categoria/noticias/feed/');
+                    if ($response->successful()) {
+                        $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
+                        $items = [];
+                        foreach ($xml->channel->item as $item) {
+                            $items[] = [
+                                'titulo' => (string) $item->title,
+                                'enlace' => (string) $item->link,
+                                'fecha' => date('M Y', strtotime((string) $item->pubDate)),
+                                'resumen' => mb_strimwidth(strip_tags((string) $item->description), 0, 120, '...')
+                            ];
+                            if (count($items) >= 4) break;
+                        }
+                        return $items;
+                    }
+                } catch (\Exception $e) {
+                    return null;
+                }
+                return null;
+            }),
         ]);
     }
 
@@ -62,6 +98,15 @@ class DashboardController extends Controller
             ->take(3)
             ->get();
 
+        $mes = request('mes', now()->month);
+        $anio = request('anio', now()->year);
+
+        $examenesCalendario = Examen::with(['asignatura'])
+            ->whereHas('grupos', fn ($query) => $query->where('grupo.id_usuario', $user->id))
+            ->whereMonth('fecha', $mes)
+            ->whereYear('fecha', $anio)
+            ->get();
+
         return Inertia::render('Docente/Dashboard', [
             'stats' => [
                 'examenes' => $proximosExamenes->count(),
@@ -69,6 +114,33 @@ class DashboardController extends Controller
                 'inhabilitados' => (int) $proximosExamenes->sum('inhab_count'),
             ],
             'proximosExamenes' => $proximosExamenes,
+            'calendarioData' => [
+                'mes' => (int) $mes,
+                'anio' => (int) $anio,
+            ],
+            'examenesCalendario' => $examenesCalendario,
+            'noticias' => Cache::remember('umss_noticias', 3600, function () {
+                try {
+                    $response = Http::timeout(5)->get('https://www.umss.edu.bo/categoria/noticias/feed/');
+                    if ($response->successful()) {
+                        $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
+                        $items = [];
+                        foreach ($xml->channel->item as $item) {
+                            $items[] = [
+                                'titulo' => (string) $item->title,
+                                'enlace' => (string) $item->link,
+                                'fecha' => date('M Y', strtotime((string) $item->pubDate)),
+                                'resumen' => mb_strimwidth(strip_tags((string) $item->description), 0, 120, '...')
+                            ];
+                            if (count($items) >= 4) break;
+                        }
+                        return $items;
+                    }
+                } catch (\Exception $e) {
+                    return null;
+                }
+                return null;
+            }),
         ]);
     }
 
