@@ -205,6 +205,7 @@ function logout() {
 }
 
 .sidebar-header {
+  flex-shrink: 0;
   padding: 32px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
@@ -258,8 +259,10 @@ function logout() {
 
 .sidebar-nav {
   flex-grow: 1;
+  min-height: 0;
   margin-top: 20px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
 }

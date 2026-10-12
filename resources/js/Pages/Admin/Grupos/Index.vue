@@ -345,10 +345,14 @@ function irAPagina(url) {
     .panel-container { padding: 1.25rem; }
     .header-section { flex-direction: column; align-items: stretch; }
     .filtros { flex-direction: column; align-items: stretch; }
+    .table-container { border: none; background: transparent; }
     .data-table thead { display: none; }
-    .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; }
-    .data-table tr { border-bottom: 1px solid #c7d0da; padding: 0.5rem 0; }
-    .data-table td { border: none; padding: 0.35rem 1rem; }
-    .data-table td::before { content: attr(data-label); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 2px; }
+    .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
+    .data-table tr { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid var(--color-primary); border-radius: 0.5rem; padding: 0.75rem 0; margin-bottom: 0.75rem; }
+    .data-table tr:last-child { margin-bottom: 0; }
+    .data-table td { border: none; padding: 0.4rem 1rem; }
+    .data-table td::before { content: attr(data-label); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 3px; }
+    .col-acciones { flex-direction: column; align-items: stretch; gap: 0.5rem; padding-top: 0.75rem !important; }
+    .btn-accion, .btn-ver { width: 100%; text-align: center; padding: 0.55rem 0.75rem; font-size: 0.9rem; box-sizing: border-box; }
 }
 </style>
