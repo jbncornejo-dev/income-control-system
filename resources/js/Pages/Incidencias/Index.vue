@@ -331,6 +331,7 @@ const getColorClass = (tipo) => {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    margin-top: 1.5rem;
     margin-bottom: var(--spacing-xl);
     flex-wrap: wrap;
     gap: var(--spacing-md);
