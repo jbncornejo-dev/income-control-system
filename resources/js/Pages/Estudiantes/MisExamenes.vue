@@ -189,8 +189,10 @@ function mostrarHabilitacion(examen) {
 <style scoped>
 .mis-examenes {
     padding: 1.5rem;
+    width: 100%;
     max-width: 1200px;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .head {
@@ -268,10 +270,16 @@ function mostrarHabilitacion(examen) {
 /* Tarjetas */
 .tarjetas {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: 1fr;;
     gap: 1.25rem;
+    width: 100%;
+    box-sizing: border-box;
 }
-
+@media (min-width: 768px) {
+    .tarjetas {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}
 .tarjeta {
     display: flex;
     flex-direction: column;
