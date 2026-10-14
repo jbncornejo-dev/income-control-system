@@ -9,6 +9,7 @@ use App\Models\Examen;
 use App\Models\Incidencia;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class IncidenciaController extends Controller
 {
@@ -63,6 +64,7 @@ class IncidenciaController extends Controller
             'tipo_incidencia' => $datos['tipo_incidencia'],
             'descripcion_motivo' => $datos['descripcion_motivo'],
             'fecha_hora' => now(),
+            'fecha_registro' => Carbon::now('America/La_Paz'),
         ]));
 
         return back()->with('success', 'Incidencia registrada correctamente.');

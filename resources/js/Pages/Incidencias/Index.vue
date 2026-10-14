@@ -162,15 +162,15 @@ const getColorClass = (tipo) => {
                     class="filter-input w-48"
                 />
                 
-                <div class="flex gap-2 items-end">
+                <div class="flex flex-col sm:flex-row gap-2 w-full">
                     <TextInput 
                         type="date"
                         v-model="filterDesde"
                         @change="applyFilters"
-                        class="filter-date w-36"
+                        class="filter-date w-full sm:w-auto flex-1"
                         title="Desde"
                     />
-                    <span class="text-gray-400 mb-2">-</span>
+                    <span class="text-gray-400 mb-2 hidden sm:inline">-</span>
                     <TextInput 
                         type="date"
                         v-model="filterHasta"
