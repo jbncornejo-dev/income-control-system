@@ -7,6 +7,7 @@ import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     examenes: {
@@ -24,6 +25,15 @@ const errorMessage = ref('');
 const successMessage = ref('');
 const isLoading = ref(false);
 const inputRef = ref(null);
+const irAIncidencias = () => {
+    router.visit('/incidencias');
+};
+const enfocarScanner = () => {
+    if (inputRef.value?.$el?.querySelector('input')) {
+        inputRef.value.$el.querySelector('input').focus();
+    }
+    successMessage.value = "Listo para escanear código QR con lector o pistola.";
+};
 
 const ingresosRegistrados = ref(0);
 
@@ -206,7 +216,15 @@ const cancelar = async () => {
                                 placeholder="Escanear o escribir..." 
                                 class="flex-1"
                             />
-                            
+                            <Button 
+                            type="button"
+                            @click="enfocarScanner"
+                            variant="action"
+                            class="btn-qr"
+                            title="Activar lector de código QR"
+                            >
+                            📷 QR
+                            </Button>
                             <Button 
                                 type="submit" 
                                 :disabled="!datoEstudiante || isLoading" 
@@ -225,7 +243,7 @@ const cancelar = async () => {
                     <Button variant="action" class="btn-limpiar" @click="datoEstudiante = ''">
                         LIMPIAR
                     </Button>
-                    <Button variant="danger" class="btn-incidencia">
+                    <Button variant="danger" class="btn-incidencia" @click="irAIncidencias">
                         REPORTAR INCIDENCIA
                     </Button>
                 </div>
@@ -463,6 +481,7 @@ const cancelar = async () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
     margin-bottom: 10px;
 }
 
@@ -505,6 +524,7 @@ const cancelar = async () => {
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s ease;
+    flex-shrink: 0;
 }
 
 .btn-cambiar:hover {
