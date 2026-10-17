@@ -9,40 +9,28 @@ const props = defineProps({
     stats: Object,
 });
 
-// La pestaña "Hoy" se muestra al entrar: el estudiante ve primero lo que le
-// toca hoy y puede cambiar de pestaña para ver todo lo demás.
-const filtro = ref('hoy');
+// BUG CS5: Calcular fecha del servidor y arrancar inteligentemente
+const hoyStr = computed(() => props.fechaServidor || new Date().toISOString().slice(0, 10));
+const esHoy = (fecha) => fecha === hoyStr.value;
 
-const etiquetasEstado = {
-    programado: 'Programado',
-    en_curso: 'En curso',
-    finalizado: 'Finalizado',
-    suspendido: 'Suspendido',
-    cancelado: 'Cancelado',
-    anulado: 'Anulado',
+const examenesArray = computed(() => props.examenes || []);
+const hayHoy = computed(() => examenesArray.value.some((e) => esHoy(e.fecha)));
+const hayProximos = computed(() => examenesArray.value.some((e) => e.estado === 'programado' && e.fecha > hoyStr.value));
+
+const filtroInicial = () => {
+    if (hayHoy.value) return 'hoy';
+    if (hayProximos.value) return 'proximos';
+    return 'todos';
 };
+const filtro = ref(filtroInicial());
 
-const estadosDelFiltro = {
-    en_curso: ['en_curso'],
-    proximos: ['programado'],
-    finalizados: ['finalizado'],
-    cerrados: ['cancelado', 'anulado', 'suspendido'],
-};
-
+const etiquetasEstado = { programado: 'Programado', en_curso: 'En curso', finalizado: 'Finalizado', suspendido: 'Suspendido', cancelado: 'Cancelado', anulado: 'Anulado' };
+const estadosDelFiltro = { en_curso: ['en_curso'], proximos: ['programado'], finalizados: ['finalizado'], cerrados: ['cancelado', 'anulado', 'suspendido'] };
 const filtros = [
-    { clave: 'hoy', etiqueta: 'Hoy' },
-    { clave: 'todos', etiqueta: 'Todos' },
-    { clave: 'en_curso', etiqueta: 'En curso' },
-    { clave: 'proximos', etiqueta: 'Próximos' },
-    { clave: 'finalizados', etiqueta: 'Finalizados' },
-    { clave: 'cerrados', etiqueta: 'Cerrados' },
+    { clave: 'hoy', etiqueta: 'Hoy' }, { clave: 'todos', etiqueta: 'Todos' }, { clave: 'en_curso', etiqueta: 'En curso' },
+    { clave: 'proximos', etiqueta: 'Próximos' }, { clave: 'finalizados', etiqueta: 'Finalizados' }, { clave: 'cerrados', etiqueta: 'Cerrados' },
 ];
 
-const examenesHoy = computed(() => (props.examenes || []).filter((e) => esHoy(e.fecha)));
-
-// El backend entrega los exámenes ordenados por relevancia (en curso →
-// próximos → finalizados/cerrados); aquí solo se filtra por la pestaña
-// seleccionada. La pestaña "Hoy" filtra por fecha (día actual).
 const visibles = computed(() => {
     const examenes = props.examenes || [];
 
@@ -55,38 +43,39 @@ const visibles = computed(() => {
     return estados ? examenes.filter((e) => estados.includes(e.estado)) : examenes;
 });
 
-function esHoy(fecha) {
-    const hoy = new Date();
-    const iso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-    return fecha === iso;
-}
-
-function mensajeVacio() {
-    const mensajes = {
-        hoy: 'Hoy no tienes exámenes asignados.',
-        todos: 'Aún no tienes exámenes asignados.',
-        en_curso: 'No hay exámenes en curso ahora mismo.',
-        proximos: 'No tienes exámenes próximos.',
-        finalizados: 'Todavía no tienes exámenes finalizados.',
-        cerrados: 'No hay exámenes cerrados o cancelados.',
+const mensajeVacio = computed(() => {
+    if (filtro.value === 'hoy' && hayProximos.value) {
+        return `Hoy no tienes exámenes asignados, pero tienes próximos programados.`;
+    }
+    const msgs = {
+        hoy: 'Hoy no tienes exámenes asignados.', todos: 'Aún no tienes exámenes asignados.', en_curso: 'No hay exámenes en curso ahora mismo.',
+        proximos: 'No tienes exámenes próximos.', finalizados: 'Todavía no tienes exámenes finalizados.', cerrados: 'No hay exámenes cerrados o cancelados.'
     };
-    return mensajes[filtro.value] || mensajes.todos;
-}
+    return msgs[filtro.value] || msgs.todos;
+});
 
 // El backend expone los contadores bajo keys por estado (total, en_curso,
 // ...); acá se mapean a las pestañas. "Hoy" y "Todos" no tienen key propia.
 function cantidadDe(f) {
-    if (f.clave === 'hoy') return examenesHoy.value.length;
+    if (f.clave === 'hoy') return examenesArray.value.filter((e) => esHoy(e.fecha)).length;
     if (f.clave === 'todos') return props.stats?.total ?? 0;
     return props.stats?.[f.clave] ?? 0;
 }
 
 // La habilitación es relevante solo mientras el examen no terminó: en
 // finalizados/cerrados no tiene sentido el aviso de "estás habilitado/a".
-const estadosConHabilitacion = ['programado', 'en_curso'];
+const estadosCerrados = ['finalizado', 'cancelado', 'anulado', 'suspendido'];
 
 function mostrarHabilitacion(examen) {
-    return Boolean(examen.habilitacion) && estadosConHabilitacion.includes(examen.estado);
+    return Boolean(examen.habilitacion);
+}
+
+function obtenerTextoHabilitacion(examen) {
+    const termino = estadosCerrados.includes(examen.estado);
+    if (examen.habilitacion.estado) {
+        return termino ? 'Estuviste habilitado/a para este examen' : 'Estás habilitado/a para este examen';
+    }
+    return termino ? 'No estabas habilitado/a' : 'No estás habilitado/a';
 }
 </script>
 
@@ -131,7 +120,7 @@ function mostrarHabilitacion(examen) {
                         <div class="tarjeta-titulo">
                             <h2>{{ examen.asignatura || 'Examen sin asignatura' }}</h2>
                             <p class="subtitulo">
-                                {{ examen.tipo }}
+                                {{ examen.tipo || 'Tipo por confirmar' }}
                                 <template v-if="examen.periodo"> · {{ examen.periodo }}</template>
                             </p>
                         </div>
@@ -146,9 +135,10 @@ function mostrarHabilitacion(examen) {
                     </div>
 
                     <dl class="detalles">
-                        <div v-if="examen.ambientes.length" class="detalle">
-                            <dt>Ambientes</dt>
-                            <dd>{{ examen.ambientes.join(', ') }}</dd>
+                        <div class="detalle">
+                            <dt>Ambiente{{ examen.ambientes?.length > 1 ? 's' : '' }}</dt>
+                            <dd v-if="examen.ambientes?.length">{{ examen.ambientes.join(', ') }}</dd>
+                            <dd v-else class="text-amber-600 italic font-medium" style="color: #d97706; font-style: italic; font-weight: 500;">Aula por confirmar</dd>
                         </div>
                         <div v-if="examen.grupos.length" class="detalle">
                             <dt>Grupos</dt>
@@ -170,9 +160,9 @@ function mostrarHabilitacion(examen) {
                         class="habilitacion"
                         :class="examen.habilitacion.estado ? 'habilitado' : 'inhabilitado'"
                     >
-                        <strong v-if="examen.habilitacion.estado">Estás habilitado/a para este examen</strong>
+                        <strong v-if="examen.habilitacion.estado">{{ obtenerTextoHabilitacion(examen) }}</strong>
                         <template v-else>
-                            <strong>No estás habilitado/a</strong>
+                            <strong>{{ obtenerTextoHabilitacion(examen) }}</strong>
                             <span v-if="examen.habilitacion.motivo" class="motivo">
                                 {{ examen.habilitacion.motivo }}
                             </span>
@@ -181,7 +171,14 @@ function mostrarHabilitacion(examen) {
                 </article>
             </div>
 
-            <div v-else class="vacio">{{ mensajeVacio() }}</div>
+            <div v-else class="vacio">
+                {{ mensajeVacio }}
+                <div v-if="filtro === 'hoy' && hayProximos" class="mt-3">
+                    <button @click="filtro = 'proximos'" class="text-sm font-semibold text-blue-600 underline">
+                        Ver próximos exámenes
+                    </button>
+                </div>
+            </div>
         </div>
     </AuthenticatedLayout>
 </template>
