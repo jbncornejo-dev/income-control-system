@@ -23,17 +23,32 @@ const photoForm = useForm({
 
 const isRegeneratingQr = ref(false);
 
-// Fallback de URL de QR si no viniese el SVG desde el backend
-const qrUrl = computed(() => {
-    if (!props.estudiante?.qr_token) return '';
-    return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=8&data=${encodeURIComponent(props.estudiante.qr_token)}`;
-});
+const imageLoadError = ref(false);
 
 const fotoActualUrl = computed(() => {
     if (previewFoto.value) return previewFoto.value;
-    if (props.estudiante?.foto_url) return props.estudiante.foto_url;
-    if (props.estudiante?.foto_path) return `/storage/${props.estudiante.foto_path}`;
-    return null;
+
+    const raw = props.estudiante?.foto_url || props.estudiante?.foto_path;
+    if (!raw) return null;
+
+    // Si ya es una URL completa o Base64
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+        return raw;
+    }
+
+    // Si ya empieza con '/storage/'
+    if (raw.startsWith('/storage/')) {
+        return raw;
+    }
+
+    // Si empieza con 'storage/' sin barra inicial
+    if (raw.startsWith('storage/')) {
+        return `/${raw}`;
+    }
+
+    // Si viene solo la ruta interna (ej. 'fotos/abc.jpg' o '/fotos/abc.jpg')
+    const clean = raw.startsWith('/') ? raw.slice(1) : raw;
+    return `/storage/${clean}`;
 });
 
 const iniciales = computed(() => {
@@ -59,50 +74,88 @@ const triggerFileInput = () => {
     fileInput.value?.click();
 };
 
-const handleFileChange = (e) => {
+const comprimirImagen = (file) => {
+    return new Promise((resolve) => {
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(url);
+            const max = 800;
+            let w = img.width, h = img.height;
+            if (w > max || h > max) {
+                if (w > h) { h = Math.round((h * max) / w); w = max; }
+                else { w = Math.round((w * max) / h); h = max; }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+                if (!blob) return resolve(file);
+                resolve(new File([blob], file.name.replace(/\.[^/.]+$/, '') + '.jpg', { type: 'image/jpeg' }));
+            }, 'image/jpeg', 0.82);
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            resolve(file);
+        };
+        img.src = url;
+    });
+};
+
+const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
     fileError.value = '';
-
     if (!file) return;
 
-    const validFormats = ['image/jpeg', 'image/png', 'image/jpg'];
-    const maxSize = 2 * 1024 * 1024; // 2MB
-
-    if (!validFormats.includes(file.type)) {
-        fileError.value = 'Formato no soportado. Debe seleccionar una imagen JPG o PNG.';
+    const validExts = /\.(jpe?g|png|webp|heic|heif)$/i;
+    if (!file.type.startsWith('image/') && !validExts.test(file.name)) {
+        fileError.value = 'Formato no soportado. Selecciona una imagen válida.';
         toast.error(fileError.value);
         if (fileInput.value) fileInput.value.value = '';
         return;
     }
 
-    if (file.size > maxSize) {
-        fileError.value = 'La imagen excede el límite máximo de 2 MB.';
-        toast.error(fileError.value);
-        if (fileInput.value) fileInput.value.value = '';
-        return;
-    }
+    const processedFile = await comprimirImagen(file);
+    if (previewFoto.value) URL.revokeObjectURL(previewFoto.value);
+    previewFoto.value = URL.createObjectURL(processedFile);
+    photoForm.foto = processedFile;
+    if (fileInput.value) fileInput.value.value = '';
+};
 
-    previewFoto.value = URL.createObjectURL(file);
-    photoForm.foto = file;
+const confirmarSubidaFoto = () => {
+    if (!photoForm.foto || photoForm.processing) return;
 
     photoForm.post('/estudiante/foto', {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
             toast.success('Tu fotografía de perfil se ha actualizado correctamente.');
-            photoForm.reset('foto');
-            if (fileInput.value) fileInput.value.value = '';
+            cancelarSubidaFoto();
         },
         onError: (errors) => {
-            previewFoto.value = null;
             fileError.value = errors.foto || 'Ocurrió un error al subir la fotografía.';
             toast.error(fileError.value);
         }
     });
 };
 
+const cancelarSubidaFoto = () => {
+    imageLoadError.value = false;
+    if (previewFoto.value) URL.revokeObjectURL(previewFoto.value);
+    previewFoto.value = null;
+    photoForm.reset('foto');
+    fileError.value = '';
+    if (fileInput.value) fileInput.value.value = '';
+};
+
 const handleRegenerateQr = () => {
     if (isRegeneratingQr.value) return;
+
+    const confirmado = window.confirm(
+        'Esto invalidará tu código QR actual (incluyendo impresiones o capturas anteriores). ¿Estás seguro de continuar?'
+    );
+    if (!confirmado) return;
 
     isRegeneratingQr.value = true;
     router.post('/estudiante/qr/regenerar', {}, {
@@ -146,10 +199,11 @@ const handleRegenerateQr = () => {
                         <div class="avatar-container">
                             <div class="avatar-photo-circle">
                                 <img
-                                    v-if="fotoActualUrl"
+                                    v-if="fotoActualUrl && !imageLoadError"
                                     :src="fotoActualUrl"
                                     :alt="`Foto de ${estudiante.nombres}`"
                                     class="avatar-photo-img"
+                                    @error="imageLoadError = true"
                                 />
                                 <span v-else class="avatar-initials-text">{{ iniciales }}</span>
                             </div>
@@ -169,9 +223,30 @@ const handleRegenerateQr = () => {
                                 type="file"
                                 ref="fileInput"
                                 @change="handleFileChange"
-                                accept="image/png, image/jpeg, image/jpg"
+                                accept="image/png, image/jpeg, image/jpg, image/webp, image/heic, image/heif, .heic, .heif"
                                 class="hidden-file-input"
                             />
+                        </div>
+                        
+                        <!-- Botones Aceptar / Cancelar vista previa de foto -->
+                        <div v-if="previewFoto" class="photo-preview-actions">
+                            <button
+                                imageLoadError.value = false;
+                                type="button"
+                                class="btn-confirm-photo"
+                                :disabled="photoForm.processing"
+                                @click="confirmarSubidaFoto"
+                            >
+                                {{ photoForm.processing ? 'Guardando...' : 'Aceptar' }}
+                            </button>
+                            <button
+                                type="button"
+                                class="btn-cancel-photo"
+                                :disabled="photoForm.processing"
+                                @click="cancelarSubidaFoto"
+                            >
+                                Cancelar
+                            </button>
                         </div>
 
                         <!-- Nombre Completo -->
@@ -180,8 +255,8 @@ const handleRegenerateQr = () => {
                         </h2>
                         
                         <!-- Carrera -->
-                        <p class="student-career-text">
-                            {{ estudiante.carrera || 'Ingeniería de Sistemas' }}
+                        <p v-if="estudiante.carrera" class="student-career-text">
+                            {{ estudiante.carrera }}
                         </p>
                         
                         <!-- Código SIS -->
@@ -201,20 +276,11 @@ const handleRegenerateQr = () => {
                         
                         <!-- Contenedor QR -->
                         <div class="qr-frame-box">
-                            <!-- Si viene SVG generado desde el backend -->
                             <div 
                                 v-if="estudiante.qr_svg" 
                                 class="qr-svg-content" 
                                 v-html="estudiante.qr_svg"
                             ></div>
-                            
-                            <!-- Fallback si no viniese el SVG -->
-                            <img 
-                                v-else-if="qrUrl"
-                                :src="qrUrl" 
-                                alt="Código QR de Identificación" 
-                                class="qr-img-fallback"
-                            />
 
                             <div v-else class="qr-empty-placeholder">
                                 <span>No disponible</span>

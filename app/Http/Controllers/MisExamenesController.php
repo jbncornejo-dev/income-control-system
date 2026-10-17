@@ -36,6 +36,7 @@ class MisExamenesController extends Controller
             ] : null,
             'examenes' => $examenes,
             'stats' => $this->calcularStats($examenes),
+            'fechaServidor' => now()->toDateString(),
         ]);
     }
 
