@@ -286,10 +286,13 @@ const cancelar = async () => {
 <style scoped>
 /* Contenedor Base */
 .registro-wrapper {
-    padding: 40px 20px;
+    padding: 20px 12px;
+    width: 100%;
     max-width: 800px;
     margin: 0 auto;
     font-family: var(--font-family);
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 /* Encabezado */
@@ -324,9 +327,11 @@ const cancelar = async () => {
     background-color: var(--color-white);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-card);
-    padding: 40px 50px;
+    padding: 24px 20px;
+    width: 100%;
     max-width: 600px;
     margin: 0 auto;
+    box-sizing: border-box;
 }
 
 .border-red { border-top: 5px solid var(--color-active); }
@@ -476,19 +481,36 @@ const cancelar = async () => {
 .resumen-bar {
     background-color: var(--color-primary);
     color: var(--text-white);
-    padding: 20px 30px;
+    padding: 16px;
     border-radius: var(--radius-md);
     display: flex;
+    flex-direction: column;
     justify-content: space-between;
-    align-items: center;
-    gap: 20px;
+    align-items: flex-start;
+    gap: 15px;
     margin-bottom: 10px;
+    box-sizing: border-box;
 }
 
 .resumen-info {
     display: flex;
-    gap: 40px;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
 }
+@media (min-width: 640px) {
+    .resumen-bar {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 30px;
+    }
+    .resumen-info {
+        flex-direction: row;
+        gap: 40px;
+    }
+}
+
 
 .resumen-item {
     display: flex;
@@ -553,8 +575,21 @@ const cancelar = async () => {
 
 .flex-inline-input {
     display: flex;
-    gap: 15px;
-    align-items: flex-end;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    width: 100%;
+    box-sizing: border-box;
+}
+    @media (min-width: 640px) {
+    .flex-inline-input {
+        flex-direction: row; /* Vuelve a línea en escritorio */
+        align-items: flex-end;
+    }
+    .btn-buscar {
+        padding: 0 40px !important;
+        height: 42px;
+    }
 }
 
 .flex-1 {
@@ -569,10 +604,18 @@ const cancelar = async () => {
 /* Botones inferiores de acción */
 .acciones-inferiores {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 10px;
     margin-top: 15px;
+    width: 100%;
+    box-sizing: border-box;
 }
-
+@media (min-width: 640px) {
+    .acciones-inferiores {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+}
 .btn-limpiar {
     background-color: var(--color-bg-base) !important;
     border: 1px solid var(--border-light) !important;
