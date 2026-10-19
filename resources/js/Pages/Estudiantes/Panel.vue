@@ -276,23 +276,31 @@ const handleRegenerateQr = () => {
                         
                         <!-- Contenedor QR -->
                         <div class="qr-frame-box">
+                            <!-- SVG generado desde el propio sistema -->
                             <div 
-                                v-if="estudiante.qr_svg" 
+                                v-if="estudiante.tiene_examen_activo && estudiante.qr_svg" 
                                 class="qr-svg-content" 
                                 v-html="estudiante.qr_svg"
                             ></div>
+
+                            <!-- Mensaje CS1 cuando no hay exámenes -->
+                            <div v-else-if="!estudiante.tiene_examen_activo" class="text-center p-4">
+                                <p class="text-sm font-semibold text-gray-800">No hay un código QR disponible en este momento.</p>
+                                <p class="text-xs text-gray-500 mt-2">El código QR se habilitará cuando tengas un examen pendiente o en curso.</p>
+                            </div>
 
                             <div v-else class="qr-empty-placeholder">
                                 <span>No disponible</span>
                             </div>
                         </div>
 
-                        <span class="qr-token-string">
+                        <!-- Ocultar Token y Botón si no hay examen activo -->
+                        <span v-if="estudiante.tiene_examen_activo" class="qr-token-string">
                             {{ formattedToken }}
                         </span>
 
-                        <!-- Botón Regenerar Código QR -->
                         <button 
+                            v-if="estudiante.tiene_examen_activo"
                             type="button" 
                             class="btn-regenerate-qr" 
                             :disabled="isRegeneratingQr"

@@ -219,11 +219,22 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
+        // 1. Verificar si el estudiante tiene exámenes activos
+        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
+        $tieneExamenActivo = \App\Models\Examen::whereIn('estado', ['programado', 'en_curso'])
+            ->where(function ($query) use ($estudiante, $grupoIds) {
+                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
+                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
+            })->exists();
+
         if ($estudiante->codigo_qr === null) {
             $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
         }
 
         $qrSvg = null;
+        
+        // 2. Solo generar el SVG si tiene un examen activo
+        if ($tieneExamenActivo && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
         try {
             $result = (new \Endroid\QrCode\Builder\Builder(
                 data: $estudiante->codigo_qr,
@@ -233,8 +244,9 @@ Route::middleware('auth')->group(function () {
             ))->build();
             $rawSvg = $result->getString();
             $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
-        } catch (\Exception $e) {
+            } catch (\Throwable $e) {
             $qrSvg = null;
+            }
         }
 
         return \Inertia\Inertia::render('Estudiantes/Panel', [
@@ -243,14 +255,13 @@ Route::middleware('auth')->group(function () {
                 'nombres' => $estudiante->nombres,
                 'apellidos' => $estudiante->apellidos,
                 'codigo_universitario' => $estudiante->codigo_universitario,
-                'ci' => $estudiante->documento_identidad,
-                'email' => $estudiante->email,
-                'carrera' => 'Ingeniería de Sistemas',
+                'carrera' => $estudiante->carrera ?? null,
+                'foto_url' => $estudiante->foto_url,
+                'foto_path' => $estudiante->foto_path ?? null,
                 'qr_token' => $estudiante->codigo_qr,
                 'qr_svg' => $qrSvg,
-                'foto_url' => $estudiante->foto_url,
-                'foto_path' => null,
-            ]
+                'tiene_examen_activo' => $tieneExamenActivo, 
+            ],
         ]);
     })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.panel');
 
