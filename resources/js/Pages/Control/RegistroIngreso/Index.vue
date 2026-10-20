@@ -478,6 +478,7 @@ const cancelar = async () => {
 }
 
 /* Barra oscura del Paso 2 */
+/* Corrección CS3: Permitir ajuste de texto sin desbordar el contenedor */
 .resumen-bar {
     background-color: var(--color-primary);
     color: var(--text-white);
@@ -485,11 +486,11 @@ const cancelar = async () => {
     border-radius: var(--radius-md);
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
-    align-items: flex-start;
     gap: 15px;
     margin-bottom: 10px;
     box-sizing: border-box;
+    width: 100%;
+    overflow: hidden; /* Evita que contenido largo rompa la tarjeta */
 }
 
 .resumen-info {
@@ -497,6 +498,7 @@ const cancelar = async () => {
     flex-direction: column;
     gap: 10px;
     width: 100%;
+    word-break: break-word; /* Ajusta textos muy largos */
 }
 @media (min-width: 640px) {
     .resumen-bar {
@@ -573,18 +575,29 @@ const cancelar = async () => {
     margin-bottom: 20px;
 }
 
+/* Corrección CS3: Se evita el desbordamiento forzando un ancho 100% y salto de línea en botones */
 .flex-inline-input {
     display: flex;
     flex-direction: column;
     gap: 12px;
-    align-items: stretch;
     width: 100%;
     box-sizing: border-box;
 }
-    @media (min-width: 640px) {
+
+/* En móvil, los botones de acción se agrupan en una fila fluida */
+.flex-inline-input > .btn-qr,
+.flex-inline-input > .btn-buscar {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
     .flex-inline-input {
-        flex-direction: row; /* Vuelve a línea en escritorio */
+        flex-direction: row; 
         align-items: flex-end;
+    }
+    .flex-inline-input > .btn-qr,
+    .flex-inline-input > .btn-buscar {
+        width: auto;
     }
     .btn-buscar {
         padding: 0 40px !important;
