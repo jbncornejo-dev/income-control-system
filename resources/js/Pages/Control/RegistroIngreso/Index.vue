@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import axios from 'axios';
 import { router } from '@inertiajs/vue3';
+import { Html5Qrcode } from 'html5-qrcode';
 
 const props = defineProps({
     examenes: {
@@ -25,14 +26,58 @@ const errorMessage = ref('');
 const successMessage = ref('');
 const isLoading = ref(false);
 const inputRef = ref(null);
+const isScanning = ref(false); // Estado para mostrar la cámara
+let html5QrCode = null;
+
 const irAIncidencias = () => {
     router.visit('/incidencias');
 };
-const enfocarScanner = () => {
+
+// BUG CS4: Iniciar cámara, solicitar permisos y decodificar automáticamente
+const enfocarScanner = async () => {
+    // Mantener compatibilidad con pistola física (enfoca el input manual)
     if (inputRef.value?.$el?.querySelector('input')) {
         inputRef.value.$el.querySelector('input').focus();
     }
-    successMessage.value = "Listo para escanear código QR con lector o pistola.";
+    
+    isScanning.value = true;
+    errorMessage.value = '';
+    successMessage.value = '';
+    await nextTick();
+
+    try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        await html5QrCode.start(
+            { facingMode: "environment" }, // Usa la cámara trasera en móviles por defecto
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText) => {
+                // Éxito: autocompletar el campo, cerrar cámara y ejecutar validación
+                datoEstudiante.value = decodedText;
+                detenerCamara();
+                validarEstudiante();
+            },
+            (ignore) => {
+                // Ignorar errores de lectura por cada frame vacío
+            }
+        );
+    } catch (err) {
+        errorMessage.value = "No se pudo acceder a la cámara. Verifica los permisos de tu navegador.";
+        isScanning.value = false;
+    }
+};
+
+const detenerCamara = async () => {
+    if (html5QrCode && html5QrCode.isScanning) {
+        await html5QrCode.stop();
+        html5QrCode.clear();
+    }
+    isScanning.value = false;
+    
+    // Al cancelar, devolver el foco al input manual por si quiere usar pistola
+    await nextTick();
+    if (inputRef.value?.$el?.querySelector('input')) {
+        inputRef.value.$el.querySelector('input').focus();
+    }
 };
 
 const ingresosRegistrados = ref(0);
@@ -204,8 +249,19 @@ const cancelar = async () => {
                     Ingresos registrados: <strong>{{ ingresosRegistrados }}</strong>
                 </div>
 
-                <!-- Lector (Formulario) -->
-                <div v-if="!estudianteValidado" class="formulario-card">
+               <!-- BUG CS4: Vista de la cámara -->
+                <div v-if="isScanning && !estudianteValidado" class="formulario-card text-center">
+                    <h3 class="card-titulo mb-4" style="margin-bottom: 15px; font-size: 18px;">Escaneando Código QR...</h3>
+                    
+                    <div id="qr-reader" style="width: 100%; max-width: 350px; margin: 0 auto; overflow: hidden; border-radius: 8px;"></div>
+                    
+                    <Button type="button" variant="action" class="btn-full mt-15" @click="detenerCamara">
+                        CANCELAR CÁMARA
+                    </Button>
+                </div>
+
+                <!-- Lector Manual / Pistola (Formulario) -->
+                <div v-if="!isScanning && !estudianteValidado" class="formulario-card">
                     <form @submit.prevent="validarEstudiante">
                         <div class="flex-inline-input">
                             <TextInput 
@@ -221,9 +277,9 @@ const cancelar = async () => {
                             @click="enfocarScanner"
                             variant="action"
                             class="btn-qr"
-                            title="Activar lector de código QR"
+                            title="Activar cámara para código QR"
                             >
-                            📷 QR
+                            📷 CÁMARA
                             </Button>
                             <Button 
                                 type="submit" 

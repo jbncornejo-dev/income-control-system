@@ -24,6 +24,7 @@ use App\Models\Examen;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\RegistroIngresoController;
+use Carbon\Carbon;
 
 Route::get('/', function () {
     if (! Auth::check()) {
@@ -219,13 +220,27 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
-        // 1. Verificar si el estudiante tiene exámenes activos
-        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
-        $tieneExamenActivo = \App\Models\Examen::whereIn('estado', ['programado', 'en_curso'])
-            ->where(function ($query) use ($estudiante, $grupoIds) {
-                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
-                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
-            })->exists();
+    $ahora = \Carbon\Carbon::now('America/La_Paz');
+    $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
+
+    $tieneExamenActivo = \App\Models\Examen::whereIn('estado', ['programado', 'en_curso'])
+        ->whereDate('fecha', '>=', $ahora->toDateString()) // hoy o futuro
+        ->where(function ($query) use ($estudiante, $grupoIds) {
+            $query->where(function ($q) use ($estudiante, $grupoIds) {
+                $q->whereHas('grupos', function ($subQ) use ($grupoIds) {
+                    $subQ->whereIn('grupo.id_grupo', $grupoIds);
+                })
+                ->whereDoesntHave('habilitaciones', function ($subQ) use ($estudiante) {
+                    $subQ->where('id_estudiante', $estudiante->id_estudiante)
+                        ->where('estado_habilitado', false);
+                });
+            })
+            ->orWhereHas('habilitaciones', function ($q) use ($estudiante) {
+                $q->where('id_estudiante', $estudiante->id_estudiante)
+                ->where('estado_habilitado', true);
+            });
+        })
+        ->exists();
 
         if ($estudiante->codigo_qr === null) {
             $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
@@ -233,19 +248,20 @@ Route::middleware('auth')->group(function () {
 
         $qrSvg = null;
         
-        // 2. Solo generar el SVG si tiene un examen activo
+        // 2. Solo generar el SVG si tiene un examen activo (HOY)
         if ($tieneExamenActivo && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
-        try {
-            $result = (new \Endroid\QrCode\Builder\Builder(
-                data: $estudiante->codigo_qr,
-                size: 200,
-                margin: 4,
-                writer: new \Endroid\QrCode\Writer\SvgWriter,
-            ))->build();
-            $rawSvg = $result->getString();
-            $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
+            try {
+                $result = (new \Endroid\QrCode\Builder\Builder(
+                    data: $estudiante->codigo_qr,
+                    size: 200,
+                    margin: 4,
+                    writer: new \Endroid\QrCode\Writer\SvgWriter,
+                ))->build();
+                $rawSvg = $result->getString();
+                $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
             } catch (\Throwable $e) {
-            $qrSvg = null;
+                \Illuminate\Support\Facades\Log::error('Error generando QR: ' . $e->getMessage());
+                $qrSvg = null;
             }
         }
 
@@ -263,7 +279,7 @@ Route::middleware('auth')->group(function () {
                 'tiene_examen_activo' => $tieneExamenActivo, 
             ],
         ]);
-    })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.panel');
+    })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);
 
     // Mocks para los botones (evitan el 404 al dar clic)
     Route::post('/estudiante/qr/regenerar', function (\Illuminate\Http\Request $request) {
