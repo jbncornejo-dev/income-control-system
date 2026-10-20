@@ -77,6 +77,18 @@ class IncidenciaController extends Controller
             'descripcion_motivo' => 'required|string',
         ], $mensajes);
 
+        // BUG CS9 (Parte 2): Validar de lado del servidor que el examen siga en curso al guardar
+        $examen = Examen::find($datos['id_examen']);
+        $ahora = Carbon::now('America/La_Paz');
+        $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio, 'America/La_Paz');
+        $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
+
+        if (!$ahora->between($horaInicio, $horaFin)) {
+            return back()->withErrors([
+                'id_examen' => 'No se puede registrar la incidencia porque el examen ya finalizó o no está en curso.'
+            ]);
+        }
+
         DB::transaction(fn () => Incidencia::create([
             'id_examen' => $datos['id_examen'],
             'id_estudiante' => $datos['id_estudiante'] ?? null,

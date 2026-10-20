@@ -91,8 +91,21 @@ const estudiantesFiltrados = computed(() => {
     );
 });
 
-// Forzar el reseteo del select de estudiante si cambia el examen o si hay nueva búsqueda
-watch([() => form.id_examen, busquedaEstudiante], () => {
+// BUG CS9 (Parte 1): Autoseleccionar si la búsqueda da un resultado único
+watch(busquedaEstudiante, (newVal) => {
+    const filtrados = estudiantesFiltrados.value;
+    if (newVal.trim() !== '' && filtrados.length === 1) {
+        // Autoseleccionar automáticamente al único estudiante encontrado
+        form.id_estudiante = filtrados[0].id_estudiante;
+    } else if (newVal.trim() !== '' && filtrados.length > 1) {
+        // Limpiar selección si hay múltiples opciones para forzar la elección manual
+        form.id_estudiante = '';
+    }
+});
+
+// Limpiar la búsqueda y selección al cambiar de examen
+watch(() => form.id_examen, () => {
+    busquedaEstudiante.value = '';
     form.id_estudiante = '';
 });
 
