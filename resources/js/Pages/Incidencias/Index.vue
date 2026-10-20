@@ -64,18 +64,18 @@ const form = useForm({
     descripcion_motivo: ''
 });
 
-// BUG CS8: Estudiantes dinámicos basados en el examen seleccionado
+// BUG CS8: Mostrar únicamente a los estudiantes autorizados calculados desde el backend
 const estudiantesDelExamen = computed(() => {
     if (!form.id_examen) return [];
     
-    // Busca el examen seleccionado en los props
-    const examenSeleccionado = props.examenes.find(e => e.id_examen === form.id_examen);
-    if (!examenSeleccionado || !examenSeleccionado.habilitaciones) return [];
+    const examenSeleccionado = props.examenes.find(e => e.id_examen == form.id_examen);
     
-    // Extrae y devuelve solo los estudiantes habilitados
-    return examenSeleccionado.habilitaciones
-        .map(h => h.estudiante)
-        .filter(Boolean); // filtra nulos por seguridad
+    if (!examenSeleccionado || !examenSeleccionado.estudiantes_habilitados_ids) return [];
+    
+    // Comparamos el catálogo global de estudiantes con los IDs habilitados de este examen
+    return props.estudiantes.filter(e => 
+        examenSeleccionado.estudiantes_habilitados_ids.includes(e.id_estudiante)
+    );
 });
 
 // Buscador en el cliente (ahora filtrando SOLO a los habilitados del examen actual)
