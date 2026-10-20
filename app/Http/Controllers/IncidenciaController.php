@@ -32,13 +32,33 @@ class IncidenciaController extends Controller
             return response()->json(['incidencias' => $incidencias]);
         }
 
+        $ahora = Carbon::now('America/La_Paz');
+
+        // BUG CS7 y CS8: Solo exámenes en curso asignados al control, y cargar sus estudiantes habilitados
+        $examenesEnCurso = Examen::with([
+            'asignatura',
+            // Cargar estudiantes habilitados para este examen
+            'habilitaciones' => function ($query) {
+                $query->where('estado_habilitado', true)->with('estudiante');
+            }
+        ])
+        ->whereHas('personalControl', function ($query) use ($request) {
+            $query->where('examen_personal_control.id_usuario', $request->user()->id);
+        })
+        ->where('fecha', $ahora->toDateString())
+        ->whereTime('hora_inicio', '<=', $ahora->toTimeString())
+        ->get()
+        ->filter(function ($examen) use ($ahora) {
+            $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+            $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
+            return $ahora->between($horaInicio, $horaFin);
+        })
+        ->values();
+
         return Inertia::render('Incidencias/Index', [
             'incidencias' => $incidencias,
-            'examenes' => Examen::with('asignatura')->orderByDesc('fecha')->get(),
-            'estudiantes' => Estudiante::query()
-                ->select(['id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos'])
-                ->orderBy('apellidos')
-                ->get(),
+            'examenes' => $examenesEnCurso,
+            // Eliminamos la consulta general de todos los 'estudiantes'
             'tipos' => Incidencia::TIPOS,
             'filters' => $filtros,
         ]);

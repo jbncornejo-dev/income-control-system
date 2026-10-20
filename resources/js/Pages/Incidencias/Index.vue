@@ -64,20 +64,35 @@ const form = useForm({
     descripcion_motivo: ''
 });
 
-// Buscador/autocompletado sencillo en el cliente para estudiantes
-const estudiantesFiltrados = computed(() => {
-    const q = busquedaEstudiante.value.trim().toLowerCase();
-    if (!q) return props.estudiantes; // Muestra todos si no hay búsqueda
+// BUG CS8: Estudiantes dinámicos basados en el examen seleccionado
+const estudiantesDelExamen = computed(() => {
+    if (!form.id_examen) return [];
     
-    return props.estudiantes.filter((e) =>
+    // Busca el examen seleccionado en los props
+    const examenSeleccionado = props.examenes.find(e => e.id_examen === form.id_examen);
+    if (!examenSeleccionado || !examenSeleccionado.habilitaciones) return [];
+    
+    // Extrae y devuelve solo los estudiantes habilitados
+    return examenSeleccionado.habilitaciones
+        .map(h => h.estudiante)
+        .filter(Boolean); // filtra nulos por seguridad
+});
+
+// Buscador en el cliente (ahora filtrando SOLO a los habilitados del examen actual)
+const estudiantesFiltrados = computed(() => {
+    const todosDelExamen = estudiantesDelExamen.value;
+    const q = busquedaEstudiante.value.trim().toLowerCase();
+    if (!q) return todosDelExamen; 
+    
+    return todosDelExamen.filter((e) =>
         `${e.nombres} ${e.apellidos}`.toLowerCase().includes(q) ||
         String(e.codigo_universitario).toLowerCase().includes(q) ||
         String(e.documento_identidad).toLowerCase().includes(q)
     );
 });
 
-// Forzar el reseteo del select si el operador escribe una nueva búsqueda
-watch(busquedaEstudiante, () => {
+// Forzar el reseteo del select de estudiante si cambia el examen o si hay nueva búsqueda
+watch([() => form.id_examen, busquedaEstudiante], () => {
     form.id_estudiante = '';
 });
 
