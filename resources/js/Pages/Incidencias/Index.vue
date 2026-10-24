@@ -64,20 +64,48 @@ const form = useForm({
     descripcion_motivo: ''
 });
 
-// Buscador/autocompletado sencillo en el cliente para estudiantes
-const estudiantesFiltrados = computed(() => {
-    const q = busquedaEstudiante.value.trim().toLowerCase();
-    if (!q) return props.estudiantes; // Muestra todos si no hay búsqueda
+// BUG CS8: Mostrar únicamente a los estudiantes autorizados calculados desde el backend
+const estudiantesDelExamen = computed(() => {
+    if (!form.id_examen) return [];
     
-    return props.estudiantes.filter((e) =>
+    const examenSeleccionado = props.examenes.find(e => e.id_examen == form.id_examen);
+    
+    if (!examenSeleccionado || !examenSeleccionado.estudiantes_habilitados_ids) return [];
+    
+    // Comparamos el catálogo global de estudiantes con los IDs habilitados de este examen
+    return props.estudiantes.filter(e => 
+        examenSeleccionado.estudiantes_habilitados_ids.includes(e.id_estudiante)
+    );
+});
+
+// Buscador en el cliente (ahora filtrando SOLO a los habilitados del examen actual)
+const estudiantesFiltrados = computed(() => {
+    const todosDelExamen = estudiantesDelExamen.value;
+    const q = busquedaEstudiante.value.trim().toLowerCase();
+    if (!q) return todosDelExamen; 
+    
+    return todosDelExamen.filter((e) =>
         `${e.nombres} ${e.apellidos}`.toLowerCase().includes(q) ||
         String(e.codigo_universitario).toLowerCase().includes(q) ||
         String(e.documento_identidad).toLowerCase().includes(q)
     );
 });
 
-// Forzar el reseteo del select si el operador escribe una nueva búsqueda
-watch(busquedaEstudiante, () => {
+// BUG CS9 (Parte 1): Autoseleccionar si la búsqueda da un resultado único
+watch(busquedaEstudiante, (newVal) => {
+    const filtrados = estudiantesFiltrados.value;
+    if (newVal.trim() !== '' && filtrados.length === 1) {
+        // Autoseleccionar automáticamente al único estudiante encontrado
+        form.id_estudiante = filtrados[0].id_estudiante;
+    } else if (newVal.trim() !== '' && filtrados.length > 1) {
+        // Limpiar selección si hay múltiples opciones para forzar la elección manual
+        form.id_estudiante = '';
+    }
+});
+
+// Limpiar la búsqueda y selección al cambiar de examen
+watch(() => form.id_examen, () => {
+    busquedaEstudiante.value = '';
     form.id_estudiante = '';
 });
 

@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
+use Carbon\Carbon;
 
 class IncidenciaTest extends TestCase
 {
@@ -41,12 +42,14 @@ class IncidenciaTest extends TestCase
             ['fecha_inicio' => now()->startOfYear()->toDateString(), 'fecha_fin' => now()->endOfYear()->toDateString()]
         );
 
+        $ahora = Carbon::now('America/La_Paz');
+
         return Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
             'id_periodo' => $periodo->id_periodo,
-            'fecha' => now()->addDay()->toDateString(),
-            'hora_inicio' => '08:00:00',
-            'duracion_minutos' => 90,
+            'fecha' => $ahora->toDateString(),
+            'hora_inicio' => $ahora->copy()->subMinutes(15)->format('H:i:s'),
+            'duracion_minutos' => 120,
         ]);
     }
 

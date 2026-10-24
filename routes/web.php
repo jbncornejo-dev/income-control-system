@@ -24,6 +24,7 @@ use App\Models\Examen;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\RegistroIngresoController;
+use Carbon\Carbon;
 
 Route::get('/', function () {
     if (! Auth::check()) {
@@ -219,6 +220,7 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
+
         // 1. Verificar si el estudiante tiene exámenes activos
         //    La columna `estado` solo almacena decisiones manuales (NULL, cancelado,
         //    anulado, suspendido). 'programado' y 'en_curso' se calculan desde el
@@ -243,19 +245,20 @@ Route::middleware('auth')->group(function () {
 
         $qrSvg = null;
         
-        // 2. Solo generar el SVG si tiene un examen activo
+        // 2. Solo generar el SVG si tiene un examen activo (HOY)
         if ($tieneExamenActivo && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
-        try {
-            $result = (new \Endroid\QrCode\Builder\Builder(
-                data: $estudiante->codigo_qr,
-                size: 200,
-                margin: 4,
-                writer: new \Endroid\QrCode\Writer\SvgWriter,
-            ))->build();
-            $rawSvg = $result->getString();
-            $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
+            try {
+                $result = (new \Endroid\QrCode\Builder\Builder(
+                    data: $estudiante->codigo_qr,
+                    size: 200,
+                    margin: 4,
+                    writer: new \Endroid\QrCode\Writer\SvgWriter,
+                ))->build();
+                $rawSvg = $result->getString();
+                $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
             } catch (\Throwable $e) {
-            $qrSvg = null;
+                \Illuminate\Support\Facades\Log::error('Error generando QR: ' . $e->getMessage());
+                $qrSvg = null;
             }
         }
 
@@ -273,7 +276,7 @@ Route::middleware('auth')->group(function () {
                 'tiene_examen_activo' => $tieneExamenActivo, 
             ],
         ]);
-    })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.panel');
+    })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);
 
     // Mocks para los botones (evitan el 404 al dar clic)
     Route::post('/estudiante/qr/regenerar', function (\Illuminate\Http\Request $request) {
