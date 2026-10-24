@@ -220,27 +220,24 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
-    $ahora = \Carbon\Carbon::now('America/La_Paz');
-    $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
 
-    $tieneExamenActivo = \App\Models\Examen::whereIn('estado', ['programado', 'en_curso'])
-        ->whereDate('fecha', '>=', $ahora->toDateString()) // hoy o futuro
-        ->where(function ($query) use ($estudiante, $grupoIds) {
-            $query->where(function ($q) use ($estudiante, $grupoIds) {
-                $q->whereHas('grupos', function ($subQ) use ($grupoIds) {
-                    $subQ->whereIn('grupo.id_grupo', $grupoIds);
-                })
-                ->whereDoesntHave('habilitaciones', function ($subQ) use ($estudiante) {
-                    $subQ->where('id_estudiante', $estudiante->id_estudiante)
-                        ->where('estado_habilitado', false);
-                });
+        // 1. Verificar si el estudiante tiene exámenes activos
+        //    La columna `estado` solo almacena decisiones manuales (NULL, cancelado,
+        //    anulado, suspendido). 'programado' y 'en_curso' se calculan desde el
+        //    horario, así que filtramos excluyendo los terminales y verificando que
+        //    la hora de fin (fecha + hora_inicio + duracion) aún no haya pasado.
+        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
+        $tieneExamenActivo = \App\Models\Examen::where(function ($q) {
+                $q->whereNull('estado')
+                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
             })
-            ->orWhereHas('habilitaciones', function ($q) use ($estudiante) {
-                $q->where('id_estudiante', $estudiante->id_estudiante)
-                ->where('estado_habilitado', true);
-            });
-        })
-        ->exists();
+            ->whereRaw(
+                "(fecha || ' ' || hora_inicio)::timestamp + (duracion_minutos || ' minutes')::interval > NOW()"
+            )
+            ->where(function ($query) use ($estudiante, $grupoIds) {
+                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
+                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
+            })->exists();
 
         if ($estudiante->codigo_qr === null) {
             $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
