@@ -315,8 +315,14 @@ function guardarNormas(hab) {
                 <div class="personal-form">
                     <select v-model="personalSeleccionado" class="personal-select" :class="{ 'personal-select-error': errorPersonal }">
                         <option value="">Seleccione personal de control</option>
-                        <option v-for="persona in personalDisponible" :key="persona.id" :value="persona.id">
-                            {{ persona.name }} ({{ persona.username }})
+                        <option
+                            v-for="persona in personalDisponible"
+                            :key="persona.id"
+                            :value="persona.id"
+                            :disabled="persona.conflicto_interes"
+                            :title="persona.conflicto_interes ? 'No disponible: esta inscrito como estudiante en esta asignatura' : ''"
+                        >
+                            {{ persona.name }} ({{ persona.username }}){{ persona.conflicto_interes ? ' - inscrito en la asignatura' : '' }}
                         </option>
                     </select>
                     <button class="personal-btn" :disabled="procesandoPersonal || personalDisponible.length === 0" @click="asignarPersonal">Asignar</button>

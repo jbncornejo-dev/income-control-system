@@ -84,12 +84,25 @@ class HabilitacionController extends Controller
             // Pasamos esAdmin por si necesitamos ocultar algún botón específico más adelante
             'esAdmin' => $request->user()->rol->nombre_rol === 'administrador',
             'personalAsignado' => $examen->personalControl()->select(['users.id', 'users.name', 'users.username', 'users.email'])->orderBy('users.name')->get(),
-            'personalDisponible' => User::query()
-                ->select(['users.id', 'users.name', 'users.username'])
-                ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'personal de control de ingreso'))
-                ->whereDoesntHave('examenesAsignados', fn ($q) => $q->where('examen.id_examen', $examen->id_examen))
-                ->orderBy('users.name')
-                ->get(),
+            'personalDisponible' => (function () use ($examen) {
+                $idsInscritosEnLaMateria = Inscripcion::query()
+                    ->whereHas('grupo', fn ($q) => $q->where('id_asignatura', $examen->id_asignatura))
+                    ->pluck('id_estudiante')
+                    ->unique();
+
+                return User::query()
+                    ->select(['users.id', 'users.name', 'users.username', 'users.id_estudiante'])
+                    ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'personal de control de ingreso'))
+                    ->whereDoesntHave('examenesAsignados', fn ($q) => $q->where('examen.id_examen', $examen->id_examen))
+                    ->orderBy('users.name')
+                    ->get()
+                    ->map(function (User $usuario) use ($idsInscritosEnLaMateria) {
+                        $usuario->conflicto_interes = $usuario->id_estudiante !== null
+                            && $idsInscritosEnLaMateria->contains($usuario->id_estudiante);
+
+                        return $usuario;
+                    });
+            })(),
         ]);
     }
 
