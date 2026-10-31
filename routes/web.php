@@ -207,7 +207,11 @@ Route::middleware('auth')->group(function () {
         )->name('habilitaciones.update');
         Route::patch('/examenes/{examen}/habilitaciones', [HabilitacionController::class, 'updateBulk'])
             ->name('habilitaciones.updateBulk');
-    });
+        Route::post('/examenes/{examen}/reparto-automatico', [PersonalControlController::class, 'repartoAutomatico'])
+            ->name('examenes.reparto-automatico');
+        Route::patch('/habilitaciones/{habilitacion}/asignar-personal', [PersonalControlController::class, 'asignarManual'])
+            ->name('habilitaciones.asignar-personal');
+        });
 
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
