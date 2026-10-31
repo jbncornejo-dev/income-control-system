@@ -82,7 +82,14 @@ const fotoUrl = computed(() => {
 });
 
 const iniciales = computed(() => {
-    const misPendientesCount = computed(() => {
+    const src = estudianteValidado.value || estudianteError.value;
+    if (!src) return '';
+    const n = src.nombres?.trim()?.[0] ?? '';
+    const a = src.apellidos?.trim()?.[0] ?? '';
+    return `${n}${a}`.toUpperCase();
+});
+
+const misPendientesCount = computed(() => {
     return misAsignadosList.value.filter(s => !s.ya_ingreso).length;
 });
 
@@ -109,12 +116,6 @@ function seleccionarDesdeAsignados(codigo) {
     mostrarMisAsignados.value = false;
     buscarEstudiante(codigo);
 }
-    const src = estudianteValidado.value || estudianteError.value;
-    if (!src) return '';
-    const n = src.nombres?.trim()?.[0] ?? '';
-    const a = src.apellidos?.trim()?.[0] ?? '';
-    return `${n}${a}`.toUpperCase();
-});
 
 /* ──────────────── Paso 1 → 2 ──────────────── */
 const iniciarRegistro = async () => {
