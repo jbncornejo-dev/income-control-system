@@ -32,4 +32,9 @@ class Habilitacion extends Model
     {
         return $this->belongsTo(Examen::class, 'id_examen', 'id_examen');
     }
-}
+
+    public function personalControl()
+    {
+        return $this->belongsTo(User::class, 'id_personal_control');
+    }
+    }
