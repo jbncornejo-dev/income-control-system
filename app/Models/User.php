@@ -106,4 +106,9 @@ class User extends Authenticatable
             'id_examen'
         );
     }
+
+    public function habilitacionesAsignadas()
+    {
+        return $this->hasMany(Habilitacion::class, 'id_personal_control');
+    }
 }

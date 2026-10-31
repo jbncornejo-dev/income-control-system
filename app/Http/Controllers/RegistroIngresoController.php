@@ -27,14 +27,40 @@ class RegistroIngresoController extends Controller
             )
             ->get()
             ->map(function ($examen) {
+                $userId = auth()->id();
+
+                $habilitacionesAsignadas = Habilitacion::with('estudiante')
+                    ->where('id_examen', $examen->id_examen)
+                    ->where('estado_habilitado', true)
+                    ->where('id_personal_control', $userId)
+                    ->get();
+
+                $ingresadosIds = RegistroIngreso::whereHas('examenAmbiente', function ($q) use ($examen) {
+                    $q->where('id_examen', $examen->id_examen);
+                })->pluck('id_estudiante')->toArray();
+
+                $misAsignados = $habilitacionesAsignadas->map(function ($hab) use ($ingresadosIds) {
+                    return [
+                        'id_habilitacion'       => $hab->id_habilitacion,
+                        'id_estudiante'         => $hab->estudiante->id_estudiante,
+                        'nombres'               => $hab->estudiante->nombres,
+                        'apellidos'             => $hab->estudiante->apellidos,
+                        'codigo_universitario'  => $hab->estudiante->codigo_universitario,
+                        'documento_identidad'   => $hab->estudiante->documento_identidad,
+                        'ya_ingreso'            => in_array($hab->id_estudiante, $ingresadosIds),
+                    ];
+                });
+
                 return [
-                    'id_examen'   => $examen->id_examen,
-                    'asignatura'  => $examen->asignatura->nombre_asignatura ?? 'Sin asignatura',
-                    'tipo'        => $examen->tipo->nombre ?? null,
-                    'fecha'       => $examen->fecha,
-                    'hora_inicio' => $examen->hora_inicio,
-                    'estado'      => $examen->estado_actual,
-                    'ambientes'   => $examen->examenesAmbientes->map(function ($pivot) {
+                    'id_examen'              => $examen->id_examen,
+                    'asignatura'             => $examen->asignatura->nombre_asignatura ?? 'Sin asignatura',
+                    'tipo'                   => $examen->tipo->nombre ?? null,
+                    'fecha'                  => $examen->fecha,
+                    'hora_inicio'            => $examen->hora_inicio,
+                    'estado'                 => $examen->estado_actual,
+                    'mis_pendientes_count'   => $misAsignados->where('ya_ingreso', false)->count(),
+                    'mis_asignados'          => $misAsignados,
+                    'ambientes'              => $examen->examenesAmbientes->map(function ($pivot) {
                         return [
                             'id_examen_ambiente' => $pivot->id_examen_ambiente,
                             'id_ambiente'        => $pivot->ambiente->id_ambiente ?? null,
@@ -90,7 +116,8 @@ class RegistroIngresoController extends Controller
         }
 
         // ── Verificar habilitación ───────────────────────────────────
-        $habilitacion = Habilitacion::where('id_estudiante', $estudiante->id_estudiante)
+        $habilitacion = Habilitacion::with('personalControl')
+            ->where('id_estudiante', $estudiante->id_estudiante)
             ->where('id_examen', $idExamen)
             ->first();
 
@@ -135,12 +162,17 @@ class RegistroIngresoController extends Controller
         }
 
         // ── Todo OK: devolver datos para confirmación visual ─────────
+        $esMiAsignado = $habilitacion->id_personal_control === auth()->id();
+        $agenteAsignado = $habilitacion->personalControl?->name ?? 'Sin asignar';
+
         return response()->json([
             'id_estudiante'        => $estudiante->id_estudiante,
             'nombres'              => $estudiante->nombres,
             'apellidos'            => $estudiante->apellidos,
             'codigo_universitario' => $estudiante->codigo_universitario,
             'foto_url'             => $estudiante->foto_url,
+            'es_mi_asignado'       => $esMiAsignado,
+            'asignado_a'           => ! $esMiAsignado ? $agenteAsignado : null,
         ]);
     }
 

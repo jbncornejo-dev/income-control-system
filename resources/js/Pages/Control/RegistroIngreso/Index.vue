@@ -7,7 +7,7 @@ import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
-import { Camera, Keyboard, UserCheck, UserX, RotateCcw, AlertTriangle, CheckCircle, XCircle, ScanLine, Shield } from 'lucide-vue-next';
+import { Camera, Keyboard, UserCheck, UserX, RotateCcw, AlertTriangle, CheckCircle, XCircle, ScanLine, Shield, Users } from 'lucide-vue-next';
 import axios from 'axios';
 
 const props = defineProps({
@@ -28,6 +28,10 @@ const successMessage        = ref('');
 const isLoading             = ref(false);
 const ingresosRegistrados   = ref(0);
 const inputRef              = ref(null);
+const misAsignadosList      = ref([]);
+const mostrarMisAsignados   = ref(false);
+const filtroAsignados       = ref('');
+const filtroEstadoAsignados = ref('todos'); // 'todos' | 'pendientes' | 'ingresados'
 
 const cameraReady           = ref(false);
 const cameraError           = ref(null);
@@ -85,11 +89,42 @@ const iniciales = computed(() => {
     return `${n}${a}`.toUpperCase();
 });
 
+const misPendientesCount = computed(() => {
+    return misAsignadosList.value.filter(s => !s.ya_ingreso).length;
+});
+
+const misAsignadosFiltrados = computed(() => {
+    let lista = misAsignadosList.value;
+    if (filtroEstadoAsignados.value === 'pendientes') {
+        lista = lista.filter(s => !s.ya_ingreso);
+    } else if (filtroEstadoAsignados.value === 'ingresados') {
+        lista = lista.filter(s => s.ya_ingreso);
+    }
+    if (filtroAsignados.value.trim()) {
+        const query = filtroAsignados.value.toLowerCase().trim();
+        lista = lista.filter(s =>
+            s.nombres.toLowerCase().includes(query) ||
+            s.apellidos.toLowerCase().includes(query) ||
+            s.codigo_universitario.includes(query) ||
+            (s.documento_identidad && s.documento_identidad.toLowerCase().includes(query))
+        );
+    }
+    return lista;
+});
+
+function seleccionarDesdeAsignados(codigo) {
+    mostrarMisAsignados.value = false;
+    buscarEstudiante(codigo);
+}
+
 /* ──────────────── Paso 1 → 2 ──────────────── */
 const iniciarRegistro = async () => {
     if (!selectedExamenId.value || !selectedAmbienteId.value) return;
     currentStep.value = 2;
     resetEstado();
+    misAsignadosList.value = selectedExamenData.value?.mis_asignados
+        ? JSON.parse(JSON.stringify(selectedExamenData.value.mis_asignados))
+        : [];
     if (inputMode.value === 'manual') {
         await nextTick();
         focusInput();
@@ -184,6 +219,8 @@ async function confirmarIngreso() {
         });
         successMessage.value = `✓ Ingreso registrado: ${estudianteValidado.value.nombres} ${estudianteValidado.value.apellidos}`;
         ingresosRegistrados.value++;
+        const asignado = misAsignadosList.value.find(s => s.id_estudiante === estudianteValidado.value.id_estudiante);
+        if (asignado) asignado.ya_ingreso = true;
         estudianteValidado.value = null;
         lastScannedCode.value    = '';
 
@@ -333,11 +370,97 @@ function irAIncidencias() {
                             <span class="context-label">INGRESOS</span>
                             <span class="context-value context-count">{{ ingresosRegistrados }}</span>
                         </div>
+                        <div class="context-divider"></div>
+                        <div class="context-item">
+                            <span class="context-label">MIS PENDIENTES</span>
+                            <span class="context-value context-pending">{{ misPendientesCount }}</span>
+                        </div>
                     </div>
-                    <button @click="cambiarExamen" class="btn-cambiar">
-                        <RotateCcw :size="14" />
-                        CAMBIAR
-                    </button>
+                    <div class="context-actions">
+                        <button
+                            type="button"
+                            @click="mostrarMisAsignados = !mostrarMisAsignados"
+                            :class="['btn-asignados', { active: mostrarMisAsignados }]"
+                        >
+                            <Users :size="14" />
+                            <span>MIS ASIGNADOS</span>
+                            <span class="badge-pendientes">{{ misPendientesCount }}</span>
+                        </button>
+                        <button @click="cambiarExamen" class="btn-cambiar">
+                            <RotateCcw :size="14" />
+                            CAMBIAR
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- ═══ Sublista filtrable: Mis Asignados ═══ -->
+                <div v-if="mostrarMisAsignados" class="asignados-card">
+                    <div class="asignados-header">
+                        <div class="asignados-titulo-box">
+                            <Users :size="18" />
+                            <h3 class="asignados-titulo">Sublista de Estudiantes Asignados</h3>
+                        </div>
+                        <span class="asignados-resumen">{{ misPendientesCount }} pendientes de {{ misAsignadosList.length }}</span>
+                    </div>
+
+                    <div class="asignados-filtros">
+                        <input
+                            v-model="filtroAsignados"
+                            type="text"
+                            placeholder="Buscar por nombre, código SIS o CI..."
+                            class="input-filtro"
+                        />
+                        <div class="estado-filtros">
+                            <button
+                                type="button"
+                                :class="['btn-filtro-tag', { active: filtroEstadoAsignados === 'todos' }]"
+                                @click="filtroEstadoAsignados = 'todos'"
+                            >
+                                Todos ({{ misAsignadosList.length }})
+                            </button>
+                            <button
+                                type="button"
+                                :class="['btn-filtro-tag', { active: filtroEstadoAsignados === 'pendientes' }]"
+                                @click="filtroEstadoAsignados = 'pendientes'"
+                            >
+                                Pendientes ({{ misPendientesCount }})
+                            </button>
+                            <button
+                                type="button"
+                                :class="['btn-filtro-tag', { active: filtroEstadoAsignados === 'ingresados' }]"
+                                @click="filtroEstadoAsignados = 'ingresados'"
+                            >
+                                Ingresados ({{ misAsignadosList.length - misPendientesCount }})
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="asignados-lista">
+                        <div v-if="misAsignadosFiltrados.length === 0" class="asignados-vacio">
+                            No se encontraron estudiantes en este filtro.
+                        </div>
+                        <div
+                            v-for="item in misAsignadosFiltrados"
+                            :key="item.id_habilitacion"
+                            class="asignado-item"
+                        >
+                            <div class="asignado-info">
+                                <span class="asignado-nombre">{{ item.nombres }} {{ item.apellidos }}</span>
+                                <span class="asignado-sub">SIS: {{ item.codigo_universitario }} <span v-if="item.documento_identidad">· CI: {{ item.documento_identidad }}</span></span>
+                            </div>
+                            <div class="asignado-accion">
+                                <span v-if="item.ya_ingreso" class="badge-ingresado">Ingresó</span>
+                                <button
+                                    v-else
+                                    type="button"
+                                    class="btn-validar-item"
+                                    @click="seleccionarDesdeAsignados(item.codigo_universitario)"
+                                >
+                                    Validar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Toggle de modo -->
@@ -1122,5 +1245,161 @@ function irAIncidencias() {
     .student-name { font-size: 18px; }
     .student-meta { justify-content: center; }
     .context-value { font-size: 13px; }
+}
+.context-pending {
+    font-size: 22px;
+    color: #fbbf24;
+}
+
+.context-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-asignados {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.btn-asignados:hover, .btn-asignados.active {
+    background: #fff;
+    color: var(--color-primary);
+}
+.badge-pendientes {
+    background: #fbbf24;
+    color: #1e293b;
+    border-radius: 999px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+/* Panel desplegable Mis Asignados */
+.asignados-card {
+    background: #fff;
+    border: 1px solid var(--border-light, #e2e8f0);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+}
+.asignados-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+.asignados-titulo-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--color-primary);
+}
+.asignados-titulo {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+.asignados-resumen {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+.asignados-filtros {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+.input-filtro {
+    width: 100%;
+    padding: 9px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+.estado-filtros {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+.btn-filtro-tag {
+    background: #f1f5f9;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    cursor: pointer;
+}
+.btn-filtro-tag.active {
+    background: var(--color-primary);
+    color: #fff;
+}
+.asignados-lista {
+    max-height: 280px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.asignados-vacio {
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-muted);
+    padding: 16px;
+}
+.asignado-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+}
+.asignado-nombre {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-dark);
+    display: block;
+}
+.asignado-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+.badge-ingresado {
+    background: #dcfce7;
+    color: #15803d;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+}
+.btn-validar-item {
+    background: var(--color-primary);
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+.btn-validar-item:hover {
+    opacity: 0.9;
 }
 </style>

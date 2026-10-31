@@ -179,6 +179,38 @@ function guardarNormas(hab) {
         onError: () => toast.error('Error al guardar las normas particulares.'),
     });
 }
+
+function ejecutarReparto() {
+    if (!confirm('¿Deseas repartir equitativamente a los estudiantes habilitados entre el personal de control asignado?')) {
+        return;
+    }
+
+    procesando.value = true;
+    router.post(`/examenes/${props.examen.id_examen}/reparto-automatico`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            toast.success('Reparto de estudiantes realizado exitosamente.');
+        },
+        onError: (errors) => {
+            toast.error(errors.reparto || 'No se pudo realizar el reparto.');
+        },
+        onFinish: () => {
+            procesando.value = false;
+        }
+    });
+}
+
+function cambiarPersonalManual(hab, idUsuario) {
+    if (!idUsuario) return;
+    router.patch(`/habilitaciones/${hab.id_habilitacion}/asignar-personal`, {
+        id_personal_control: idUsuario
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        onSuccess: () => toast.success('Estudiante reasignado correctamente.'),
+        onError: () => toast.error('No se pudo reasignar al estudiante.')
+    });
+}
 </script>
  
 <template>
@@ -243,6 +275,14 @@ function guardarNormas(hab) {
                         <Button variant="action" :class="['filter-btn', filtroActivo === 'inhabilitados' ? 'active' : '']" @click="cargarFiltro('inhabilitados')">Inhabilitados</Button>
                     </div>
                 </div>
+                <Button
+                    variant="primary"
+                    :disabled="procesando"
+                    title="Repartir equitativamente a los estudiantes habilitados entre el personal de control"
+                    @click="ejecutarReparto"
+                >
+                    Repartir Estudiantes
+                </Button>
             </div>
             <div v-if="filtroActivo !== 'todos'" class="bulk-bar">
                 <span><strong>{{ coincidencias }}</strong> estudiantes coinciden con el filtro. La acción incluye todas las páginas.</span>
@@ -279,8 +319,23 @@ function guardarNormas(hab) {
                                     {{ hab.estado_habilitado ? 'Habilitado' : 'Inhabilitado' }}
                                 </span>
                             </td>
-                            <td>
+                           <td>
                                 {{ hab.estudiante?.ya_ingreso ? 'Registrado' : 'Pendiente' }}
+                            </td>
+                            <td>
+                                <select
+                                    v-if="hab.estado_habilitado"
+                                    v-model="hab.id_personal_control"
+                                    class="personal-select-tabla"
+                                    :disabled="procesando || !!hab.estudiante?.ya_ingreso"
+                                    @change="cambiarPersonalManual(hab, hab.id_personal_control)"
+                                >
+                                    <option :value="null">Sin asignar</option>
+                                    <option v-for="persona in personalAsignado" :key="persona.id" :value="persona.id">
+                                        {{ persona.name }}
+                                    </option>
+                                </select>
+                                <span v-else class="text-gray" style="font-size: 0.8rem;">—</span>
                             </td>
                             <td>
                                 <textarea v-model="hab.normas_particulares" rows="1" class="form-input" style="font-size:0.8rem; padding:4px 8px; resize:vertical;" @change="guardarNormas(hab)"></textarea>
@@ -297,7 +352,7 @@ function guardarNormas(hab) {
                             </td>
                         </tr>
                         <tr v-if="listaLocal.length === 0">
-                            <td colspan="6" class="empty-state">No hay estudiantes que coincidan con este filtro.</td>
+                            <td colspan="7" class="empty-state">No hay estudiantes que coincidan con este filtro.</td>
                         </tr>
                     </tbody>
                 </table>
@@ -476,5 +531,18 @@ function guardarNormas(hab) {
 .personal-quitar:hover:not(:disabled) { background: var(--color-danger); color: var(--color-white); }
 .personal-quitar:disabled { opacity: 0.5; cursor: not-allowed; }
 .personal-vacio { color: var(--text-muted); font-size: 0.9rem; margin: 0; text-align: center; padding: var(--spacing-md); }
+.personal-select-tabla {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-input);
+    color: var(--text-dark);
+    max-width: 170px;
+}
+.personal-select-tabla:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
 </style>
  
