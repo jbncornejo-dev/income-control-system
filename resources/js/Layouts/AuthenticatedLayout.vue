@@ -1,7 +1,7 @@
 <script setup>
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Home, Users, UserSquare2, BookOpen, Building, FileText, Component, ClipboardCheck, AlertCircle, ScanLine, QrCode, ClipboardList, LogOut } from 'lucide-vue-next';
+import { Home, Users, UserSquare2, BookOpen, Building, FileText, Component, ClipboardCheck, AlertCircle, ScanLine, QrCode, ClipboardList, LogOut, History } from 'lucide-vue-next';
 import ToastContainer from '../components/ui/ToastContainer.vue';
 
 const page = usePage();
@@ -20,6 +20,7 @@ const navItems = [
   { label: 'Asignaturas', href: '/asignaturas', roles: ['admin'], icon: BookOpen },
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'], icon: Building },
   { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'], icon: FileText },
+  { label: 'Histórico', href: '/historico', roles: ['admin', 'docente'], icon: History },
   { label: 'Grupos', href: '/grupos', roles: ['admin'], icon: Component },
   { label: 'Panel Asistencia', href: '/panel-asistencia', roles: ['admin', 'docente', 'control'], icon: ClipboardCheck },
   { label: 'Incidencias', href: '/incidencias', roles: ['admin', 'docente', 'control'], icon: AlertCircle },

@@ -9,6 +9,7 @@ use App\Http\Controllers\ExamenController;
 use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\HistoricoController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PanelAsistenciaController;
@@ -166,6 +167,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
+        Route::get('/historico', [HistoricoController::class, 'index'])->name('historico.index');
         Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
