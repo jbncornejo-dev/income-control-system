@@ -12,7 +12,7 @@ class RegistroIngreso extends Model
     protected $table = 'registro_ingreso';
     protected $primaryKey = 'id_registro';
     public $timestamps = false;
-    protected $fillable = ['id_estudiante', 'id_examen_ambiente', 'id_usuario', 'fecha_hora_ingreso'];
+    protected $fillable = ['id_estudiante', 'id_examen_ambiente', 'id_usuario', 'fecha_hora_ingreso', 'uuid_offline',];
 
     // Relación de muchos a uno (registro_ingreso-estudiante)
     public function estudiante()

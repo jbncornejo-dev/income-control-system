@@ -10,6 +10,8 @@ use App\Models\Estudiante;
 use App\Models\Habilitacion;
 use App\Models\RegistroIngreso;
 use App\Models\ExamenAmbiente;
+use App\Models\ConflictoIngreso;
+use Illuminate\Support\Facades\DB;
 
 class RegistroIngresoController extends Controller
 {
@@ -205,5 +207,147 @@ class RegistroIngresoController extends Controller
         ]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Sincronización en lote de registros offline con resolución de conflictos (HU-22).
+     */
+    public function sincronizarLote(Request $request)
+    {
+        $request->validate([
+            'registros'                      => 'required|array',
+            'registros.*.uuid_offline'       => 'required|string',
+            'registros.*.id_estudiante'      => 'required|integer',
+            'registros.*.id_examen_ambiente' => 'required|integer',
+            'registros.*.fecha_hora_intento' => 'required|date',
+        ]);
+
+        $resultados = [
+            'aceptados'  => [],
+            'duplicados' => [],
+            'rechazados' => [],
+            'conflictos' => [],
+        ];
+
+        $userId = auth()->id();
+
+        foreach ($request->input('registros') as $item) {
+            $uuidOffline       = $item['uuid_offline'];
+            $idEstudiante      = $item['id_estudiante'];
+            $idExamenAmbiente  = $item['id_examen_ambiente'];
+            $fechaHoraIntento  = Carbon::parse($item['fecha_hora_intento']);
+
+            // 1. Idempotencia: Verificar si el UUID ya fue procesado antes
+            $yaProcesado = RegistroIngreso::where('uuid_offline', $uuidOffline)->exists()
+                || ConflictoIngreso::where('uuid_offline', $uuidOffline)->exists();
+
+            if ($yaProcesado) {
+                $resultados['duplicados'][] = [
+                    'uuid_offline' => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                ];
+                continue;
+            }
+
+            // Obtener ambiente y examen correspondiente
+            $examenAmbiente = ExamenAmbiente::with('examen')->find($idExamenAmbiente);
+            if (! $examenAmbiente || ! $examenAmbiente->examen) {
+                $resultados['rechazados'][] = [
+                    'uuid_offline' => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                    'motivo'       => 'Ambiente o examen no encontrado.',
+                ];
+                continue;
+            }
+
+            $idExamen = $examenAmbiente->id_examen;
+
+            // 2. Validación de Habilitación
+            $habilitacion = Habilitacion::where('id_estudiante', $idEstudiante)
+                ->where('id_examen', $idExamen)
+                ->first();
+
+            if (! $habilitacion || ! $habilitacion->estado_habilitado) {
+                $motivo = $habilitacion?->motivo_inhabilitacion ?? 'Estudiante inhabilitado para rendir este examen.';
+                $resultados['rechazados'][] = [
+                    'uuid_offline' => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                    'motivo'       => $motivo,
+                ];
+                continue;
+            }
+
+            // 3. Verificar si ya existe un ingreso para este estudiante en este examen
+            $ingresoExistente = RegistroIngreso::where('id_estudiante', $idEstudiante)
+                ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $idExamen))
+                ->first();
+
+            if ($ingresoExistente) {
+                // Resolución de conflicto concurrente (Criterio 5): gana la hora más antigua
+                $horaExistente = Carbon::parse($ingresoExistente->fecha_hora_ingreso);
+
+                if ($fechaHoraIntento->lt($horaExistente)) {
+                    // El nuevo intento offline es MÁS ANTIGUO: desplaza al existente
+                    DB::transaction(function () use ($ingresoExistente, $uuidOffline, $idEstudiante, $idExamenAmbiente, $userId, $fechaHoraIntento, $horaExistente) {
+                        // El existente pasa a ser conflicto
+                        ConflictoIngreso::create([
+                            'uuid_offline'       => $ingresoExistente->uuid_offline,
+                            'id_estudiante'      => $ingresoExistente->id_estudiante,
+                            'id_examen_ambiente' => $ingresoExistente->id_examen_ambiente,
+                            'id_usuario'         => $ingresoExistente->id_usuario,
+                            'fecha_hora_intento' => $horaExistente,
+                            'motivo'             => 'Reemplazado por registro concurrente con hora más antigua.',
+                        ]);
+
+                        // Se actualiza el ingreso válido con el más antiguo
+                        $ingresoExistente->update([
+                            'id_examen_ambiente' => $idExamenAmbiente,
+                            'id_usuario'         => $userId,
+                            'fecha_hora_ingreso' => $fechaHoraIntento,
+                            'uuid_offline'       => $uuidOffline,
+                        ]);
+                    });
+
+                    $resultados['conflictos'][] = [
+                        'uuid_offline' => $uuidOffline,
+                        'id_estudiante' => $idEstudiante,
+                        'detalle'      => 'Aceptado por ser más antiguo. Se movió el registro previo a conflictos.',
+                    ];
+                } else {
+                    // El nuevo intento es POSTERIOR: se almacena directamente como conflicto
+                    ConflictoIngreso::create([
+                        'uuid_offline'       => $uuidOffline,
+                        'id_estudiante'      => $idEstudiante,
+                        'id_examen_ambiente' => $idExamenAmbiente,
+                        'id_usuario'         => $userId,
+                        'fecha_hora_intento' => $fechaHoraIntento,
+                        'motivo'             => 'Registro concurrente duplicado (hora posterior al ya registrado).',
+                    ]);
+
+                    $resultados['conflictos'][] = [
+                        'uuid_offline' => $uuidOffline,
+                        'id_estudiante' => $idEstudiante,
+                        'motivo'       => 'Estudiante ya ingresó previamente (conflicto guardado).',
+                    ];
+                }
+                continue;
+            }
+
+            // 4. Inserción normal si no hay duplicados ni conflictos
+            RegistroIngreso::create([
+                'id_estudiante'      => $idEstudiante,
+                'id_examen_ambiente' => $idExamenAmbiente,
+                'id_usuario'         => $userId,
+                'fecha_hora_ingreso' => $fechaHoraIntento,
+                'uuid_offline'       => $uuidOffline,
+            ]);
+
+            $resultados['aceptados'][] = [
+                'uuid_offline' => $uuidOffline,
+                'id_estudiante' => $idEstudiante,
+            ];
+        }
+
+        return response()->json($resultados);
     }
 }

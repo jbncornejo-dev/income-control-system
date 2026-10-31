@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
         Route::get('/panel-asistencia', [PanelAsistenciaController::class, 'index'])->name('panel-asistencia.index');
+        Route::post('/registro-ingreso/sync', [RegistroIngresoController::class, 'sincronizarLote'])->name('registro-ingreso.sync');
         });
 
     // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones

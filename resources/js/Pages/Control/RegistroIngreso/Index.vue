@@ -9,6 +9,33 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
 import { Camera, Keyboard, UserCheck, UserX, RotateCcw, AlertTriangle, CheckCircle, XCircle, ScanLine, Shield, Users } from 'lucide-vue-next';
 import axios from 'axios';
+import { onMounted } from 'vue';
+
+onMounted(() => {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Cargar cola de pendientes existente
+    const pendientes = localStorage.getItem('ingresos_pendientes');
+    if (pendientes) colaPendientes.value = JSON.parse(pendientes);
+});
+
+onBeforeUnmount(() => {
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+});
+
+function handleOnline() {
+    isOffline.value = false;
+    if (colaPendientes.value.length > 0) sincronizar();
+}
+function handleOffline() {
+    isOffline.value = true;
+}
+
+const isOffline = ref(!navigator.onLine);
+const colaPendientes = ref([]);
+const sublistaOffline = ref([]);
 
 const props = defineProps({
     examenes: { type: Array, required: true },
@@ -122,9 +149,22 @@ const iniciarRegistro = async () => {
     if (!selectedExamenId.value || !selectedAmbienteId.value) return;
     currentStep.value = 2;
     resetEstado();
-    misAsignadosList.value = selectedExamenData.value?.mis_asignados
+    
+    const asignados = selectedExamenData.value?.mis_asignados
         ? JSON.parse(JSON.stringify(selectedExamenData.value.mis_asignados))
         : [];
+        
+    misAsignadosList.value = asignados;
+    
+    // GUARDAR OFFLINE (Task 3)
+    if (!isOffline.value) {
+        localStorage.setItem(`sublista_examen_${selectedExamenId.value}`, JSON.stringify(asignados));
+        sublistaOffline.value = asignados;
+    } else {
+        const cached = localStorage.getItem(`sublista_examen_${selectedExamenId.value}`);
+        if (cached) sublistaOffline.value = JSON.parse(cached);
+    }
+
     if (inputMode.value === 'manual') {
         await nextTick();
         focusInput();
@@ -212,26 +252,83 @@ async function confirmarIngreso() {
     isLoading.value    = true;
     errorMessage.value = '';
 
+    const idEstudiante = estudianteValidado.value.id_estudiante;
+    const asignado = misAsignadosList.value.find(s => s.id_estudiante === idEstudiante);
+
+    // MODO OFFLINE (Task 3)
+    if (isOffline.value) {
+        const nuevoRegistro = {
+            uuid_offline: crypto.randomUUID(),
+            id_estudiante: idEstudiante,
+            id_examen_ambiente: selectedAmbienteId.value,
+            fecha_hora_intento: new Date().toISOString()
+        };
+        
+        colaPendientes.value.push(nuevoRegistro);
+        localStorage.setItem('ingresos_pendientes', JSON.stringify(colaPendientes.value));
+        
+        // Actualizar UI local
+        successMessage.value = `✓ (OFFLINE) Encolado: ${estudianteValidado.value.nombres} ${estudianteValidado.value.apellidos}`;
+        ingresosRegistrados.value++;
+        if (asignado) asignado.ya_ingreso = true;
+        
+        // Actualizar cache de sublista para no permitir doble ingreso offline
+        const subIndex = sublistaOffline.value.findIndex(s => s.id_estudiante === idEstudiante);
+        if (subIndex > -1) {
+            sublistaOffline.value[subIndex].ya_ingreso = true;
+            localStorage.setItem(`sublista_examen_${selectedExamenId.value}`, JSON.stringify(sublistaOffline.value));
+        }
+
+        resetAfterSubmit();
+        return;
+    }
+
+    // MODO ONLINE (código original)
     try {
         await axios.post('/registro-ingreso', {
-            id_estudiante: estudianteValidado.value.id_estudiante,
+            id_estudiante: idEstudiante,
             id_examen_ambiente: selectedAmbienteId.value,
         });
         successMessage.value = `✓ Ingreso registrado: ${estudianteValidado.value.nombres} ${estudianteValidado.value.apellidos}`;
         ingresosRegistrados.value++;
-        const asignado = misAsignadosList.value.find(s => s.id_estudiante === estudianteValidado.value.id_estudiante);
         if (asignado) asignado.ya_ingreso = true;
-        estudianteValidado.value = null;
-        lastScannedCode.value    = '';
-
-        if (inputMode.value === 'manual') {
-            await nextTick();
-            focusInput();
-        }
+        
+        resetAfterSubmit();
     } catch (error) {
         errorMessage.value = error.response?.data?.error || 'Error al registrar el ingreso.';
-    } finally {
         isLoading.value = false;
+    }
+}
+
+async function resetAfterSubmit() {
+    estudianteValidado.value = null;
+    lastScannedCode.value    = '';
+    if (inputMode.value === 'manual') {
+        await nextTick();
+        focusInput();
+    }
+    isLoading.value = false;
+}
+
+async function sincronizar() {
+    if (isOffline.value || colaPendientes.value.length === 0) return;
+    
+    try {
+        const response = await axios.post('/registro-ingreso/sync', {
+            registros: colaPendientes.value
+        });
+        
+        const data = response.data;
+        const totalProcesados = data.aceptados.length + data.duplicados.length + data.rechazados.length + data.conflictos.length;
+        
+        if (totalProcesados > 0) {
+            // Limpiar la cola local si el servidor respondió correctamente
+            colaPendientes.value = [];
+            localStorage.removeItem('ingresos_pendientes');
+            successMessage.value = `Sincronización completada: ${data.aceptados.length} aceptados, ${data.conflictos.length} conflictos detectados.`;
+        }
+    } catch (error) {
+        errorMessage.value = "Error al sincronizar con el servidor.";
     }
 }
 
@@ -391,6 +488,26 @@ function irAIncidencias() {
                             CAMBIAR
                         </button>
                     </div>
+                </div>
+
+                <!-- Banner Offline -->
+                <div v-if="isOffline || colaPendientes.length > 0" 
+                    class="alert" 
+                    :class="isOffline ? 'alert-error' : 'alert-success'"
+                    style="justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <AlertTriangle v-if="isOffline" :size="18" />
+                        <CheckCircle v-else :size="18" />
+                        <span v-if="isOffline">Sin conexión — Trabajando localmente ({{ colaPendientes.length }} pendientes)</span>
+                        <span v-else>Conexión recuperada — {{ colaPendientes.length }} registros pendientes</span>
+                    </div>
+                    
+                    <button v-if="!isOffline && colaPendientes.length > 0" 
+                            @click="sincronizar" 
+                            class="btn-validar-item" 
+                            style="margin: 0; background: #059669;">
+                        Sincronizar ahora
+                    </button>
                 </div>
                 
                 <!-- ═══ Sublista filtrable: Mis Asignados ═══ -->
