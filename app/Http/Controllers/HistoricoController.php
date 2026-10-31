@@ -57,7 +57,7 @@ class HistoricoController extends Controller
             ->with([
                 'examen.asignatura:id_asignatura,nombre_asignatura',
                 'estudiante:id_estudiante,nombres,apellidos,codigo_universitario',
-                'usuario:id,name',
+                'user:id,name',
             ])
             ->orderByDesc('id_incidencia');
 
