@@ -11,6 +11,7 @@ use App\Models\Habilitacion;
 use App\Models\RegistroIngreso;
 use App\Models\ExamenAmbiente;
 use App\Models\ConflictoIngreso;
+use App\Models\Incidencia;
 use Illuminate\Support\Facades\DB;
 
 class RegistroIngresoController extends Controller
@@ -112,6 +113,14 @@ class RegistroIngresoController extends Controller
             ->first();
 
         if (! $estudiante) {
+            Incidencia::create([
+                'id_examen'          => $idExamen,
+                'id_estudiante'      => null,
+                'id_usuario'         => auth()->id(),
+                'tipo_incidencia'    => 'Intento indebido',
+                'descripcion_motivo' => 'Intento de ingreso rechazado: No se encontró ningún estudiante con el dato proporcionado.',
+            ]);
+
             return response()->json([
                 'error' => 'No se encontró ningún estudiante con ese dato.',
             ], 404);
@@ -126,6 +135,13 @@ class RegistroIngresoController extends Controller
         if (! $habilitacion || ! $habilitacion->estado_habilitado) {
             $motivo = $habilitacion->motivo_inhabilitacion
                 ?? 'El estudiante no está habilitado para rendir este examen.';
+            Incidencia::create([
+                'id_examen'          => $idExamen,
+                'id_estudiante'      => $estudiante->id_estudiante,
+                'id_usuario'         => auth()->id(),
+                'tipo_incidencia'    => 'Intento indebido',
+                'descripcion_motivo' => 'Intento de ingreso rechazado: ' . $motivo,
+            ]);
 
             return response()->json([
                 'error'      => $motivo,
@@ -148,10 +164,20 @@ class RegistroIngresoController extends Controller
 
         if ($ingresoPrevio) {
             $hora = Carbon::parse($ingresoPrevio->fecha_hora_ingreso)->format('H:i');
+            
+            $mensajeError = "Este estudiante ya registró su ingreso a las {$hora}.";
+            
+            Incidencia::create([
+                'id_examen'          => $idExamen,
+                'id_estudiante'      => $estudiante->id_estudiante,
+                'id_usuario'         => auth()->id(),
+                'tipo_incidencia'    => 'Intento indebido',
+                'descripcion_motivo' => 'Intento de ingreso doble rechazado: ' . $mensajeError,
+            ]);
 
             return response()->json([
-                'error'      => "Este estudiante ya registró su ingreso a las {$hora}.",
-                'estudiante' => [
+                    'error'               => $mensajeError,              
+                    'estudiante'          => [
                     'id_estudiante'       => $estudiante->id_estudiante,
                     'nombres'             => $estudiante->nombres,
                     'apellidos'           => $estudiante->apellidos,
