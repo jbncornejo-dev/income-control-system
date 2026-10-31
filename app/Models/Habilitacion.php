@@ -12,7 +12,7 @@ class Habilitacion extends Model
     protected $table = 'habilitacion';
     protected $primaryKey = 'id_habilitacion';
     public $timestamps = false;
-    protected $fillable = ['id_estudiante', 'id_examen', 'estado_habilitado', 'motivo_inhabilitacion', 'normas_particulares'];
+    protected $fillable = ['id_estudiante', 'id_examen','id_personal_control', 'estado_habilitado', 'motivo_inhabilitacion', 'normas_particulares'];
 
     protected function casts(): array
     {
