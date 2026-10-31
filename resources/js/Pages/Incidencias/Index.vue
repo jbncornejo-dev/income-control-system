@@ -147,7 +147,8 @@ const formatDateTime = (dateString) => {
 
 const getColorClass = (tipo) => {
     switch(tipo) {
-        case 'Expulsión': return 'border-red color-red';
+        case 'Expulsión':
+        case 'Intento indebido': return 'border-red color-red';
         case 'Problema de identificación': return 'border-yellow color-yellow';
         case 'Cambio de ambiente': return 'border-blue color-blue';
         default: return 'border-gray color-gray';
