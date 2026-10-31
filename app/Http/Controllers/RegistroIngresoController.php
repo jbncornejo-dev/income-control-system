@@ -116,7 +116,8 @@ class RegistroIngresoController extends Controller
         }
 
         // ── Verificar habilitación ───────────────────────────────────
-        $habilitacion = Habilitacion::where('id_estudiante', $estudiante->id_estudiante)
+        $habilitacion = Habilitacion::with('personalControl')
+            ->where('id_estudiante', $estudiante->id_estudiante)
             ->where('id_examen', $idExamen)
             ->first();
 
@@ -161,12 +162,17 @@ class RegistroIngresoController extends Controller
         }
 
         // ── Todo OK: devolver datos para confirmación visual ─────────
+        $esMiAsignado = $habilitacion->id_personal_control === auth()->id();
+        $agenteAsignado = $habilitacion->personalControl?->name ?? 'Sin asignar';
+
         return response()->json([
             'id_estudiante'        => $estudiante->id_estudiante,
             'nombres'              => $estudiante->nombres,
             'apellidos'            => $estudiante->apellidos,
             'codigo_universitario' => $estudiante->codigo_universitario,
             'foto_url'             => $estudiante->foto_url,
+            'es_mi_asignado'       => $esMiAsignado,
+            'asignado_a'           => ! $esMiAsignado ? $agenteAsignado : null,
         ]);
     }
 
