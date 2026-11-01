@@ -54,10 +54,12 @@ class UserAdminTest extends TestCase
         $docenteRol = Rol::where('nombre_rol', 'docente')->first();
 
         $response = $this->actingAs($admin)->post('/usuarios', [
-            'name' => 'Test User',
+            'nombres' => 'Test',
+            'apellidos' => 'User',
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
             'email' => 'test@example.com',
             'id_rol' => $docenteRol->id_rol,
-            'password' => 'password123',
         ]);
 
         $response->assertRedirect();
@@ -65,9 +67,10 @@ class UserAdminTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'test@example.com', 'id_rol' => $docenteRol->id_rol]);
 
         $user = User::where('email', 'test@example.com')->first();
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('password123', $user->password));
-        $this->assertNotNull($user->username);
-        $this->assertStringContainsString('test', $user->username);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('1111111', $user->password));
+        $this->assertSame('201809372', $user->username);
+        $this->assertSame('Test User', $user->name);
+        $this->assertTrue($user->debe_cambiar_password);
     }
 
     public function test_unique_email_validation()
@@ -81,13 +84,15 @@ class UserAdminTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)->post('/usuarios', [
-            'name' => 'Test User',
+            'nombres' => 'Test',
+            'apellidos' => 'User',
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
             'email' => 'existing@example.com',
             'id_rol' => $adminRol->id_rol,
-            'password' => 'password123',
         ]);
 
-        $response->assertSessionHasErrors(['email' => 'El nombre de usuario o email ya está registrado']);
+        $response->assertSessionHasErrors(['email' => 'El correo ya está registrado.']);
     }
 
     public function test_invalid_role_validation()
@@ -98,10 +103,12 @@ class UserAdminTest extends TestCase
         $invalidRol = Rol::where('nombre_rol', 'otro_rol')->first();
 
         $response = $this->actingAs($admin)->post('/usuarios', [
-            'name' => 'Test User',
+            'nombres' => 'Test',
+            'apellidos' => 'User',
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
             'email' => 'test@example.com',
             'id_rol' => $invalidRol->id_rol,
-            'password' => 'password123',
         ]);
 
         $response->assertSessionHasErrors('id_rol');
