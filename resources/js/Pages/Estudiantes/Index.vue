@@ -282,7 +282,7 @@ const getInitial = (name) => {
 
 <style scoped>
 .action-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
-.action-controls { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; }
+.action-controls { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; margin-left: auto; justify-content: flex-end; }
 
 .confirm-text { color: var(--text-dark); font-size: 0.9rem; line-height: 1.6; margin: 0; }
 .confirm-note { color: var(--color-danger); font-size: 0.85rem; margin: 0; }
