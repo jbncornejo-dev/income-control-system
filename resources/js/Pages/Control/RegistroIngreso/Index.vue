@@ -225,6 +225,37 @@ async function buscarEstudiante(dato) {
     estudianteValidado.value = null;
     estudianteError.value    = null;
 
+    // ── VALIDACIÓN OFFLINE EN LOCAL ──────────────────────────────
+    if (isOffline.value) {
+        let datoBusqueda = dato.trim();
+        if (datoBusqueda.startsWith('ident:v1:')) {
+            datoBusqueda = datoBusqueda.replace('ident:v1:', '').split('-')[0];
+        }
+
+        const est = sublistaOffline.value.find(s => 
+            s.codigo_universitario === datoBusqueda || 
+            s.documento_identidad === datoBusqueda
+        );
+
+        if (!est) {
+            errorMessage.value = 'Estudiante no encontrado en la sublista local asignada.';
+            isLoading.value = false;
+            return;
+        }
+
+        if (est.ya_ingreso) {
+            errorMessage.value = 'Este estudiante ya figura con ingreso registrado.';
+            estudianteError.value = { ...est, ya_ingreso: true };
+            isLoading.value = false;
+            return;
+        }
+
+        estudianteValidado.value = { ...est, es_mi_asignado: true };
+        isLoading.value = false;
+        return;
+    }
+
+    // ── VALIDACIÓN ONLINE (EXISTENTE) ────────────────────────────
     try {
         const response = await axios.post('/registro-ingreso/validar', {
             id_examen: selectedExamenId.value,
@@ -232,12 +263,8 @@ async function buscarEstudiante(dato) {
         });
         estudianteValidado.value = response.data;
     } catch (error) {
-        const status = error.response?.status;
-        const data   = error.response?.data;
-
+        const data = error.response?.data;
         errorMessage.value = data?.error || 'Error al validar al estudiante.';
-
-        // Si vino con datos del estudiante (inhabilitado o ya ingresó)
         if (data?.estudiante) {
             estudianteError.value = data.estudiante;
         }

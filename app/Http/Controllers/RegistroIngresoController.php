@@ -50,6 +50,8 @@ class RegistroIngresoController extends Controller
                         'apellidos'             => $hab->estudiante->apellidos,
                         'codigo_universitario'  => $hab->estudiante->codigo_universitario,
                         'documento_identidad'   => $hab->estudiante->documento_identidad,
+                        'foto_url'              => $hab->estudiante->foto_url,
+                        'normas_particulares'   => $hab->normas_particulares,
                         'ya_ingreso'            => in_array($hab->id_estudiante, $ingresadosIds),
                     ];
                 });
@@ -60,6 +62,7 @@ class RegistroIngresoController extends Controller
                     'tipo'                   => $examen->tipo->nombre ?? null,
                     'fecha'                  => $examen->fecha,
                     'hora_inicio'            => $examen->hora_inicio,
+                    'normas_generales'       => $examen->normas_generales,
                     'estado'                 => $examen->estado_actual,
                     'mis_pendientes_count'   => $misAsignados->where('ya_ingreso', false)->count(),
                     'mis_asignados'          => $misAsignados,
@@ -287,6 +290,28 @@ class RegistroIngresoController extends Controller
             }
 
             $idExamen = $examenAmbiente->id_examen;
+
+            $examen = $examenAmbiente->examen;
+            $inicioExamen = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+            $finExamen = $inicioExamen->copy()->addMinutes((int) $examen->duracion_minutos);
+
+            if (in_array($examen->estado, ['cancelado', 'anulado'], true)) {
+                $resultados['rechazados'][] = [
+                    'uuid_offline'  => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                    'motivo'        => 'El examen fue cancelado o anulado.',
+                ];
+                continue;
+            }
+
+            if ($fechaHoraIntento->lt($inicioExamen) || $fechaHoraIntento->gt($finExamen)) {
+                $resultados['rechazados'][] = [
+                    'uuid_offline'  => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                    'motivo'        => 'Ingreso fuera de la ventana horaria permitida para el examen.',
+                ];
+                continue;
+            }
 
             // 2. Validación de Habilitación
             $habilitacion = Habilitacion::where('id_estudiante', $idEstudiante)

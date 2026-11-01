@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Examen;
 use App\Models\Habilitacion;
 use App\Models\RegistroIngreso;
+use App\Models\ConflictoIngreso;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -37,9 +38,15 @@ class PanelAsistenciaController extends Controller
                 'examen' => null,
                 'ambientes' => [],
                 'pendientes' => [],
+                'conflictos' => [],
                 'resumen' => null,
             ]);
         }
+
+        $conflictos = ConflictoIngreso::query()
+            ->with(['estudiante:id_estudiante,nombres,apellidos,codigo_universitario', 'usuario:id,name'])
+            ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $seleccionado->id_examen))
+            ->get();
 
         $habilitados = Habilitacion::query()
             ->with('estudiante')
@@ -93,6 +100,7 @@ class PanelAsistenciaController extends Controller
             'examen' => $seleccionado,
             'ambientes' => $ambientes,
             'pendientes' => $pendientes,
+            'conflictos' => $conflictos,
             'resumen' => [
                 'habilitados' => $habilitados->count(),
                 'ingresaron' => count($idsIngresados),
