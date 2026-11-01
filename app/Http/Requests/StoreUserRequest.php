@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Rol;
+use App\Models\Estudiante;
 
 class StoreUserRequest extends FormRequest
 {
@@ -31,12 +32,32 @@ class StoreUserRequest extends FormRequest
         ])->pluck('id_rol')->toArray();
 
         return [
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'username' => ['nullable', 'string', 'max:50', 'unique:users,username'],
             'id_rol' => ['required', 'integer', Rule::in($allowedRoles)],
-            'password' => ['required', 'string', 'min:8'],
+            'nombres' => ['required', 'string', 'max:100', 'regex:'.Estudiante::REGEX_NOMBRES],
+            'apellidos' => ['required', 'string', 'max:100', 'regex:'.Estudiante::REGEX_NOMBRES],
+            'codigo_universitario' => [
+                'required', 'string', 'max:20', 'regex:'.Estudiante::REGEX_CODIGO_SIS,
+                'unique:users,username',
+                Rule::when($this->esRolEstudiante(), ['unique:estudiante,codigo_universitario']),
+            ],
+            'documento_identidad' => [
+                'required', 'string', 'max:20', 'regex:'.Estudiante::REGEX_DOCUMENTO_CI,
+                'unique:users,documento_identidad',
+                Rule::when($this->esRolEstudiante(), ['unique:estudiante,documento_identidad']),
+            ],
+            'email' => [
+                'nullable', 'email', 'max:255', 'unique:users,email',
+                Rule::when($this->esRolEstudiante(), ['unique:estudiante,email']),
+            ],
+            'password' => ['prohibited'],
         ];
+    }
+
+    private function esRolEstudiante(): bool
+    {
+        $rolEstudiante = Rol::where('nombre_rol', 'estudiante')->value('id_rol');
+
+        return (int) $this->input('id_rol') === (int) $rolEstudiante;
     }
 
     /**
@@ -45,8 +66,11 @@ class StoreUserRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'email.unique' => 'El nombre de usuario o email ya está registrado',
-            'username.unique' => 'El nombre de usuario o email ya está registrado',
+            'email.unique' => 'El correo ya está registrado.',
+            'codigo_universitario.unique' => 'El código universitario ya está registrado.',
+            'documento_identidad.unique' => 'El CI ya está registrado.',
+            'codigo_universitario.regex' => 'El código universitario debe tener 9 dígitos e iniciar con el año de ingreso.',
+            'documento_identidad.regex' => 'El CI debe tener entre 6 y 8 dígitos.',
         ];
     }
 }
