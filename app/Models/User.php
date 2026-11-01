@@ -23,6 +23,7 @@ class User extends Authenticatable
         'email',
         'email_verified_at',
         'username',
+        'documento_identidad',
         'password',
         'debe_cambiar_password',
     ];
@@ -88,11 +89,11 @@ class User extends Authenticatable
     }
 
     /**
-     * ¿La cuenta pertenece a un estudiante y debe cambiar su contraseña inicial?
+     * ¿La cuenta fue creada con una contraseña inicial temporal?
      */
     public function esCuentaEstudiantePendiente(): bool
     {
-        return $this->id_estudiante !== null && $this->debe_cambiar_password;
+        return (bool) $this->debe_cambiar_password;
     }
 
     public function examenesAsignados()

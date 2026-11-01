@@ -74,7 +74,8 @@ class AuthController extends Controller
         // Documento de identidad del estudiante.
         $estudiante = Estudiante::query()->where('documento_identidad', $identificador)->first();
 
-        return $estudiante?->user;
+        return $estudiante?->user
+            ?? User::query()->where('documento_identidad', $identificador)->first();
     }
 
     public function destroy(Request $request)

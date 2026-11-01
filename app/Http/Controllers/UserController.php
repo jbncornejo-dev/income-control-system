@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class UserController extends Controller
@@ -46,28 +47,50 @@ class UserController extends Controller
         ]);
     }
 
-public function store(StoreUserRequest $request)
+    public function store(StoreUserRequest $request)
     {
-        // 1. Obtenemos datos validados del Form Request de develop
         $data = $request->validated();
-        $data['password'] = Hash::make($data['password']);
+
+        $rolEstudiante = Rol::where('nombre_rol', 'estudiante')->value('id_rol');
+
+        if ((int) $data['id_rol'] === (int) $rolEstudiante) {
+            DB::transaction(function () use ($data) {
+                $estudiante = Estudiante::create([
+                    'codigo_universitario' => $data['codigo_universitario'],
+                    'documento_identidad' => $data['documento_identidad'],
+                    'nombres' => $data['nombres'],
+                    'apellidos' => $data['apellidos'],
+                    'email' => $data['email'] ?? null,
+                    'codigo_qr' => Estudiante::qrPayload($data['codigo_universitario']),
+                ]);
+
+                User::create([
+                    'id_rol' => $data['id_rol'],
+                    'id_estudiante' => $estudiante->id_estudiante,
+                    'name' => trim($data['nombres'].' '.$data['apellidos']),
+                    'username' => $data['codigo_universitario'],
+                    'documento_identidad' => $data['documento_identidad'],
+                    'email' => $data['email'] ?? null,
+                    'email_verified_at' => now(),
+                    'password' => Hash::make($data['documento_identidad']),
+                    'debe_cambiar_password' => true,
+                ]);
+            });
+
+            return redirect()->back()->with('success', 'Estudiante registrado correctamente. La contraseña inicial es su CI y deberá cambiarla en el primer ingreso.');
+        }
+
+        // Todas las cuentas nuevas reciben el CI como contraseña temporal.
+        $data['password'] = Hash::make($data['documento_identidad']);
 
         // 2. Mantenemos la lógica de develop para autogenerar username si es necesario
-        if (empty($data['username'])) {
-            $baseUsername = Str::slug(explode(' ', trim($data['name']))[0].'_'.Str::before($data['email'], '@'));
-            $baseUsername = Str::limit($baseUsername, 45, '');
-            $username = $baseUsername;
-            $suffix = 1;
-            while (User::where('username', $username)->exists()) {
-                $suffixStr = (string) $suffix++;
-                $username = Str::limit($baseUsername, 50 - strlen($suffixStr), '').$suffixStr;
-            }
-            $data['username'] = $username;
-        }
+        $data['name'] = trim($data['nombres'].' '.$data['apellidos']);
+        $data['username'] = $data['codigo_universitario'];
+        $data['debe_cambiar_password'] = true;
 
         User::create($data);
 
-        return redirect()->back()->with('success', 'Usuario creado exitosamente.');
+        return redirect()->back()->with('success', 'Usuario creado correctamente. La contraseña inicial es su CI y deberá cambiarla en el primer ingreso.');
     }
 
     public function update(UpdateUserRequest $request, User $usuario)
