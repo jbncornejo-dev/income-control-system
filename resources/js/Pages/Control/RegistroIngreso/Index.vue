@@ -710,6 +710,17 @@ function irAIncidencias() {
                         </div>
                     </div>
 
+                    <div v-if="estudianteValidado.normas_generales || estudianteValidado.normas_particulares" class="normas-bloque">
+                        <div v-if="estudianteValidado.normas_generales" class="norma">
+                            <span class="norma-titulo">Normas generales del examen</span>
+                            <p class="norma-texto">{{ estudianteValidado.normas_generales }}</p>
+                        </div>
+                        <div v-if="estudianteValidado.normas_particulares" class="norma norma-particular">
+                            <span class="norma-titulo">Normas particulares del estudiante</span>
+                            <p class="norma-texto">{{ estudianteValidado.normas_particulares }}</p>
+                        </div>
+                    </div>
+
                     <div class="action-buttons">
                         <button @click="rechazarIngreso" :disabled="isLoading" class="btn-reject">
                             <XCircle :size="20" />
@@ -1546,4 +1557,9 @@ function irAIncidencias() {
 .btn-validar-item:hover {
     opacity: 0.9;
 }
+.normas-bloque { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
+.norma { background: #f9fafb; border-left: 3px solid var(--color-primary); border-radius: 0 0.25rem 0.25rem 0; padding: 0.75rem 1rem; }
+.norma-particular { border-left-color: var(--color-active); }
+.norma-titulo { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
+.norma-texto { margin: 0; font-size: 0.9rem; color: var(--text-dark); line-height: 1.5; }
 </style>
