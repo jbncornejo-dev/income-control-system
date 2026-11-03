@@ -278,6 +278,8 @@ Route::middleware('auth')->group(function () {
                 'carrera' => $estudiante->carrera ?? null,
                 'foto_url' => $estudiante->foto_url,
                 'foto_path' => $estudiante->foto_path ?? null,
+                'foto_referencia' => $estudiante->foto_referencia,
+                'puede_regenerar_qr' => (bool) $estudiante->puede_regenerar_qr,
                 'qr_token' => $estudiante->codigo_qr,
                 'qr_svg' => $qrSvg,
                 'tiene_examen_activo' => $tieneExamenActivo, 
@@ -285,30 +287,53 @@ Route::middleware('auth')->group(function () {
         ]);
     })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);
 
-    // Mocks para los botones (evitan el 404 al dar clic)
     Route::post('/estudiante/qr/regenerar', function (\Illuminate\Http\Request $request) {
         $estudiante = $request->user()->estudiante;
-        if ($estudiante) {
-            $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
-            $estudiante->update(['codigo_qr' => $nuevoToken]);
+        if (! $estudiante) {
+            abort(404, 'No se encontró el perfil de estudiante.');
         }
+
+        if (! $estudiante->puede_regenerar_qr) {
+            return response()->json([
+                'message' => 'Debes actualizar tu foto antes de generar un nuevo QR',
+                'error'   => 'Debes actualizar tu foto antes de generar un nuevo QR',
+            ], 403);
+        }
+
+        $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
+        $estudiante->update([
+            'codigo_qr' => $nuevoToken,
+            'puede_regenerar_qr' => false,
+        ]);
+
         return back();
     })->name('estudiante.qr.regenerate');
 
     Route::post('/estudiante/foto', function (\Illuminate\Http\Request $request) {
         $request->validate([
-            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
         ], [
             'foto.required' => 'Debe seleccionar una imagen.',
             'foto.image' => 'El archivo debe ser una imagen válida.',
-            'foto.mimes' => 'La imagen debe tener formato JPEG, JPG o PNG.',
+            'foto.mimes' => 'La imagen debe tener formato JPEG, JPG, PNG o WEBP.',
             'foto.max' => 'La imagen no debe superar los 2 MB.',
         ]);
 
         $estudiante = $request->user()->estudiante;
         if ($estudiante && $request->hasFile('foto')) {
             $path = $request->file('foto')->store('estudiantes', 'public');
-            $estudiante->update(['foto_url' => '/storage/' . $path]);
+            $url = '/storage/' . $path;
+
+            $payload = [
+                'foto_url' => $url,
+                'puede_regenerar_qr' => true,
+            ];
+
+            if (empty($estudiante->foto_referencia)) {
+                $payload['foto_referencia'] = $url;
+            }
+
+            $estudiante->update($payload);
         }
 
         return back();
