@@ -196,6 +196,9 @@ class RegistroIngresoController extends Controller
         $esMiAsignado = $habilitacion->id_personal_control === auth()->id();
         $agenteAsignado = $habilitacion->personalControl?->name ?? 'Sin asignar';
 
+        $normasGenerales = Examen::find($idExamen)?->normas_generales;
+        $normasParticulares = $habilitacion->normas_particulares;
+
         return response()->json([
             'id_estudiante'        => $estudiante->id_estudiante,
             'nombres'              => $estudiante->nombres,
@@ -204,6 +207,8 @@ class RegistroIngresoController extends Controller
             'foto_url'             => $estudiante->foto_url,
             'es_mi_asignado'       => $esMiAsignado,
             'asignado_a'           => ! $esMiAsignado ? $agenteAsignado : null,
+            'normas_generales'     => filled($normasGenerales) ? $normasGenerales : null,
+            'normas_particulares'  => filled($normasParticulares) ? $normasParticulares : null,
         ]);
     }
 
