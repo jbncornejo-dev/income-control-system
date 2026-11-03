@@ -26,6 +26,10 @@ class HU16ActualizacionFotoQRTest extends TestCase
     {
         parent::setUp();
         $this->withoutMiddleware(ValidateCsrfToken::class);
+        config([
+            'inertia.pages.paths' => [resource_path('js/Pages')],
+            'inertia.testing.ensure_pages_exist' => false,
+        ]);
         Storage::fake('public');
     }
 
@@ -187,7 +191,7 @@ class HU16ActualizacionFotoQRTest extends TestCase
             ->get('/estudiante/panel')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Estudiantes/Panel')
+                ->component('Estudiantes/Panel', false)
                 ->where('estudiante.puede_regenerar_qr', false)
             );
     }
@@ -223,7 +227,7 @@ class HU16ActualizacionFotoQRTest extends TestCase
             ->get('/estudiante/panel')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Estudiantes/Panel')
+                ->component('Estudiantes/Panel', false)
                 ->where('estudiante.puede_regenerar_qr', true)
             );
 
@@ -333,7 +337,7 @@ class HU16ActualizacionFotoQRTest extends TestCase
             ->get('/registro-ingreso')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Control/RegistroIngreso/Index')
+                ->component('Control/RegistroIngreso/Index', false)
                 ->has('examenes.0.mis_asignados.0', fn (Assert $asignado) => $asignado
                     ->where('id_estudiante', $estudiante->id_estudiante)
                     ->where('foto_actual', '/storage/estudiantes/actual.jpg')
