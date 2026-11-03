@@ -51,6 +51,8 @@ class RegistroIngresoController extends Controller
                         'codigo_universitario'  => $hab->estudiante->codigo_universitario,
                         'documento_identidad'   => $hab->estudiante->documento_identidad,
                         'foto_url'              => $hab->estudiante->foto_url,
+                        'foto_actual'           => $hab->estudiante->foto_url,
+                        'foto_referencia'       => $hab->estudiante->foto_referencia,
                         'normas_particulares'   => $hab->normas_particulares,
                         'ya_ingreso'            => in_array($hab->id_estudiante, $ingresadosIds),
                     ];
@@ -149,12 +151,14 @@ class RegistroIngresoController extends Controller
             return response()->json([
                 'error'      => $motivo,
                 'estudiante' => [
-                    'id_estudiante'       => $estudiante->id_estudiante,
-                    'nombres'             => $estudiante->nombres,
-                    'apellidos'           => $estudiante->apellidos,
-                    'codigo_universitario'=> $estudiante->codigo_universitario,
-                    'foto_url'            => $estudiante->foto_url,
-                    'inhabilitado'        => true,
+                    'id_estudiante'        => $estudiante->id_estudiante,
+                    'nombres'              => $estudiante->nombres,
+                    'apellidos'            => $estudiante->apellidos,
+                    'codigo_universitario' => $estudiante->codigo_universitario,
+                    'foto_url'             => $estudiante->foto_url,
+                    'foto_actual'          => $estudiante->foto_url,
+                    'foto_referencia'      => $estudiante->foto_referencia,
+                    'inhabilitado'         => true,
                 ],
             ], 403);
         }
@@ -179,15 +183,17 @@ class RegistroIngresoController extends Controller
             ]);
 
             return response()->json([
-                    'error'               => $mensajeError,              
-                    'estudiante'          => [
-                    'id_estudiante'       => $estudiante->id_estudiante,
-                    'nombres'             => $estudiante->nombres,
-                    'apellidos'           => $estudiante->apellidos,
-                    'codigo_universitario'=> $estudiante->codigo_universitario,
-                    'foto_url'            => $estudiante->foto_url,
-                    'ya_ingreso'          => true,
-                    'hora_ingreso'        => $hora,
+                    'error'                => $mensajeError,              
+                    'estudiante'           => [
+                    'id_estudiante'        => $estudiante->id_estudiante,
+                    'nombres'              => $estudiante->nombres,
+                    'apellidos'            => $estudiante->apellidos,
+                    'codigo_universitario' => $estudiante->codigo_universitario,
+                    'foto_url'             => $estudiante->foto_url,
+                    'foto_actual'          => $estudiante->foto_url,
+                    'foto_referencia'      => $estudiante->foto_referencia,
+                    'ya_ingreso'           => true,
+                    'hora_ingreso'         => $hora,
                 ],
             ], 409);
         }
@@ -202,6 +208,8 @@ class RegistroIngresoController extends Controller
             'apellidos'            => $estudiante->apellidos,
             'codigo_universitario' => $estudiante->codigo_universitario,
             'foto_url'             => $estudiante->foto_url,
+            'foto_actual'          => $estudiante->foto_url,
+            'foto_referencia'      => $estudiante->foto_referencia,
             'es_mi_asignado'       => $esMiAsignado,
             'asignado_a'           => ! $esMiAsignado ? $agenteAsignado : null,
         ]);
