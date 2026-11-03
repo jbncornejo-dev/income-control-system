@@ -10,6 +10,7 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\HistoricoController;
+use App\Http\Controllers\EstadisticaIncidenciaController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
 use App\Http\Controllers\PanelAsistenciaController;
@@ -97,6 +98,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
         Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
+        Route::get('/incidencias/estadisticas', [EstadisticaIncidenciaController::class, 'index'])->name('incidencias.estadisticas');
         Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
