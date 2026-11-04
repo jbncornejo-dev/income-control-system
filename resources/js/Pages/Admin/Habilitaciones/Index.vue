@@ -301,6 +301,7 @@ function cambiarPersonalManual(hab, idUsuario) {
                             <th>NOMBRE</th>
                             <th>ESTADO</th>
                             <th>INGRESO</th>
+                            <th>PERSONAL ASIGNADO</th>
                             <th>NORMAS PARTICULARES</th>
                             <th>HABILITACIÓN</th>
                         </tr>

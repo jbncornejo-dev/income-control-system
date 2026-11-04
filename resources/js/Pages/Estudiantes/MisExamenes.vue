@@ -144,6 +144,10 @@ function obtenerTextoHabilitacion(examen) {
                             <dt>Grupos</dt>
                             <dd>{{ examen.grupos.join(', ') }}</dd>
                         </div>
+                        <div v-if="examen.habilitacion?.personal_control" class="detalle">
+                            <dt>Personal de Control</dt>
+                            <dd>{{ examen.habilitacion.personal_control }}</dd>
+                        </div>
                     </dl>
 
                     <div v-if="examen.normas_generales || examen.habilitacion?.normas_particulares" class="normas">

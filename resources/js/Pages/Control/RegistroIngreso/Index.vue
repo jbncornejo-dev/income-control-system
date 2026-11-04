@@ -155,6 +155,7 @@ const iniciarRegistro = async () => {
         : [];
         
     misAsignadosList.value = asignados;
+    ingresosRegistrados.value = asignados.filter(s => s.ya_ingreso).length;
     
     // GUARDAR OFFLINE (Task 3)
     if (!isOffline.value) {

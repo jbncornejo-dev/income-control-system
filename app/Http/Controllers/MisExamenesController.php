@@ -51,7 +51,7 @@ class MisExamenesController extends Controller
                 'periodo',
                 'grupos',
                 'examenesAmbientes.ambiente',
-                'habilitaciones' => fn ($query) => $query->where('habilitacion.id_estudiante', $estudiante->id_estudiante),
+                'habilitaciones' => fn ($query) => $query->with('personalControl')->where('habilitacion.id_estudiante', $estudiante->id_estudiante),
             ])
             ->where(function ($query) use ($estudiante, $grupoIds) {
                 $query
@@ -115,6 +115,7 @@ class MisExamenesController extends Controller
                 'estado' => (bool) $habilitacion->estado_habilitado,
                 'motivo' => $habilitacion->motivo_inhabilitacion,
                 'normas_particulares' => $habilitacion->normas_particulares,
+                'personal_control' => $habilitacion->personalControl?->name,
             ] : null,
         ];
     }
