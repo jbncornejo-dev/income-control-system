@@ -195,4 +195,27 @@ class PanelAsistenciaController extends Controller
 
         return Inertia::render('Control/PanelAsistencia', $datos);
     }
+
+    public function exportar(Request $request, Examen $examen)
+    {
+        $habilitados = Habilitacion::with('estudiante')->where('id_examen', $examen->id_examen)
+            ->where('estado_habilitado', true)->get();
+        $ingresos = RegistroIngreso::with('estudiante')
+            ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $examen->id_examen))->get();
+        $ingresados = $ingresos->keyBy('id_estudiante');
+        $rows = $habilitados->map(fn ($habilitacion) => [
+            $habilitacion->estudiante?->codigo_universitario,
+            trim(($habilitacion->estudiante?->nombres ?? '') . ' ' . ($habilitacion->estudiante?->apellidos ?? '')),
+            $ingresados->get($habilitacion->id_estudiante)?->fecha_hora_ingreso ?? 'Ausente',
+        ])->all();
+        $headers = ['Código', 'Estudiante', 'Ingreso'];
+        if ($request->query('formato') === 'pdf') {
+            return ReportExporter::downloadPdf('asistencia-' . $examen->id_examen . '.pdf', 'Reporte de asistencia', [
+                'Examen: ' . ($examen->asignatura?->nombre_asignatura ?? 'N/D'),
+            ], [['heading' => 'Asistencia', 'headers' => $headers, 'rows' => $rows]]);
+        }
+        return ReportExporter::downloadExcel('asistencia-' . $examen->id_examen . '.xls', 'Reporte de asistencia', [[
+            'name' => 'Asistencia', 'headers' => $headers, 'rows' => $rows,
+        ]]);
+    }
 }

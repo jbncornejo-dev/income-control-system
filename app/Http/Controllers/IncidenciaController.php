@@ -43,18 +43,21 @@ class IncidenciaController extends Controller
 
         $ahora = Carbon::now('America/La_Paz');
 
-        // HU-17: Solo exámenes dentro de la ventana de control (-10 min inicio a +10 min fin) asignados al control
+        // BUG CS7 y CS8: Solo exámenes en curso asignados al control, y cargar sus estudiantes habilitados
+        $ahora = Carbon::now('America/La_Paz');
+
+        // BUG CS8: Obtener estudiantes de los grupos inscritos, más habilitados, menos inhabilitados
         $examenesEnCurso = Examen::with(['asignatura', 'grupos.inscripciones', 'habilitaciones'])
             ->whereHas('personalControl', function ($query) use ($request) {
                 $query->where('examen_personal_control.id_usuario', $request->user()->id);
             })
-            ->where(function ($q) {
-                $q->whereNull('estado')
-                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
-            })
+            ->where('fecha', $ahora->toDateString())
+            ->whereTime('hora_inicio', '<=', $ahora->toTimeString())
             ->get()
             ->filter(function ($examen) use ($ahora) {
-                return $examen->estaEnVentanaOperacionControl($ahora);
+                $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+                $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
+                return $ahora->between($horaInicio, $horaFin);
             })
             ->map(function ($examen) {
                 // 1. Obtener IDs de estudiantes normales inscritos en los grupos del examen
@@ -70,8 +73,6 @@ class IncidenciaController extends Controller
                     ->diff($idsInhabilitados)
                     ->values()
                     ->toArray();
-
-                $examen->horario_permitido = $examen->horarioPermitidoControl();
                     
                 // Limpiar la carga pesada para no enviar datos innecesarios a Vue
                 $examen->unsetRelation('grupos');
@@ -131,21 +132,15 @@ class IncidenciaController extends Controller
             'descripcion_motivo' => 'required|string',
         ], $mensajes);
 
-        // HU-17: Validar que el examen se encuentre en la ventana de control permitida
-        // (-10 min del inicio a +10 min del fin)
+        // BUG CS9 (Parte 2): Validar de lado del servidor que el examen siga en curso al guardar
         $examen = Examen::find($datos['id_examen']);
         $ahora = Carbon::now('America/La_Paz');
+        $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio, 'America/La_Paz');
+        $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
 
-        if (! $examen || ! $examen->estaEnVentanaOperacionControl($ahora)) {
-            $horario = $examen ? $examen->horarioPermitidoControl() : '';
-            $msg = 'No se puede registrar la incidencia: solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen' . ($horario ? " (Horario permitido: {$horario})" : '') . '.';
-
-            if ($request->wantsJson()) {
-                return response()->json(['error' => $msg, 'message' => $msg], 422);
-            }
-
+        if (!$ahora->between($horaInicio->copy()->subMinutes(10), $horaFin->copy()->addMinutes(10))) {
             return back()->withErrors([
-                'id_examen' => $msg,
+                'id_examen' => 'No se puede registrar la incidencia porque el examen ya finalizó o no está en curso.'
             ]);
         }
 
@@ -160,5 +155,37 @@ class IncidenciaController extends Controller
         ]));
 
         return back()->with('success', 'Incidencia registrada correctamente.');
+    }
+
+    public function exportar(IndexIncidenciaRequest $request)
+    {
+        $filters = $request->validated();
+        $incidencias = Incidencia::with(['examen.asignatura', 'estudiante', 'user'])
+            ->when($filters['id_examen'] ?? null, fn ($q, $id) => $q->where('id_examen', $id))
+            ->when($filters['tipo_incidencia'] ?? null, fn ($q, $tipo) => $q->where('tipo_incidencia', $tipo))
+            ->when($filters['desde'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '>=', $date))
+            ->when($filters['hasta'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '<=', $date))
+            ->latest('fecha_hora')->get();
+        $rows = $incidencias->map(fn ($item) => [
+            $item->examen?->asignatura?->nombre_asignatura ?? 'N/D',
+            $item->tipo_incidencia,
+            $item->estudiante ? trim($item->estudiante->nombres . ' ' . $item->estudiante->apellidos) : 'Sin estudiante',
+            $item->user?->name ?? 'Sistema',
+            $item->descripcion_motivo,
+            $item->fecha_hora,
+        ])->all();
+
+        if ($request->query('formato') === 'pdf') {
+            return ReportExporter::downloadPdf('incidencias.pdf', 'Reporte de incidencias', [], [[
+                'heading' => 'Incidencias filtradas',
+                'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
+                'rows' => $rows,
+            ]]);
+        }
+        return ReportExporter::downloadExcel('incidencias.xls', 'Reporte de incidencias', [[
+            'name' => 'Incidencias',
+            'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
+            'rows' => $rows,
+        ]]);
     }
 }

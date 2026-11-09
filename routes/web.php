@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\HistoricoController;
-use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\EstadisticaIncidenciaController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
@@ -24,6 +24,8 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
+use App\Models\ExamenQr;
+use App\Models\Habilitacion;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\RegistroIngresoController;
@@ -101,8 +103,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/incidencias/exportar/pdf', [IncidenciaController::class, 'exportarPdf'])->name('incidencias.exportar.pdf');
         Route::get('/incidencias/exportar/excel', [IncidenciaController::class, 'exportarExcel'])->name('incidencias.exportar.excel');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
+        Route::get('/incidencias/exportar', [IncidenciaController::class, 'exportar'])->name('incidencias.exportar');
         Route::get('/incidencias/estadisticas', [EstadisticaIncidenciaController::class, 'index'])->name('incidencias.estadisticas');
-        Route::get('/auditoria', [AuditoriaController::class, 'index'])->middleware('role:administrador')->name('auditoria.index');
         Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
@@ -121,6 +123,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
+        Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
@@ -176,6 +179,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
         Route::get('/historico', [HistoricoController::class, 'index'])->name('historico.index');
+        Route::get('/historico/incidencias/exportar', [HistoricoController::class, 'exportarIncidencias'])->name('historico.incidencias.exportar');
         Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
@@ -235,53 +239,57 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
-        $ahora = \Carbon\Carbon::now('America/La_Paz');
 
-        // HU-17: El estudiante solo puede generar su código QR dentro de las 24 horas previas al inicio del examen
-        // (y hasta que el examen finalice).
-        $tieneExamenes = $estudiante->examenesQuery()->exists();
-        $proximoExamen = $estudiante->proximoExamen($ahora);
-        $tieneExamenActivo = $proximoExamen !== null;
-        $enVentanaQr = $estudiante->tieneExamenEnVentanaQr($ahora);
+        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
+        $examenesDelEstudiante = Examen::where(function ($q) {
+                $q->whereNull('estado')
+                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
+            })
+            ->where(function ($query) use ($estudiante, $grupoIds) {
+                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
+                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
+            })->get();
+        $tieneExamenActivo = $examenesDelEstudiante->contains(function (Examen $examen) {
+            $inicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+            $fin = $inicio->copy()->addMinutes((int) $examen->duracion_minutos);
+            return now()->between($inicio->copy()->subHours(24), $fin);
+        });
 
-        // Si no tiene exámenes registrados en el sistema, fallback
-        if (! $tieneExamenes) {
-            $enVentanaQr = false;
-        }
-
-        $mensajeVentanaQr = null;
-        if ($proximoExamen && ! $enVentanaQr) {
-            if ($ahora->lt($proximoExamen->inicioExamen()->copy()->subHours(24))) {
-                $mensajeVentanaQr = "El código QR solo estará disponible dentro de las 24 horas previas al inicio del examen (Inicio: {$proximoExamen->fecha} {$proximoExamen->hora_inicio}).";
-            } elseif ($ahora->gt($proximoExamen->finExamen())) {
-                $mensajeVentanaQr = "El examen ha finalizado. No es posible generar el código QR.";
-            }
-        } elseif (! $tieneExamenActivo) {
-            $mensajeVentanaQr = "No tienes exámenes programados o activos en este momento.";
-        }
-
-        if ($estudiante->codigo_qr === null) {
-            $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
-        }
-
-        $qrSvg = null;
-        
-        // 2. Solo generar el SVG si tiene un examen dentro de la ventana de 24h
-        if ($enVentanaQr && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
-            try {
-                $result = (new \Endroid\QrCode\Builder\Builder(
-                    data: $estudiante->codigo_qr,
-                    size: 200,
-                    margin: 4,
-                    writer: new \Endroid\QrCode\Writer\SvgWriter,
-                ))->build();
-                $rawSvg = $result->getString();
-                $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
-            } catch (\Throwable $e) {
-                \Illuminate\Support\Facades\Log::error('Error generando QR: ' . $e->getMessage());
+        $qrs = Habilitacion::with('examen')
+            ->where('id_estudiante', $estudiante->id_estudiante)
+            ->where('estado_habilitado', true)
+            ->get()
+            ->filter(function (Habilitacion $habilitacion) {
+                $inicio = Carbon::parse($habilitacion->examen->fecha . ' ' . $habilitacion->examen->hora_inicio);
+                $fin = $inicio->copy()->addMinutes((int) $habilitacion->examen->duracion_minutos);
+                return now()->between($inicio->copy()->subHours(24), $fin);
+            })
+            ->map(function (Habilitacion $habilitacion) {
+                $qr = ExamenQr::paraHabilitacion($habilitacion);
                 $qrSvg = null;
-            }
-        }
+
+                if (class_exists(\Endroid\QrCode\Builder\Builder::class)) {
+                    $result = (new \Endroid\QrCode\Builder\Builder(
+                        data: $qr->token,
+                        size: 200,
+                        margin: 4,
+                        writer: new \Endroid\QrCode\Writer\SvgWriter,
+                    ))->build();
+                    $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $result->getString()));
+                }
+
+                return [
+                    'id_examen' => $habilitacion->id_examen,
+                    'nombre' => $habilitacion->examen->asignatura?->nombre_asignatura ?? 'Examen',
+                    'fecha' => $habilitacion->examen->fecha,
+                    'hora_inicio' => $habilitacion->examen->hora_inicio,
+                    'qr_token' => $qr->token,
+                    'qr_svg' => $qrSvg,
+                    'expires_at' => $qr->expires_at?->toIso8601String(),
+                ];
+            })->values();
+
+        $primerQr = $qrs->first();
 
         return \Inertia\Inertia::render('Estudiantes/Panel', [
             'estudiante' => [
@@ -294,11 +302,10 @@ Route::middleware('auth')->group(function () {
                 'foto_path' => $estudiante->foto_path ?? null,
                 'foto_referencia' => $estudiante->foto_referencia,
                 'puede_regenerar_qr' => (bool) $estudiante->puede_regenerar_qr,
-                'en_ventana_qr' => (bool) $enVentanaQr,
-                'mensaje_ventana_qr' => $mensajeVentanaQr,
-                'qr_token' => $estudiante->codigo_qr,
-                'qr_svg' => $qrSvg,
-                'tiene_examen_activo' => $tieneExamenActivo, 
+                'qr_token' => $primerQr['qr_token'] ?? null,
+                'qr_svg' => $primerQr['qr_svg'] ?? null,
+                'tiene_examen_activo' => $tieneExamenActivo,
+                'qrs' => $qrs,
             ],
         ]);
     })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);
@@ -309,18 +316,7 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
-        $ahora = \Carbon\Carbon::now('America/La_Paz');
-
-        // HU-17: Validación de ventana horaria (máximo 24 h antes del examen y hasta su finalización)
-        if ($estudiante->examenesQuery()->exists() && ! $estudiante->tieneExamenEnVentanaQr($ahora)) {
-            $mensaje = 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al inicio del examen.';
-            return response()->json([
-                'message' => $mensaje,
-                'error'   => $mensaje,
-            ], 403);
-        }
-
-        // HU-16: Validación de fotografía actualizada
+        $examenId = $request->integer('id_examen');
         if (! $estudiante->puede_regenerar_qr) {
             return response()->json([
                 'message' => 'Debes actualizar tu foto antes de generar un nuevo QR',
@@ -328,9 +324,43 @@ Route::middleware('auth')->group(function () {
             ], 403);
         }
 
-        $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
+        $habilitaciones = Habilitacion::with('examen')
+            ->where('id_estudiante', $estudiante->id_estudiante)
+            ->where('estado_habilitado', true);
+        if ($examenId) {
+            $habilitaciones->where('id_examen', $examenId);
+        }
+
+        $habilitacion = $habilitaciones->get()->first(function (Habilitacion $habilitacion) {
+            $examen = $habilitacion->examen;
+            $inicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+            $fin = $inicio->copy()->addMinutes((int) $examen->duracion_minutos);
+            return now()->between($inicio->copy()->subHours(24), $fin);
+        });
+        if (! $habilitacion) {
+            if ($examenId) {
+                return response()->json(['message' => 'El código QR solo puede generarse como máximo 24 horas antes del examen.'], 403);
+            }
+
+            $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
+            $estudiante->update([
+                'codigo_qr' => $nuevoToken,
+                'puede_regenerar_qr' => false,
+            ]);
+
+            return back();
+        }
+
+        $qrAnterior = ExamenQr::paraHabilitacion($habilitacion);
+        $qrAnterior->update(['invalidated_at' => now()]);
+        $nuevoQr = $qrAnterior->replicate();
+        $nuevoQr->token = 'examen:v1:' . \Illuminate\Support\Str::random(64);
+        $nuevoQr->invalidated_at = null;
+        $nuevoQr->created_at = now();
+        $nuevoQr->updated_at = now();
+        $nuevoQr->save();
         $estudiante->update([
-            'codigo_qr' => $nuevoToken,
+            'codigo_qr' => $nuevoQr->token,
             'puede_regenerar_qr' => false,
         ]);
 

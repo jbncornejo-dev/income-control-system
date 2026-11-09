@@ -16,6 +16,7 @@ const role = computed(() => ({ administrador: 'admin', 'personal de control de i
 const navItems = [
   { label: 'Inicio', href: '/dashboard', roles: ['admin', 'docente', 'control'], icon: Home },
   { label: 'Usuarios', href: '/usuarios', roles: ['admin'], icon: Users },
+  { label: 'Auditoría', href: '/auditoria', roles: ['admin'], icon: ShieldCheck },
   { label: 'Estudiantes', href: '/estudiantes', roles: ['admin'], icon: UserSquare2 },
   { label: 'Asignaturas', href: '/asignaturas', roles: ['admin'], icon: BookOpen },
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'], icon: Building },
