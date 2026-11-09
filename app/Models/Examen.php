@@ -22,6 +22,71 @@ class Examen extends Model
     protected $appends = ['hora_fin', 'estado_actual', 'estado_horario', 'periodo_codigo'];
 
     /**
+     * Instancia Carbon del momento exacto de inicio del examen en la zona horaria del sistema.
+     */
+    public function inicioExamen(): Carbon
+    {
+        $fechaStr = $this->fecha instanceof \DateTimeInterface ? $this->fecha->format('Y-m-d') : (string) $this->fecha;
+        $horaStr = $this->hora_inicio instanceof \DateTimeInterface ? $this->hora_inicio->format('H:i:s') : (string) $this->hora_inicio;
+
+        return Carbon::parse(trim($fechaStr.' '.$horaStr), config('app.timezone', 'America/La_Paz'));
+    }
+
+    /**
+     * Instancia Carbon del momento exacto de finalización del examen.
+     */
+    public function finExamen(): Carbon
+    {
+        return $this->inicioExamen()->copy()->addMinutes((int) $this->duracion_minutos);
+    }
+
+    /**
+     * HU-17: Determina si el examen se encuentra dentro de la ventana de generación/regeneración de QR.
+     * Ventana: Desde 24 horas antes del inicio del examen hasta su finalización.
+     */
+    public function estaEnVentanaQr(?Carbon $ahora = null): bool
+    {
+        if (in_array($this->estado, ['cancelado', 'anulado'])) {
+            return false;
+        }
+
+        $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
+        $inicioVentana = $this->inicioExamen()->copy()->subHours(24);
+        $finVentana = $this->finExamen();
+
+        return $ahora->gte($inicioVentana) && $ahora->lte($finVentana);
+    }
+
+    /**
+     * HU-17: Determina si el examen se encuentra dentro de la ventana de operación de control
+     * (registro de ingreso y reporte de incidencias).
+     * Ventana: Desde 10 minutos antes del inicio del examen hasta 10 minutos después de su finalización.
+     */
+    public function estaEnVentanaOperacionControl(?Carbon $ahora = null): bool
+    {
+        if (in_array($this->estado, ['cancelado', 'anulado'])) {
+            return false;
+        }
+
+        $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
+        $inicioVentana = $this->inicioExamen()->copy()->subMinutes(10);
+        $finVentana = $this->finExamen()->copy()->addMinutes(10);
+
+        return $ahora->gte($inicioVentana) && $ahora->lte($finVentana);
+    }
+
+    /**
+     * Representación legible del rango horario permitido para control (-10 min a +10 min).
+     */
+    public function horarioPermitidoControl(): string
+    {
+        $desde = $this->inicioExamen()->copy()->subMinutes(10)->format('H:i');
+        $hasta = $this->finExamen()->copy()->addMinutes(10)->format('H:i');
+
+        return "{$desde} a {$hasta}";
+    }
+
+    /**
      * Hora de finalización calculada a partir de la hora de inicio y la duración.
      */
     protected function horaFin(): Attribute

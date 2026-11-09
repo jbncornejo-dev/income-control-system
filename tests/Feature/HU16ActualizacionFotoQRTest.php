@@ -263,7 +263,7 @@ class HU16ActualizacionFotoQRTest extends TestCase
             'id_asignatura'    => $asignatura->id_asignatura,
             'id_periodo'       => $periodo->id_periodo,
             'fecha'            => now()->toDateString(),
-            'hora_inicio'      => '08:00:00',
+            'hora_inicio'      => now()->format('H:i:s'),
             'duracion_minutos' => 90,
         ]);
 

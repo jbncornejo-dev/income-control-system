@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -104,5 +105,48 @@ class Estudiante extends Model
     public function user()
     {
         return $this->hasOne(User::class, 'id_estudiante', 'id_estudiante');
+    }
+
+    /**
+     * Query base de exámenes asociados al estudiante (vía inscripción a grupo o habilitación directa).
+     */
+    public function examenesQuery()
+    {
+        $grupoIds = $this->inscripciones()->pluck('id_grupo');
+
+        return Examen::where(function ($q) {
+                $q->whereNull('estado')
+                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
+            })
+            ->where(function ($query) use ($grupoIds) {
+                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
+                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $this->id_estudiante));
+            });
+    }
+
+    /**
+     * HU-17: Verifica si el estudiante tiene al menos un examen dentro de la ventana de 24 horas del QR.
+     */
+    public function tieneExamenEnVentanaQr(?Carbon $ahora = null): bool
+    {
+        $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
+
+        return $this->examenesQuery()
+            ->get()
+            ->contains(fn (Examen $examen) => $examen->estaEnVentanaQr($ahora));
+    }
+
+    /**
+     * Obtiene el examen vigente más próximo del estudiante (que no haya finalizado).
+     */
+    public function proximoExamen(?Carbon $ahora = null): ?Examen
+    {
+        $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
+
+        return $this->examenesQuery()
+            ->get()
+            ->filter(fn (Examen $e) => $e->finExamen()->gte($ahora))
+            ->sortBy(fn (Examen $e) => $e->inicioExamen())
+            ->first();
     }
 }
