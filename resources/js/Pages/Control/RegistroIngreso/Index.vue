@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, nextTick, onBeforeUnmount } from 'vue';
+import { ref, computed, watch, nextTick, onBeforeUnmount, onMounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import SelectInput from '@/components/ui/SelectInput.vue';
@@ -9,7 +9,6 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
 import { Camera, Keyboard, UserCheck, UserX, RotateCcw, AlertTriangle, CheckCircle, XCircle, ScanLine, Shield, Users } from 'lucide-vue-next';
 import axios from 'axios';
-import { onMounted } from 'vue';
 
 onMounted(() => {
     window.addEventListener('online', handleOnline);
@@ -98,15 +97,33 @@ const ambientesOptions = computed(() => ambientesDisponibles.value.map(a => ({
     label: a.nombre_ambiente,
 })));
 
-const fotoUrl = computed(() => {
-    const src = estudianteValidado.value || estudianteError.value;
-    if (!src?.foto_url) return null;
-    const raw = src.foto_url;
-    if (raw.startsWith('http') || raw.startsWith('data:') || raw.startsWith('/storage/')) return raw;
+const refImageLoadError = ref(false);
+const curImageLoadError = ref(false);
+
+watch([estudianteValidado, estudianteError], () => {
+    refImageLoadError.value = false;
+    curImageLoadError.value = false;
+});
+
+function resolverFotoUrl(raw) {
+    if (!raw) return null;
+    if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:') || raw.startsWith('/storage/')) return raw;
     if (raw.startsWith('storage/')) return `/${raw}`;
     const clean = raw.startsWith('/') ? raw.slice(1) : raw;
     return `/storage/${clean}`;
+}
+
+const fotoReferenciaUrl = computed(() => {
+    const src = estudianteValidado.value || estudianteError.value;
+    return resolverFotoUrl(src?.foto_referencia);
 });
+
+const fotoActualUrl = computed(() => {
+    const src = estudianteValidado.value || estudianteError.value;
+    return resolverFotoUrl(src?.foto_actual || src?.foto_url);
+});
+
+const fotoUrl = computed(() => fotoActualUrl.value);
 
 const iniciales = computed(() => {
     const src = estudianteValidado.value || estudianteError.value;
@@ -695,11 +712,7 @@ function irAIncidencias() {
                         <span>ESTUDIANTE HABILITADO</span>
                     </div>
 
-                    <div class="student-info-row">
-                        <div class="student-avatar">
-                            <img v-if="fotoUrl" :src="fotoUrl" :alt="estudianteValidado.nombres" class="avatar-img" @error="(e) => e.target.style.display='none'" />
-                            <span v-else class="avatar-initials">{{ iniciales }}</span>
-                        </div>
+                    <div class="student-header-info">
                         <div class="student-details">
                             <h3 class="student-name">{{ estudianteValidado.nombres }} {{ estudianteValidado.apellidos }}</h3>
                             <div class="student-meta">
@@ -707,6 +720,51 @@ function irAIncidencias() {
                                     <span class="meta-label">Código SIS</span>
                                     <span class="meta-value">{{ estudianteValidado.codigo_universitario }}</span>
                                 </span>
+                                <span v-if="!estudianteValidado.es_mi_asignado" class="meta-badge alert-assigned">
+                                    <AlertTriangle :size="14" />
+                                    <span>Asignado a: {{ estudianteValidado.asignado_a || 'Otro agente' }}</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparativa de Fotos Lado a Lado (HU-16) -->
+                    <div class="photo-comparison-block">
+                        <div class="photo-comparison-grid">
+                            <!-- Foto de Referencia -->
+                            <div class="photo-column">
+                                <span class="photo-label-badge reference-badge">Foto de Referencia</span>
+                                <div class="photo-container">
+                                    <img 
+                                        v-if="fotoReferenciaUrl && !refImageLoadError" 
+                                        :src="fotoReferenciaUrl" 
+                                        :alt="`Foto de Referencia de ${estudianteValidado.nombres}`" 
+                                        class="photo-img" 
+                                        @error="refImageLoadError = true"
+                                    />
+                                    <div v-else class="photo-placeholder">
+                                        <span class="placeholder-initials">{{ iniciales }}</span>
+                                        <span class="placeholder-text">Sin foto de referencia</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Foto Actual -->
+                            <div class="photo-column">
+                                <span class="photo-label-badge current-badge">Foto Actual</span>
+                                <div class="photo-container">
+                                    <img 
+                                        v-if="fotoActualUrl && !curImageLoadError" 
+                                        :src="fotoActualUrl" 
+                                        :alt="`Foto Actual de ${estudianteValidado.nombres}`" 
+                                        class="photo-img" 
+                                        @error="curImageLoadError = true"
+                                    />
+                                    <div v-else class="photo-placeholder">
+                                        <span class="placeholder-initials">{{ iniciales }}</span>
+                                        <span class="placeholder-text">Sin foto actual</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -744,11 +802,7 @@ function irAIncidencias() {
                         <span v-else>ACCESO DENEGADO</span>
                     </div>
 
-                    <div class="student-info-row">
-                        <div class="student-avatar error-avatar">
-                            <img v-if="fotoUrl" :src="fotoUrl" :alt="estudianteError.nombres" class="avatar-img" @error="(e) => e.target.style.display='none'" />
-                            <span v-else class="avatar-initials">{{ iniciales }}</span>
-                        </div>
+                    <div class="student-header-info">
                         <div class="student-details">
                             <h3 class="student-name">{{ estudianteError.nombres }} {{ estudianteError.apellidos }}</h3>
                             <div class="student-meta">
@@ -758,6 +812,46 @@ function irAIncidencias() {
                                 </span>
                             </div>
                             <p class="error-detail">{{ errorMessage }}</p>
+                        </div>
+                    </div>
+
+                    <div class="photo-comparison-block">
+                        <div class="photo-comparison-grid">
+                            <!-- Foto de Referencia -->
+                            <div class="photo-column">
+                                <span class="photo-label-badge reference-badge">Foto de Referencia</span>
+                                <div class="photo-container">
+                                    <img 
+                                        v-if="fotoReferenciaUrl && !refImageLoadError" 
+                                        :src="fotoReferenciaUrl" 
+                                        :alt="`Foto de Referencia de ${estudianteError.nombres}`" 
+                                        class="photo-img" 
+                                        @error="refImageLoadError = true"
+                                    />
+                                    <div v-else class="photo-placeholder">
+                                        <span class="placeholder-initials">{{ iniciales }}</span>
+                                        <span class="placeholder-text">Sin foto de referencia</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Foto Actual -->
+                            <div class="photo-column">
+                                <span class="photo-label-badge current-badge">Foto Actual</span>
+                                <div class="photo-container">
+                                    <img 
+                                        v-if="fotoActualUrl && !curImageLoadError" 
+                                        :src="fotoActualUrl" 
+                                        :alt="`Foto Actual de ${estudianteError.nombres}`" 
+                                        class="photo-img" 
+                                        @error="curImageLoadError = true"
+                                    />
+                                    <div v-else class="photo-placeholder">
+                                        <span class="placeholder-initials">{{ iniciales }}</span>
+                                        <span class="placeholder-text">Sin foto actual</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -1204,6 +1298,109 @@ function irAIncidencias() {
 .result-status-bar.error {
     background: linear-gradient(135deg, #dc2626, #ef4444);
     color: #fff;
+}
+
+/* Cabecera y Comparativa de Fotos HU-16 */
+.student-header-info {
+    padding: 20px 24px 12px;
+}
+.alert-assigned {
+    background: #fef3c7 !important;
+    border-color: #fde68a !important;
+    color: #92400e !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+.photo-comparison-block {
+    padding: 12px 20px 20px;
+    background: #f8fafc;
+    border-top: 1px solid #e2e8f0;
+    border-bottom: 1px solid #e2e8f0;
+}
+.photo-comparison-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    max-width: 360px;
+    margin: 0 auto;
+}
+@media (min-width: 640px) {
+    .photo-comparison-grid {
+        gap: 16px;
+        max-width: 400px;
+    }
+}
+.photo-column {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+.photo-label-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 9999px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+    text-align: center;
+}
+.reference-badge {
+    background-color: rgba(29, 54, 83, 0.1);
+    color: var(--color-primary);
+    border: 1px solid rgba(29, 54, 83, 0.25);
+}
+.current-badge {
+    background-color: rgba(161, 43, 51, 0.1);
+    color: var(--color-active);
+    border: 1px solid rgba(161, 43, 51, 0.25);
+}
+.photo-container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #e2e8f0;
+    border: 2px solid #cbd5e1;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+.photo-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.photo-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    text-align: center;
+    background: linear-gradient(135deg, #f1f5f9, #e2e8f0);
+}
+.placeholder-initials {
+    font-size: 24px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 2px;
+    font-family: var(--font-display);
+}
+.placeholder-text {
+    font-size: 10px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    line-height: 1.1;
 }
 
 /* Info del estudiante */

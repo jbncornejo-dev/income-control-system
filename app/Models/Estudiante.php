@@ -15,7 +15,38 @@ class Estudiante extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email', 'foto_url'];
+    protected $fillable = [
+        'codigo_universitario',
+        'documento_identidad',
+        'nombres',
+        'apellidos',
+        'codigo_qr',
+        'email',
+        'foto_url',
+        'foto_referencia',
+        'puede_regenerar_qr',
+    ];
+
+    protected $casts = [
+        'puede_regenerar_qr' => 'boolean',
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Estudiante $estudiante) {
+            if (! empty($estudiante->foto_url) && empty($estudiante->foto_referencia)) {
+                $estudiante->foto_referencia = $estudiante->foto_url;
+            }
+        });
+
+        static::updating(function (Estudiante $estudiante) {
+            // Protección de inmutabilidad: la foto de referencia nunca puede ser sobrescrita una vez establecida
+            $originalReferencia = $estudiante->getOriginal('foto_referencia');
+            if (! empty($originalReferencia) && $estudiante->isDirty('foto_referencia') && $estudiante->foto_referencia !== $originalReferencia) {
+                $estudiante->foto_referencia = $originalReferencia;
+            }
+        });
+    }
 
     /**
      * Prefijo del payload del QR generado por el sistema. El resto del payload

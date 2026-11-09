@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Camera, RefreshCw, Info } from 'lucide-vue-next';
@@ -19,6 +19,12 @@ const fileError = ref('');
 
 const photoForm = useForm({
     foto: null,
+});
+
+const puedeRegenerarQr = ref(Boolean(props.estudiante?.puede_regenerar_qr));
+
+watch(() => props.estudiante?.puede_regenerar_qr, (val) => {
+    puedeRegenerarQr.value = Boolean(val);
 });
 
 const isRegeneratingQr = ref(false);
@@ -130,6 +136,7 @@ const confirmarSubidaFoto = () => {
         preserveScroll: true,
         forceFormData: true,
         onSuccess: () => {
+            puedeRegenerarQr.value = true;
             toast.success('Tu fotografía de perfil se ha actualizado correctamente.');
             cancelarSubidaFoto();
         },
@@ -150,7 +157,7 @@ const cancelarSubidaFoto = () => {
 };
 
 const handleRegenerateQr = () => {
-    if (isRegeneratingQr.value) return;
+    if (isRegeneratingQr.value || !puedeRegenerarQr.value) return;
 
     const confirmado = window.confirm(
         'Esto invalidará tu código QR actual (incluyendo impresiones o capturas anteriores). ¿Estás seguro de continuar?'
@@ -161,10 +168,12 @@ const handleRegenerateQr = () => {
     router.post('/estudiante/qr/regenerar', {}, {
         preserveScroll: true,
         onSuccess: () => {
+            puedeRegenerarQr.value = false;
             toast.success('Se ha generado un nuevo código QR. El anterior ha quedado invalidado.');
         },
-        onError: () => {
-            toast.error('No fue posible regenerar el código QR. Intenta nuevamente.');
+        onError: (errors) => {
+            const msg = errors?.error || errors?.message || 'No fue posible regenerar el código QR. Intenta nuevamente.';
+            toast.error(msg);
         },
         onFinish: () => {
             isRegeneratingQr.value = false;
@@ -299,17 +308,22 @@ const handleRegenerateQr = () => {
                             {{ formattedToken }}
                         </span>
 
-                        <button 
-                            v-if="estudiante.tiene_examen_activo"
-                            type="button" 
-                            class="btn-regenerate-qr" 
-                            :disabled="isRegeneratingQr"
-                            @click="handleRegenerateQr"
-                            title="Generar un nuevo código invalida el actual"
-                        >
-                            <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
-                            <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO' }}</span>
-                        </button>
+                        <div v-if="estudiante.tiene_examen_activo" class="qr-action-wrapper">
+                            <button 
+                                type="button" 
+                                class="btn-regenerate-qr" 
+                                :disabled="isRegeneratingQr || !puedeRegenerarQr"
+                                @click="handleRegenerateQr"
+                                :title="!puedeRegenerarQr ? 'Debes actualizar tu foto antes de generar un nuevo QR' : 'Generar un nuevo código invalida el actual'"
+                            >
+                                <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
+                                <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO QR' }}</span>
+                            </button>
+
+                            <p v-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
+                                Debes actualizar tu foto antes de generar un nuevo QR
+                            </p>
+                        </div>
 
                     </div>
                 </div>
@@ -613,6 +627,26 @@ const handleRegenerateQr = () => {
     color: #6b7280;
     letter-spacing: 0.2em;
     margin-bottom: 1.5rem;
+}
+
+.qr-action-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.qr-regen-disabled-message {
+    font-size: 0.75rem;
+    color: #991b1b;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.75rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    line-height: 1.25;
+    max-width: 240px;
 }
 
 .btn-regenerate-qr {
