@@ -9,6 +9,7 @@ import Modal from '@/components/ui/Modal.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import Pagination from '@/components/ui/Pagination.vue';
 import { useToastStore } from '@/stores/useToastStore';
+import { FileText, FileSpreadsheet } from 'lucide-vue-next';
 
 const props = defineProps({
     incidencias: Object,
@@ -38,6 +39,27 @@ const applyFilters = () => {
         hasta: filterHasta.value || undefined,
     }, { preserveState: true, preserveScroll: true });
 };
+
+// HU-26: URLs dinámicas para exportar respetando los filtros activos
+const urlExportarPdf = computed(() => {
+    const params = new URLSearchParams();
+    if (filterExamen.value) params.set('id_examen', filterExamen.value);
+    if (filterTipo.value) params.set('tipo_incidencia', filterTipo.value);
+    if (filterDesde.value) params.set('desde', filterDesde.value);
+    if (filterHasta.value) params.set('hasta', filterHasta.value);
+    const qs = params.toString();
+    return `/incidencias/exportar/pdf${qs ? '?' + qs : ''}`;
+});
+
+const urlExportarExcel = computed(() => {
+    const params = new URLSearchParams();
+    if (filterExamen.value) params.set('id_examen', filterExamen.value);
+    if (filterTipo.value) params.set('tipo_incidencia', filterTipo.value);
+    if (filterDesde.value) params.set('desde', filterDesde.value);
+    if (filterHasta.value) params.set('hasta', filterHasta.value);
+    const qs = params.toString();
+    return `/incidencias/exportar/excel${qs ? '?' + qs : ''}`;
+});
 
 // ==========================================
 // MAPEOS PARA SELECTS
@@ -169,9 +191,19 @@ const getColorClass = (tipo) => {
                     <h1 class="panel-title">GESTIÓN DE INCIDENCIAS</h1>
                     <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
                 </div>
-                <Button variant="danger" @click="openModal" class="btn-reportar">
-                    + REPORTAR INCIDENCIA
-                </Button>
+                <div class="header-actions">
+                    <a :href="urlExportarPdf" target="_blank" class="btn-export btn-pdf" title="Exportar incidencias a PDF">
+                        <FileText :size="16" />
+                        <span>Exportar PDF</span>
+                    </a>
+                    <a :href="urlExportarExcel" class="btn-export btn-excel" title="Exportar incidencias a Excel">
+                        <FileSpreadsheet :size="16" />
+                        <span>Exportar Excel</span>
+                    </a>
+                    <Button variant="danger" @click="openModal" class="btn-reportar">
+                        + REPORTAR INCIDENCIA
+                    </Button>
+                </div>
             </header>
 
             <!-- Barra de Filtros -->
@@ -374,6 +406,50 @@ const getColorClass = (tipo) => {
     margin-bottom: var(--spacing-xl);
     flex-wrap: wrap;
     gap: var(--spacing-md);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}
+
+.btn-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    border-radius: 0.375rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+    cursor: pointer;
+    font-family: inherit;
+    border: 1px solid transparent;
+}
+
+.btn-pdf {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+.btn-pdf:hover {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.btn-excel {
+    background-color: #f0fdf4;
+    color: #15803d;
+    border-color: #86efac;
+}
+
+.btn-excel:hover {
+    background-color: #dcfce7;
+    color: #166534;
 }
 
 .panel-title {

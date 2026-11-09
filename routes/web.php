@@ -98,6 +98,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
         Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
+        Route::get('/incidencias/exportar/pdf', [IncidenciaController::class, 'exportarPdf'])->name('incidencias.exportar.pdf');
+        Route::get('/incidencias/exportar/excel', [IncidenciaController::class, 'exportarExcel'])->name('incidencias.exportar.excel');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
         Route::get('/incidencias/estadisticas', [EstadisticaIncidenciaController::class, 'index'])->name('incidencias.estadisticas');
         Route::get('/auditoria', [AuditoriaController::class, 'index'])->middleware('role:administrador')->name('auditoria.index');
@@ -105,6 +107,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
         Route::get('/panel-asistencia', [PanelAsistenciaController::class, 'index'])->name('panel-asistencia.index');
+        Route::get('/panel-asistencia/exportar/pdf', [PanelAsistenciaController::class, 'exportarPdf'])->name('panel-asistencia.exportar.pdf');
+        Route::get('/panel-asistencia/exportar/excel', [PanelAsistenciaController::class, 'exportarExcel'])->name('panel-asistencia.exportar.excel');
         Route::post('/registro-ingreso/sync', [RegistroIngresoController::class, 'sincronizarLote'])->name('registro-ingreso.sync');
         });
 

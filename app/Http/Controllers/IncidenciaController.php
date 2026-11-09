@@ -7,24 +7,33 @@ use App\Http\Requests\StoreIncidenciaRequest;
 use App\Models\Estudiante;
 use App\Models\Examen;
 use App\Models\Incidencia;
+use App\Services\ReporteExportService;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
 class IncidenciaController extends Controller
 {
-    public function index(IndexIncidenciaRequest $request)
+    /**
+     * Construir la consulta de incidencias con los filtros aplicados.
+     */
+    private function queryIncidencias(array $filtros)
     {
-        $filtros = $request->validated();
-
-        $incidencias = Incidencia::query()
+        return Incidencia::query()
             ->with(['examen.asignatura', 'estudiante', 'user'])
             ->when($filtros['id_examen'] ?? null, fn ($query, $id) => $query->where('id_examen', $id))
             ->when($filtros['tipo_incidencia'] ?? null, fn ($query, $tipo) => $query->where('tipo_incidencia', $tipo))
             ->when($filtros['desde'] ?? null, fn ($query, $desde) => $query->whereDate('fecha_hora', '>=', $desde))
             ->when($filtros['hasta'] ?? null, fn ($query, $hasta) => $query->whereDate('fecha_hora', '<=', $hasta))
             ->orderByDesc('fecha_hora')
-            ->orderByDesc('id_incidencia')
+            ->orderByDesc('id_incidencia');
+    }
+
+    public function index(IndexIncidenciaRequest $request)
+    {
+        $filtros = $request->validated();
+
+        $incidencias = $this->queryIncidencias($filtros)
             ->paginate(15)
             ->appends($filtros);
 
@@ -83,6 +92,30 @@ class IncidenciaController extends Controller
             'tipos' => Incidencia::TIPOS,
             'filters' => $filtros,
         ]);
+    }
+
+    /**
+     * HU-26: Exportar histórico de incidencias a PDF respetando filtros activos.
+     */
+    public function exportarPdf(IndexIncidenciaRequest $request, ReporteExportService $exportService)
+    {
+        $filtros = $request->validated();
+        $incidencias = $this->queryIncidencias($filtros)->get();
+        $examenFiltro = !empty($filtros['id_examen']) ? Examen::with('asignatura')->find($filtros['id_examen']) : null;
+
+        return $exportService->exportarIncidenciasPdf($incidencias, $filtros, $examenFiltro);
+    }
+
+    /**
+     * HU-26: Exportar histórico de incidencias a Excel (.xlsx) respetando filtros activos.
+     */
+    public function exportarExcel(IndexIncidenciaRequest $request, ReporteExportService $exportService)
+    {
+        $filtros = $request->validated();
+        $incidencias = $this->queryIncidencias($filtros)->get();
+        $examenFiltro = !empty($filtros['id_examen']) ? Examen::with('asignatura')->find($filtros['id_examen']) : null;
+
+        return $exportService->exportarIncidenciasExcel($incidencias, $filtros, $examenFiltro);
     }
 
     public function store(\Illuminate\Http\Request $request)

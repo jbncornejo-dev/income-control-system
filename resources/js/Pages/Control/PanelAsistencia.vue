@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { router, Head } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { FileText, FileSpreadsheet } from 'lucide-vue-next';
 
 const props = defineProps({
     examenes: Array,
@@ -105,6 +106,27 @@ onUnmounted(detenerRefresco);
                             : `Ultima actualizacion: ${formatearActualizacion(ultimaActualizacion)}` }}
                     </span>
                     <button v-if="!cerrado" class="btn-secundario" @click="refrescar">Actualizar ahora</button>
+
+                    <!-- Botones de Exportación (HU-26) -->
+                    <div class="export-actions">
+                        <a
+                            :href="`/panel-asistencia/exportar/pdf?id_examen=${examen.id_examen}`"
+                            target="_blank"
+                            class="btn-export btn-pdf"
+                            title="Descargar Reporte en PDF"
+                        >
+                            <FileText :size="15" />
+                            <span>Exportar PDF</span>
+                        </a>
+                        <a
+                            :href="`/panel-asistencia/exportar/excel?id_examen=${examen.id_examen}`"
+                            class="btn-export btn-excel"
+                            title="Descargar Reporte en Excel"
+                        >
+                            <FileSpreadsheet :size="15" />
+                            <span>Exportar Excel</span>
+                        </a>
+                    </div>
                 </div>
 
                 <div class="resumen-grid">
@@ -182,6 +204,12 @@ onUnmounted(detenerRefresco);
 .chip-cerrado { background: #fdecea; color: var(--color-active); }
 .estado-detalle { font-size: 0.9rem; color: var(--text-muted); }
 .btn-secundario { background: #fff; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 0.4rem 1rem; border-radius: 0.25rem; font-size: 0.9rem; cursor: pointer; font-family: inherit; }
+.export-actions { display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto; flex-wrap: wrap; }
+.btn-export { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.4rem 0.8rem; border-radius: 0.25rem; font-size: 0.85rem; font-weight: 600; text-decoration: none; transition: all 0.15s ease-in-out; cursor: pointer; font-family: inherit; border: 1px solid transparent; }
+.btn-pdf { background-color: #fef2f2; color: #b91c1c; border-color: #fca5a5; }
+.btn-pdf:hover { background-color: #fee2e2; color: #991b1b; }
+.btn-excel { background-color: #f0fdf4; color: #15803d; border-color: #86efac; }
+.btn-excel:hover { background-color: #dcfce7; color: #166534; }
 .resumen-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
 .resumen-card { background: #fff; border: 1px solid #e5e7eb; border-top: 4px solid var(--color-primary); border-radius: 0.5rem; padding: 1rem; text-align: center; }
 .resumen-exito { border-top-color: #1e7a34; }
