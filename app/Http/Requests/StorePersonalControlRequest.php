@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Examen;
+use App\Models\Inscripcion;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
@@ -33,8 +35,29 @@ class StorePersonalControlRequest extends FormRequest
             function (Validator $validator) {
                 $usuario = User::with('rol')->find($this->input('id_usuario'));
 
-                if ($usuario && $usuario->rol?->nombre_rol !== 'personal de control de ingreso') {
+                if (! $usuario) {
+                    return;
+                }
+
+                if ($usuario->rol?->nombre_rol !== 'personal de control de ingreso') {
                     $validator->errors()->add('id_usuario', 'El usuario seleccionado no es personal de control de ingreso');
+
+                    return;
+                }
+
+                $examen = $this->route('examen');
+
+                if (! $examen instanceof Examen || $usuario->id_estudiante === null) {
+                    return;
+                }
+
+                $esEstudianteDeLaMateria = Inscripcion::query()
+                    ->where('id_estudiante', $usuario->id_estudiante)
+                    ->whereHas('grupo', fn ($q) => $q->where('id_asignatura', $examen->id_asignatura))
+                    ->exists();
+
+                if ($esEstudianteDeLaMateria) {
+                    $validator->errors()->add('id_usuario', 'No se puede asignar: el usuario esta inscrito como estudiante en esta asignatura');
                 }
             },
         ];

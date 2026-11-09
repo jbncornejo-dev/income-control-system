@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Asignatura;
+use App\Models\Estudiante;
 use App\Models\Examen;
+use App\Models\Grupo;
+use App\Models\Inscripcion;
 use App\Models\Periodo;
 use App\Models\Rol;
 use App\Models\User;
@@ -150,5 +153,71 @@ class PersonalControlTest extends TestCase
 
         $this->post('/examenes/'.$examen->id_examen.'/personal-control', ['id_usuario' => 1])
             ->assertRedirect('/login');
+    }
+
+    private function controlInscritoEn(int $idAsignatura): User
+    {
+        $estudiante = Estudiante::create([
+            'codigo_universitario' => 'COD'.random_int(100000, 999999),
+            'documento_identidad' => (string) random_int(1000000, 9999999),
+            'nombres' => 'Control',
+            'apellidos' => 'Estudiante',
+        ]);
+
+        $grupo = Grupo::create([
+            'id_asignatura' => $idAsignatura,
+            'id_usuario' => $this->usuarioConRol('docente')->id,
+            'gestion' => (string) now()->year,
+            'nombre_grupo' => 'G'.random_int(100, 999),
+        ]);
+
+        Inscripcion::create([
+            'id_estudiante' => $estudiante->id_estudiante,
+            'id_grupo' => $grupo->id_grupo,
+        ]);
+
+        $usuario = $this->usuarioConRol('personal de control de ingreso');
+        $usuario->update(['id_estudiante' => $estudiante->id_estudiante]);
+
+        return $usuario->fresh();
+    }
+
+    public function test_rechaza_a_quien_es_estudiante_de_la_misma_asignatura(): void
+    {
+        $examen = $this->examen();
+        $control = $this->controlInscritoEn($examen->id_asignatura);
+
+        $this->actingAs($this->usuarioConRol('administrador'))
+            ->post('/examenes/'.$examen->id_examen.'/personal-control', ['id_usuario' => $control->id])
+            ->assertSessionHasErrors('id_usuario');
+
+        $this->assertSame(0, $examen->fresh()->personalControl()->count());
+    }
+
+    public function test_permite_a_quien_es_estudiante_de_otra_asignatura(): void
+    {
+        $examen = $this->examen();
+        $otra = Asignatura::create(['nombre_asignatura' => 'Otra materia '.uniqid()]);
+        $control = $this->controlInscritoEn($otra->id_asignatura);
+
+        $this->actingAs($this->usuarioConRol('administrador'))
+            ->post('/examenes/'.$examen->id_examen.'/personal-control', ['id_usuario' => $control->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $examen->fresh()->personalControl()->count());
+    }
+
+    public function test_permite_a_un_usuario_sin_perfil_de_estudiante(): void
+    {
+        $examen = $this->examen();
+        $control = $this->usuarioConRol('personal de control de ingreso');
+
+        $this->assertNull($control->id_estudiante);
+
+        $this->actingAs($this->usuarioConRol('administrador'))
+            ->post('/examenes/'.$examen->id_examen.'/personal-control', ['id_usuario' => $control->id])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(1, $examen->fresh()->personalControl()->count());
     }
 }
