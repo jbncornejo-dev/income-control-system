@@ -22,9 +22,26 @@ const photoForm = useForm({
 });
 
 const puedeRegenerarQr = ref(Boolean(props.estudiante?.puede_regenerar_qr));
+const qrActivoIndex = ref(0);
 
 watch(() => props.estudiante?.puede_regenerar_qr, (val) => {
     puedeRegenerarQr.value = Boolean(val);
+});
+
+const qrDisponibles = computed(() => props.estudiante?.qrs || []);
+const qrActivo = computed(() => qrDisponibles.value[qrActivoIndex.value] || null);
+
+const cambiarQr = (direccion) => {
+    if (qrDisponibles.value.length < 2) return;
+
+    qrActivoIndex.value = (qrActivoIndex.value + direccion + qrDisponibles.value.length)
+        % qrDisponibles.value.length;
+};
+
+watch(qrDisponibles, (qrs) => {
+    if (qrActivoIndex.value >= qrs.length) {
+        qrActivoIndex.value = Math.max(0, qrs.length - 1);
+    }
 });
 
 const isRegeneratingQr = ref(false);
@@ -156,8 +173,8 @@ const cancelarSubidaFoto = () => {
     if (fileInput.value) fileInput.value.value = '';
 };
 
-const handleRegenerateQr = () => {
-    if (isRegeneratingQr.value || !puedeRegenerarQr.value || !props.estudiante?.en_ventana_qr) return;
+const handleRegenerateQr = (idExamen) => {
+    if (isRegeneratingQr.value || !puedeRegenerarQr.value) return;
 
     const confirmado = window.confirm(
         'Esto invalidará tu código QR actual (incluyendo impresiones o capturas anteriores). ¿Estás seguro de continuar?'
@@ -165,7 +182,7 @@ const handleRegenerateQr = () => {
     if (!confirmado) return;
 
     isRegeneratingQr.value = true;
-    router.post('/estudiante/qr/regenerar', {}, {
+    router.post('/estudiante/qr/regenerar', { id_examen: idExamen }, {
         preserveScroll: true,
         onSuccess: () => {
             puedeRegenerarQr.value = false;
@@ -180,16 +197,6 @@ const handleRegenerateQr = () => {
         }
     });
 };
-
-const botonTitle = computed(() => {
-    if (!props.estudiante?.en_ventana_qr) {
-        return 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al examen';
-    }
-    if (!puedeRegenerarQr.value) {
-        return 'Debes actualizar tu foto antes de generar un nuevo QR';
-    }
-    return 'Generar un nuevo código invalida el actual';
-});
 </script>
 
 <template>
@@ -288,67 +295,71 @@ const botonTitle = computed(() => {
 
                     </div>
 
-                    <!-- Panel Derecho: Código QR -->
-                    <div class="qr-access-panel">
-                        
-                        <span class="qr-access-label">Código de Acceso</span>
-                        
-                        <!-- Contenedor QR -->
-                        <div class="qr-frame-box">
-                            <!-- SVG generado desde el propio sistema (solo dentro de ventana de 24h) -->
-                            <div 
-                                v-if="estudiante.tiene_examen_activo && estudiante.en_ventana_qr && estudiante.qr_svg" 
-                                class="qr-svg-content" 
-                                v-html="estudiante.qr_svg"
-                            ></div>
+                    <!-- Panel Derecho: Código QR por examen -->
+                    <div class="qr-list">
+                        <div v-if="qrActivo" class="qr-access-panel">
+                            <div class="qr-navigation">
+                                <button
+                                    type="button"
+                                    class="qr-navigation-button"
+                                    :disabled="qrDisponibles.length < 2"
+                                    @click="cambiarQr(-1)"
+                                    aria-label="Ver QR anterior"
+                                >
+                                    ‹
+                                </button>
+                                <span class="qr-counter">
+                                    {{ qrActivoIndex + 1 }} / {{ qrDisponibles.length }}
+                                </span>
+                                <button
+                                    type="button"
+                                    class="qr-navigation-button"
+                                    :disabled="qrDisponibles.length < 2"
+                                    @click="cambiarQr(1)"
+                                    aria-label="Ver QR siguiente"
+                                >
+                                    ›
+                                </button>
+                            </div>
 
-                            <!-- Mensaje cuando hay examen pero aún falta más de 24 horas -->
-                            <div v-else-if="estudiante.tiene_examen_activo && !estudiante.en_ventana_qr" class="text-center p-4">
-                                <p class="text-sm font-semibold text-gray-800">Código QR no disponible aún</p>
-                                <p class="text-xs text-amber-700 mt-2 font-medium">
-                                    {{ estudiante.mensaje_ventana_qr || 'El código QR solo puede generarse dentro de las 24 horas previas al inicio del examen.' }}
+                            <span class="qr-access-label">{{ qrActivo.nombre }} — {{ qrActivo.fecha }} {{ qrActivo.hora_inicio }}</span>
+
+                            <div class="qr-frame-box">
+                                <div
+                                    v-if="qrActivo.qr_svg"
+                                    class="qr-svg-content"
+                                    v-html="qrActivo.qr_svg"
+                                ></div>
+                                <div v-else class="qr-empty-placeholder">
+                                    <span>No disponible</span>
+                                </div>
+                            </div>
+
+                            <span class="qr-token-string">{{ qrActivo.qr_token }}</span>
+
+                            <div class="qr-action-wrapper">
+                                <button
+                                    type="button"
+                                    class="btn-regenerate-qr"
+                                    :disabled="isRegeneratingQr || !puedeRegenerarQr"
+                                    @click="handleRegenerateQr(qrActivo.id_examen)"
+                                    :title="!puedeRegenerarQr ? 'Debes actualizar tu foto antes de generar un nuevo QR' : 'Generar un nuevo código invalida el actual'"
+                                >
+                                    <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
+                                    <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO QR' }}</span>
+                                </button>
+
+                                <p v-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
+                                    Debes actualizar tu foto antes de generar un nuevo QR
                                 </p>
                             </div>
-
-                            <!-- Mensaje CS1 cuando no hay exámenes -->
-                            <div v-else-if="!estudiante.tiene_examen_activo" class="text-center p-4">
-                                <p class="text-sm font-semibold text-gray-800">No hay un código QR disponible en este momento.</p>
-                                <p class="text-xs text-gray-500 mt-2">El código QR se habilitará cuando tengas un examen pendiente o en curso.</p>
-                            </div>
-
-                            <div v-else class="qr-empty-placeholder">
-                                <span>No disponible</span>
+                        </div>
+                        <div v-else class="qr-access-panel qr-empty-panel">
+                            <span class="qr-access-label">Código QR por examen</span>
+                            <div class="qr-empty-placeholder">
+                                <span>No hay exámenes disponibles.</span>
                             </div>
                         </div>
-
-                        <!-- Ocultar Token y Botón si no hay examen activo -->
-                        <span v-if="estudiante.tiene_examen_activo && estudiante.en_ventana_qr" class="qr-token-string">
-                            {{ formattedToken }}
-                        </span>
-
-                        <div v-if="estudiante.tiene_examen_activo" class="qr-action-wrapper">
-                            <button 
-                                type="button" 
-                                class="btn-regenerate-qr" 
-                                :disabled="isRegeneratingQr || !puedeRegenerarQr || !estudiante.en_ventana_qr"
-                                @click="handleRegenerateQr"
-                                :title="botonTitle"
-                            >
-                                <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
-                                <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO QR' }}</span>
-                            </button>
-
-                            <!-- HU-17: Mensaje si está fuera de la ventana de 24 horas -->
-                            <p v-if="!estudiante.en_ventana_qr" class="qr-regen-disabled-message">
-                                {{ estudiante.mensaje_ventana_qr || 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al examen' }}
-                            </p>
-
-                            <!-- HU-16: Mensaje si está en ventana pero falta actualizar foto -->
-                            <p v-else-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
-                                Debes actualizar tu foto antes de generar un nuevo QR
-                            </p>
-                        </div>
-
                     </div>
                 </div>
 
@@ -591,18 +602,72 @@ const botonTitle = computed(() => {
 
 /* Panel Derecho: Código QR */
 .qr-access-panel {
-    padding: 2rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     background-color: #ffffff;
     position: relative;
+    min-width: 0;
+}
+
+.qr-list {
+    width: 45%;
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: start;
+    min-width: 0;
+}
+
+.qr-navigation {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.qr-navigation-button {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid #d1d5db;
+    border-radius: 9999px;
+    background: #ffffff;
+    color: var(--color-primary);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.qr-navigation-button:hover:not(:disabled) {
+    background: rgba(29, 54, 83, 0.08);
+}
+
+.qr-navigation-button:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.qr-counter {
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.qr-empty-panel {
+    min-height: 360px;
+}
+
+@media (max-width: 767px) {
+    .qr-list {
+        width: 100%;
+    }
 }
 
 @media (min-width: 768px) {
-    .qr-access-panel {
-        width: 45%;
+    .qr-list {
+        border-left: 1px solid #f3f4f6;
     }
 }
 
@@ -613,6 +678,8 @@ const botonTitle = computed(() => {
     text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 1.5rem;
+    text-align: center;
+    line-height: 1.4;
 }
 
 .qr-frame-box {
@@ -629,8 +696,9 @@ const botonTitle = computed(() => {
 
 .qr-svg-content :deep(svg),
 .qr-img-fallback {
-    width: 180px;
-    height: 180px;
+    width: min(180px, 100%);
+    height: auto;
+    aspect-ratio: 1;
     display: block;
 }
 
@@ -646,11 +714,14 @@ const botonTitle = computed(() => {
 
 .qr-token-string {
     font-family: var(--font-mono, monospace);
-    font-size: 0.875rem;
-    font-weight: 700;
+    font-size: 0.55rem;
+    font-weight: 600;
     color: #6b7280;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.03em;
     margin-bottom: 1.5rem;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
 }
 
 .qr-action-wrapper {

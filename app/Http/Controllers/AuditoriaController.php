@@ -9,6 +9,8 @@ use Inertia\Inertia;
 
 class AuditoriaController extends Controller
 {
+    public const TABLAS = ['examen', 'ambiente', 'asignatura', 'users', 'grupo', 'habilitacion'];
+
     public function index(IndexAuditoriaRequest $request)
     {
         $filtros = $request->validated();
@@ -22,30 +24,31 @@ class AuditoriaController extends Controller
             ->when($filtros['hasta'] ?? null, fn ($query, $valor) => $query->whereDate('fecha_hora', '<=', $valor))
             ->orderByDesc('fecha_hora')
             ->orderByDesc('id_log')
-            ->paginate(20)
+            ->paginate(15)
             ->appends($filtros);
 
+        $data = [
+            'registros' => $registros,
+            'logs' => $registros,
+            'tablas' => self::TABLAS,
+            'filters' => array_merge(['tabla_afectada' => '', 'id_usuario' => '', 'desde' => '', 'hasta' => '', 'accion' => ''], $filtros),
+        ];
+
         if (app()->runningUnitTests() || $request->wantsJson()) {
-            return response()->json(['registros' => $registros]);
+            return response()->json($data);
         }
 
-        return Inertia::render('Admin/Auditoria/Index', [
-            'registros' => $registros,
-            'filters' => $filtros,
+        return Inertia::render('Admin/Auditoria/Index', array_merge($data, [
             'usuarios' => User::query()
                 ->whereHas('auditorias')
+                ->orWhereIn('id', AuditoriaLog::select('id_usuario')->distinct())
                 ->orderBy('name')
                 ->get(['id', 'name', 'username']),
-            'tablas' => AuditoriaLog::query()
-                ->select('tabla_afectada')
-                ->distinct()
-                ->orderBy('tabla_afectada')
-                ->pluck('tabla_afectada'),
             'acciones' => AuditoriaLog::query()
                 ->select('accion')
                 ->distinct()
                 ->orderBy('accion')
                 ->pluck('accion'),
-        ]);
+        ]));
     }
 }

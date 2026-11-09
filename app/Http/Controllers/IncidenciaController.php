@@ -8,6 +8,8 @@ use App\Models\Estudiante;
 use App\Models\Examen;
 use App\Models\Incidencia;
 use App\Services\ReporteExportService;
+use App\Support\ReportExporter;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -43,7 +45,7 @@ class IncidenciaController extends Controller
 
         $ahora = Carbon::now('America/La_Paz');
 
-        // HU-17: Solo exámenes dentro de la ventana de control (-10 min inicio a +10 min fin) asignados al control
+        // Solo exámenes en curso o dentro de ventana asignados al control
         $examenesEnCurso = Examen::with(['asignatura', 'grupos.inscripciones', 'habilitaciones'])
             ->whereHas('personalControl', function ($query) use ($request) {
                 $query->where('examen_personal_control.id_usuario', $request->user()->id);
@@ -118,7 +120,7 @@ class IncidenciaController extends Controller
         return $exportService->exportarIncidenciasExcel($incidencias, $filtros, $examenFiltro);
     }
 
-    public function store(\Illuminate\Http\Request $request)
+    public function store(Request $request)
     {
         $mensajes = [
             'required' => 'Debe rellenar este campo para proceder'
@@ -160,5 +162,37 @@ class IncidenciaController extends Controller
         ]));
 
         return back()->with('success', 'Incidencia registrada correctamente.');
+    }
+
+    public function exportar(IndexIncidenciaRequest $request)
+    {
+        $filters = $request->validated();
+        $incidencias = Incidencia::with(['examen.asignatura', 'estudiante', 'user'])
+            ->when($filters['id_examen'] ?? null, fn ($q, $id) => $q->where('id_examen', $id))
+            ->when($filters['tipo_incidencia'] ?? null, fn ($q, $tipo) => $q->where('tipo_incidencia', $tipo))
+            ->when($filters['desde'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '>=', $date))
+            ->when($filters['hasta'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '<=', $date))
+            ->latest('fecha_hora')->get();
+        $rows = $incidencias->map(fn ($item) => [
+            $item->examen?->asignatura?->nombre_asignatura ?? 'N/D',
+            $item->tipo_incidencia,
+            $item->estudiante ? trim($item->estudiante->nombres . ' ' . $item->estudiante->apellidos) : 'Sin estudiante',
+            $item->user?->name ?? 'Sistema',
+            $item->descripcion_motivo,
+            $item->fecha_hora,
+        ])->all();
+
+        if ($request->query('formato') === 'pdf') {
+            return ReportExporter::downloadPdf('incidencias.pdf', 'Reporte de incidencias', [], [[
+                'heading' => 'Incidencias filtradas',
+                'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
+                'rows' => $rows,
+            ]]);
+        }
+        return ReportExporter::downloadExcel('incidencias.xls', 'Reporte de incidencias', [[
+            'name' => 'Incidencias',
+            'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
+            'rows' => $rows,
+        ]]);
     }
 }

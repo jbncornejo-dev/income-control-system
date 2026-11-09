@@ -31,6 +31,16 @@ const filterTipo = ref(props.filters?.tipo_incidencia || '');
 const filterDesde = ref(props.filters?.desde || '');
 const filterHasta = ref(props.filters?.hasta || '');
 
+const exportarIncidencias = (formato) => {
+    const params = new URLSearchParams();
+    if (filterExamen.value) params.set('id_examen', filterExamen.value);
+    if (filterTipo.value) params.set('tipo_incidencia', filterTipo.value);
+    if (filterDesde.value) params.set('desde', filterDesde.value);
+    if (filterHasta.value) params.set('hasta', filterHasta.value);
+    params.set('formato', formato);
+    window.location.href = `/incidencias/exportar?${params.toString()}`;
+};
+
 const applyFilters = () => {
     router.get('/incidencias', {
         id_examen: filterExamen.value || undefined,

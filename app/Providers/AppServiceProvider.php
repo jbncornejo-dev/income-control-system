@@ -31,11 +31,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Forzar HTTPS en producción y staging
-        if (config('app.env') !== 'local') {
-            URL::forceScheme('https');
-        }
-
         foreach ([
             Ambiente::class,
             Asignatura::class,
@@ -49,6 +44,11 @@ class AppServiceProvider extends ServiceProvider
             User::class,
         ] as $modelo) {
             $modelo::observe(AuditoriaObserver::class);
+        }
+
+        // Forzar HTTPS en producción y staging
+        if (config('app.env') !== 'local') {
+            URL::forceScheme('https');
         }
     }
 }

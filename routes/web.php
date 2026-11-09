@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CambiarPasswordController;
 use App\Http\Controllers\DashboardController;
@@ -10,7 +11,6 @@ use App\Http\Controllers\GrupoController;
 use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
 use App\Http\Controllers\HistoricoController;
-use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\EstadisticaIncidenciaController;
 use App\Http\Controllers\IncidenciaController;
 use App\Http\Controllers\MisExamenesController;
@@ -24,6 +24,8 @@ use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Estudiante;
 use App\Models\Examen;
+use App\Models\ExamenQr;
+use App\Models\Habilitacion;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\RegistroIngresoController;
@@ -101,12 +103,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/incidencias/exportar/pdf', [IncidenciaController::class, 'exportarPdf'])->name('incidencias.exportar.pdf');
         Route::get('/incidencias/exportar/excel', [IncidenciaController::class, 'exportarExcel'])->name('incidencias.exportar.excel');
         Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
+        Route::get('/incidencias/exportar', [IncidenciaController::class, 'exportar'])->name('incidencias.exportar');
         Route::get('/incidencias/estadisticas', [EstadisticaIncidenciaController::class, 'index'])->name('incidencias.estadisticas');
-        Route::get('/auditoria', [AuditoriaController::class, 'index'])->middleware('role:administrador')->name('auditoria.index');
         Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
         Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
         Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
         Route::get('/panel-asistencia', [PanelAsistenciaController::class, 'index'])->name('panel-asistencia.index');
+        Route::get('/panel-asistencia/{examen}/exportar', [PanelAsistenciaController::class, 'exportar'])->name('panel-asistencia.exportar');
         Route::get('/panel-asistencia/exportar/pdf', [PanelAsistenciaController::class, 'exportarPdf'])->name('panel-asistencia.exportar.pdf');
         Route::get('/panel-asistencia/exportar/excel', [PanelAsistenciaController::class, 'exportarExcel'])->name('panel-asistencia.exportar.excel');
         Route::post('/registro-ingreso/sync', [RegistroIngresoController::class, 'sincronizarLote'])->name('registro-ingreso.sync');
@@ -121,6 +124,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
+        Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
@@ -176,6 +180,7 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
         Route::get('/historico', [HistoricoController::class, 'index'])->name('historico.index');
+        Route::get('/historico/incidencias/exportar', [HistoricoController::class, 'exportarIncidencias'])->name('historico.incidencias.exportar');
         Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
         Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
         // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
@@ -266,7 +271,7 @@ Route::middleware('auth')->group(function () {
 
         $qrSvg = null;
         
-        // 2. Solo generar el SVG si tiene un examen dentro de la ventana de 24h
+        // Solo generar el SVG si tiene un examen dentro de la ventana de 24h
         if ($enVentanaQr && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
             try {
                 $result = (new \Endroid\QrCode\Builder\Builder(
@@ -283,6 +288,27 @@ Route::middleware('auth')->group(function () {
             }
         }
 
+        $qrs = Habilitacion::with('examen')
+            ->where('id_estudiante', $estudiante->id_estudiante)
+            ->where('estado_habilitado', true)
+            ->get()
+            ->filter(function (Habilitacion $habilitacion) {
+                $inicio = Carbon::parse($habilitacion->examen->fecha . ' ' . $habilitacion->examen->hora_inicio);
+                $fin = $inicio->copy()->addMinutes((int) $habilitacion->examen->duracion_minutos);
+                return now()->between($inicio->copy()->subHours(24), $fin);
+            })
+            ->map(function (Habilitacion $habilitacion) {
+                $qr = ExamenQr::paraHabilitacion($habilitacion);
+                return [
+                    'id_examen' => $habilitacion->id_examen,
+                    'nombre' => $habilitacion->examen->asignatura?->nombre_asignatura ?? 'Examen',
+                    'fecha' => $habilitacion->examen->fecha,
+                    'hora_inicio' => $habilitacion->examen->hora_inicio,
+                    'qr_token' => $qr->token,
+                    'expires_at' => $qr->expires_at?->toIso8601String(),
+                ];
+            })->values();
+
         return \Inertia\Inertia::render('Estudiantes/Panel', [
             'estudiante' => [
                 'id' => $estudiante->id_estudiante,
@@ -298,7 +324,8 @@ Route::middleware('auth')->group(function () {
                 'mensaje_ventana_qr' => $mensajeVentanaQr,
                 'qr_token' => $estudiante->codigo_qr,
                 'qr_svg' => $qrSvg,
-                'tiene_examen_activo' => $tieneExamenActivo, 
+                'tiene_examen_activo' => $tieneExamenActivo,
+                'qrs' => $qrs,
             ],
         ]);
     })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);

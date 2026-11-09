@@ -12,6 +12,7 @@ use App\Models\RegistroIngreso;
 use App\Models\ExamenAmbiente;
 use App\Models\ConflictoIngreso;
 use App\Models\Incidencia;
+use App\Models\ExamenQr;
 use Illuminate\Support\Facades\DB;
 
 class RegistroIngresoController extends Controller
@@ -26,8 +27,8 @@ class RegistroIngresoController extends Controller
                   ->orWhereNotIn('estado', ['cancelado', 'anulado']);
             })
             ->whereRaw(
-                "(fecha || ' ' || hora_inicio)::timestamp + ((duracion_minutos + 10) || ' minutes')::interval >= ?",
-                [now('America/La_Paz')]
+                "(fecha || ' ' || hora_inicio)::timestamp - interval '10 minutes' <= NOW()
+                 AND (fecha || ' ' || hora_inicio)::timestamp + ((duracion_minutos + 10) || ' minutes')::interval >= NOW()"
             )
             ->get()
             ->map(function ($examen) {
@@ -89,10 +90,7 @@ class RegistroIngresoController extends Controller
     /**
      * Validar al estudiante antes de confirmar el ingreso.
      *
-     * Acepta:
-     *  - código universitario (9 dígitos)
-     *  - documento de identidad
-     *  - payload QR completo ("ident:v1:CODIGO" o "ident:v1:CODIGO-TIMESTAMP")
+     * Acepta código/documento como respaldo y tokens QR individuales del examen.
      */
     public function validarEstudiante(Request $request)
     {
@@ -103,31 +101,36 @@ class RegistroIngresoController extends Controller
 
         $dato    = trim($request->input('dato_estudiante'));
         $idExamen = $request->input('id_examen');
-        $examen   = Examen::findOrFail($idExamen);
 
-        // HU-17: El personal de control solo puede validar ingresos dentro de la ventana
-        // (10 min antes del inicio hasta 10 min después del fin del examen).
+        $examen = Examen::findOrFail($idExamen);
         if (! $examen->estaEnVentanaOperacionControl()) {
+            $status = $request->user()?->rol?->nombre_rol === 'personal de control de ingreso' ? 403 : 422;
             return response()->json([
                 'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
-            ], 403);
+            ], $status);
         }
 
-        // ── Normalizar el payload del QR ─────────────────────────────
-        // El QR del estudiante codifica "ident:v1:CODIGO_UNIVERSITARIO"
-        // (opcionalmente con "-TIMESTAMP" si fue regenerado).
-        $datoBusqueda = $dato;
-        if (str_starts_with($dato, Estudiante::QR_PREFIX)) {
-            $sinPrefijo    = substr($dato, strlen(Estudiante::QR_PREFIX));
-            // Quitar posible sufijo "-TIMESTAMP" de regeneraciones
-            $datoBusqueda  = explode('-', $sinPrefijo, 2)[0];
-        }
+        $qr = null;
+        $estudiante = null;
 
-        // ── Buscar estudiante ────────────────────────────────────────
-        $estudiante = Estudiante::where('codigo_universitario', $datoBusqueda)
-            ->orWhere('documento_identidad', $datoBusqueda)
-            ->orWhere('codigo_qr', $dato)       // match exacto del payload QR completo
-            ->first();
+        if (str_starts_with($dato, 'examen:v1:')) {
+            $qr = ExamenQr::where('token', $dato)
+                ->where('id_examen', $idExamen)
+                ->with('estudiante')
+                ->first();
+
+            if (! $qr || ! $qr->estaVigente()) {
+                return response()->json([
+                    'error' => 'El código QR no es válido para este examen o ya expiró.',
+                ], 422);
+            }
+
+            $estudiante = $qr->estudiante;
+        } else {
+            $estudiante = Estudiante::where('codigo_universitario', $dato)
+                ->orWhere('documento_identidad', $dato)
+                ->first();
+        }
 
         if (! $estudiante) {
             Incidencia::create([
@@ -148,6 +151,12 @@ class RegistroIngresoController extends Controller
             ->where('id_estudiante', $estudiante->id_estudiante)
             ->where('id_examen', $idExamen)
             ->first();
+
+        if ($qr && $habilitacion?->id_habilitacion !== $qr->id_habilitacion) {
+            return response()->json([
+                'error' => 'El código QR no corresponde a la habilitación de este examen.',
+            ], 422);
+        }
 
         if (! $habilitacion || ! $habilitacion->estado_habilitado) {
             $motivo = $habilitacion->motivo_inhabilitacion
@@ -229,6 +238,11 @@ class RegistroIngresoController extends Controller
             'asignado_a'           => ! $esMiAsignado ? $agenteAsignado : null,
             'normas_generales'     => filled($normasGenerales) ? $normasGenerales : null,
             'normas_particulares'  => filled($normasParticulares) ? $normasParticulares : null,
+            'qr'                   => $qr ? [
+                'token' => $qr->token,
+                'metadata' => $qr->metadata,
+                'expires_at' => $qr->expires_at?->toIso8601String(),
+            ] : null,
         ]);
     }
 
@@ -242,18 +256,15 @@ class RegistroIngresoController extends Controller
             'id_examen_ambiente' => 'required|integer',
         ]);
 
+        // Re-validación de seguridad ante peticiones dobles
         $examenAmbiente = ExamenAmbiente::with('examen')->findOrFail($request->id_examen_ambiente);
         $examen = $examenAmbiente->examen;
-
-        // HU-17: El personal de control solo puede confirmar ingresos dentro de la ventana
-        // (10 min antes del inicio hasta 10 min después del fin del examen).
         if ($examen && ! $examen->estaEnVentanaOperacionControl()) {
+            $status = $request->user()?->rol?->nombre_rol === 'personal de control de ingreso' ? 403 : 422;
             return response()->json([
                 'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
-            ], 403);
+            ], $status);
         }
-
-        // Re-validación de seguridad ante peticiones dobles
         $ingresoPrevio  = RegistroIngreso::where('id_estudiante', $request->id_estudiante)
             ->whereHas('examenAmbiente', function ($query) use ($examenAmbiente) {
                 $query->where('id_examen', $examenAmbiente->id_examen);
@@ -327,6 +338,8 @@ class RegistroIngresoController extends Controller
             $idExamen = $examenAmbiente->id_examen;
 
             $examen = $examenAmbiente->examen;
+            $inicioExamen = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+            $finExamen = $inicioExamen->copy()->addMinutes((int) $examen->duracion_minutos);
 
             if (in_array($examen->estado, ['cancelado', 'anulado'], true)) {
                 $resultados['rechazados'][] = [
@@ -337,7 +350,8 @@ class RegistroIngresoController extends Controller
                 continue;
             }
 
-            if (! $examen->estaEnVentanaOperacionControl($fechaHoraIntento)) {
+            if ($fechaHoraIntento->lt($inicioExamen->copy()->subMinutes(10))
+                || $fechaHoraIntento->gt($finExamen->copy()->addMinutes(10))) {
                 $resultados['rechazados'][] = [
                     'uuid_offline'  => $uuidOffline,
                     'id_estudiante' => $idEstudiante,
@@ -433,5 +447,13 @@ class RegistroIngresoController extends Controller
         }
 
         return response()->json($resultados);
+    }
+
+    private function estaEnVentanaOperativa(Examen $examen): bool
+    {
+        $inicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
+        $fin = $inicio->copy()->addMinutes((int) $examen->duracion_minutos);
+
+        return Carbon::now()->between($inicio->copy()->subMinutes(10), $fin->copy()->addMinutes(10));
     }
 }
