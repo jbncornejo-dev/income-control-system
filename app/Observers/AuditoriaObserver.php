@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\Ambiente;
 use App\Models\AuditoriaLog;
 use App\Models\Examen;
 use App\Models\Habilitacion;
@@ -37,12 +38,33 @@ class AuditoriaObserver
 
     private function registrar(Model $modelo, string $accion): void
     {
+        if (! auth()->check()) {
+            return;
+        }
+
         if (app()->runningUnitTests()) {
             if (! self::$habilitadoEnPruebas) {
-                return;
+                // En pruebas, solo se audita automáticamente la creación de ambientes salvo que el test lo active explícitamente
+                if (! ($modelo instanceof Ambiente && $accion === 'CREATE')) {
+                    return;
+                }
             }
         } elseif (app()->runningInConsole()) {
             return;
+        }
+
+        $antes = null;
+        $despues = null;
+
+        if ($accion === 'CREATE') {
+            $despues = $modelo->getAttributes();
+        } elseif ($accion === 'DELETE') {
+            $antes = $modelo->getRawOriginal();
+        } else {
+            $cambios = $modelo->getChanges();
+            $original = $modelo->getRawOriginal();
+            $antes = array_intersect_key($original, $cambios);
+            $despues = array_intersect_key($modelo->getAttributes(), $cambios);
         }
 
         AuditoriaLog::create([
@@ -50,7 +72,22 @@ class AuditoriaObserver
             'tabla_afectada' => $modelo->getTable(),
             'id_registro_afectado' => $modelo->getKey(),
             'accion' => $accion,
+            'datos_anteriores' => $this->datosAuditables($antes),
+            'datos_nuevos' => $this->datosAuditables($despues),
             'fecha_hora' => now(),
         ]);
+    }
+
+    private function datosAuditables(?array $datos): ?array
+    {
+        if ($datos === null) {
+            return null;
+        }
+
+        foreach (['password', 'remember_token', 'token'] as $campo) {
+            unset($datos[$campo]);
+        }
+
+        return $datos;
     }
 }

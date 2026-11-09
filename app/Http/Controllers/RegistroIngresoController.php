@@ -68,6 +68,8 @@ class RegistroIngresoController extends Controller
                     'hora_inicio'            => $examen->hora_inicio,
                     'normas_generales'       => $examen->normas_generales,
                     'estado'                 => $examen->estado_actual,
+                    'en_ventana_ingreso'     => $examen->estaEnVentanaOperacionControl(),
+                    'horario_permitido'      => $examen->horarioPermitidoControl(),
                     'mis_pendientes_count'   => $misAsignados->where('ya_ingreso', false)->count(),
                     'mis_asignados'          => $misAsignados,
                     'ambientes'              => $examen->examenesAmbientes->map(function ($pivot) {
@@ -100,11 +102,12 @@ class RegistroIngresoController extends Controller
         $dato    = trim($request->input('dato_estudiante'));
         $idExamen = $request->input('id_examen');
 
-        $examen = Examen::find($idExamen);
-        if ($examen && ! $this->estaEnVentanaOperativa($examen)) {
+        $examen = Examen::findOrFail($idExamen);
+        if (! $examen->estaEnVentanaOperacionControl()) {
+            $status = $request->user()?->rol?->nombre_rol === 'personal de control de ingreso' ? 403 : 422;
             return response()->json([
-                'error' => 'El registro de ingresos solo está permitido desde 10 minutos antes del inicio hasta 10 minutos después de la finalización del examen.',
-            ], 422);
+                'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
+            ], $status);
         }
 
         $qr = null;
@@ -254,12 +257,13 @@ class RegistroIngresoController extends Controller
         ]);
 
         // Re-validación de seguridad ante peticiones dobles
-        $examenAmbiente = ExamenAmbiente::findOrFail($request->id_examen_ambiente);
-        $examen = Examen::findOrFail($examenAmbiente->id_examen);
-        if (! $this->estaEnVentanaOperativa($examen)) {
+        $examenAmbiente = ExamenAmbiente::with('examen')->findOrFail($request->id_examen_ambiente);
+        $examen = $examenAmbiente->examen;
+        if ($examen && ! $examen->estaEnVentanaOperacionControl()) {
+            $status = $request->user()?->rol?->nombre_rol === 'personal de control de ingreso' ? 403 : 422;
             return response()->json([
-                'error' => 'El registro de ingresos solo está permitido desde 10 minutos antes del inicio hasta 10 minutos después de la finalización del examen.',
-            ], 422);
+                'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
+            ], $status);
         }
         $ingresoPrevio  = RegistroIngreso::where('id_estudiante', $request->id_estudiante)
             ->whereHas('examenAmbiente', function ($query) use ($examenAmbiente) {

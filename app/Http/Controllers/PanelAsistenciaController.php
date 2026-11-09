@@ -6,7 +6,9 @@ use App\Models\Examen;
 use App\Models\Habilitacion;
 use App\Models\RegistroIngreso;
 use App\Models\ConflictoIngreso;
+use App\Services\ReporteExportService;
 use App\Support\ReportExporter;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -44,6 +46,63 @@ class PanelAsistenciaController extends Controller
             ]);
         }
 
+        $datosCompletos = $this->obtenerDatosCompletos($seleccionado);
+
+        return $this->responder($request, [
+            'examenes' => $examenes,
+            'examen' => $seleccionado,
+            'ambientes' => $datosCompletos['ambientes'],
+            'pendientes' => $datosCompletos['pendientes'],
+            'conflictos' => $datosCompletos['conflictos'],
+            'resumen' => $datosCompletos['resumen'],
+        ]);
+    }
+
+    /**
+     * HU-26: Exportar reporte de asistencia a PDF.
+     */
+    public function exportarPdf(Request $request, ReporteExportService $exportService)
+    {
+        if (! in_array($request->user()?->rol?->nombre_rol, self::ROLES, true)) {
+            abort(403, 'Acceso Denegado');
+        }
+
+        $idExamen = $request->query('id_examen');
+        if (! $idExamen) {
+            abort(400, 'Debe especificar el examen para exportar el reporte.');
+        }
+
+        $examen = Examen::with(['asignatura', 'tipo', 'examenesAmbientes.ambiente'])->findOrFail($idExamen);
+        $datos = $this->obtenerDatosCompletos($examen);
+
+        return $exportService->exportarAsistenciaPdf($examen, $datos);
+    }
+
+    /**
+     * HU-26: Exportar reporte de asistencia a Excel (.xlsx).
+     */
+    public function exportarExcel(Request $request, ReporteExportService $exportService)
+    {
+        if (! in_array($request->user()?->rol?->nombre_rol, self::ROLES, true)) {
+            abort(403, 'Acceso Denegado');
+        }
+
+        $idExamen = $request->query('id_examen');
+        if (! $idExamen) {
+            abort(400, 'Debe especificar el examen para exportar el reporte.');
+        }
+
+        $examen = Examen::with(['asignatura', 'tipo', 'examenesAmbientes.ambiente'])->findOrFail($idExamen);
+        $datos = $this->obtenerDatosCompletos($examen);
+
+        return $exportService->exportarAsistenciaExcel($examen, $datos);
+    }
+
+    /**
+     * Obtener y consolidar los datos de asistencia del examen.
+     */
+    private function obtenerDatosCompletos(Examen $seleccionado): array
+    {
         $conflictos = ConflictoIngreso::query()
             ->with(['estudiante:id_estudiante,nombres,apellidos,codigo_universitario', 'usuario:id,name'])
             ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $seleccionado->id_examen))
@@ -56,7 +115,7 @@ class PanelAsistenciaController extends Controller
             ->get();
 
         $ingresos = RegistroIngreso::query()
-            ->with('estudiante')
+            ->with(['estudiante', 'examenAmbiente.ambiente'])
             ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $seleccionado->id_examen))
             ->get();
 
@@ -70,9 +129,12 @@ class PanelAsistenciaController extends Controller
                 ->map(fn ($registro) => [
                     'id_estudiante' => $registro->id_estudiante,
                     'codigo_universitario' => $registro->estudiante?->codigo_universitario,
+                    'documento_identidad' => $registro->estudiante?->documento_identidad,
                     'nombres' => $registro->estudiante?->nombres,
                     'apellidos' => $registro->estudiante?->apellidos,
                     'hora_ingreso' => $registro->fecha_hora_ingreso,
+                    'hora_ingreso_formateada' => Carbon::parse($registro->fecha_hora_ingreso)->setTimezone('America/La_Paz')->format('H:i:s'),
+                    'nombre_ambiente' => $examenAmbiente->ambiente?->nombre_ambiente,
                 ]);
 
             return [
@@ -92,15 +154,28 @@ class PanelAsistenciaController extends Controller
             ->map(fn ($habilitacion) => [
                 'id_estudiante' => $habilitacion->id_estudiante,
                 'codigo_universitario' => $habilitacion->estudiante?->codigo_universitario,
+                'documento_identidad' => $habilitacion->estudiante?->documento_identidad,
                 'nombres' => $habilitacion->estudiante?->nombres,
                 'apellidos' => $habilitacion->estudiante?->apellidos,
             ]);
 
-        return $this->responder($request, [
-            'examenes' => $examenes,
-            'examen' => $seleccionado,
+        $ingresados = $ingresos->sortBy('fecha_hora_ingreso')->values()->map(function ($registro) {
+            return [
+                'id_estudiante' => $registro->id_estudiante,
+                'codigo_universitario' => $registro->estudiante?->codigo_universitario,
+                'documento_identidad' => $registro->estudiante?->documento_identidad,
+                'nombres' => $registro->estudiante?->nombres,
+                'apellidos' => $registro->estudiante?->apellidos,
+                'nombre_ambiente' => $registro->examenAmbiente?->ambiente?->nombre_ambiente,
+                'hora_ingreso' => $registro->fecha_hora_ingreso,
+                'hora_ingreso_formateada' => Carbon::parse($registro->fecha_hora_ingreso)->setTimezone('America/La_Paz')->format('H:i:s'),
+            ];
+        });
+
+        return [
             'ambientes' => $ambientes,
             'pendientes' => $pendientes,
+            'ingresados' => $ingresados,
             'conflictos' => $conflictos,
             'resumen' => [
                 'habilitados' => $habilitados->count(),
@@ -110,7 +185,7 @@ class PanelAsistenciaController extends Controller
                 'cerrado' => $seleccionado->estado_horario === 'finalizado'
                     || in_array($seleccionado->estado, ['cancelado', 'anulado'], true),
             ],
-        ]);
+        ];
     }
 
     private function responder(Request $request, array $datos)
