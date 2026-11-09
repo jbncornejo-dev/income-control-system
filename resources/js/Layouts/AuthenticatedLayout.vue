@@ -1,7 +1,7 @@
 <script setup>
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
-import { Home, Users, UserSquare2, BookOpen, Building, FileText, Component, ClipboardCheck, AlertCircle, ScanLine, QrCode, ClipboardList, LogOut, History, BarChart3 } from 'lucide-vue-next';
+import { Home, Users, UserSquare2, BookOpen, Building, FileText, Component, ClipboardCheck, AlertCircle, ScanLine, QrCode, ClipboardList, LogOut, History, BarChart3, ShieldCheck } from 'lucide-vue-next';
 import ToastContainer from '../components/ui/ToastContainer.vue';
 
 const page = usePage();
@@ -25,6 +25,7 @@ const navItems = [
   { label: 'Panel Asistencia', href: '/panel-asistencia', roles: ['admin', 'docente', 'control'], icon: ClipboardCheck },
   { label: 'Incidencias', href: '/incidencias', roles: ['admin', 'docente', 'control'], icon: AlertCircle },
   { label: 'Estadísticas', href: '/incidencias/estadisticas', roles: ['admin', 'docente'], icon: BarChart3 },
+  { label: 'Auditoría', href: '/auditoria', roles: ['admin'], icon: ShieldCheck },
   { label: 'Registrar Ingreso', href: '/registro-ingreso', roles: ['control'], highlight: true, icon: ScanLine },
   { label: 'Mi Código QR', href: '/estudiante/panel', roles: ['estudiante'], icon: QrCode },
   { label: 'Mis Exámenes', href: '/mis-examenes', roles: ['estudiante'], icon: ClipboardList },
