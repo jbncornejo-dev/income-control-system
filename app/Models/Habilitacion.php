@@ -21,6 +21,19 @@ class Habilitacion extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (Habilitacion $habilitacion) {
+            ExamenQr::paraHabilitacion($habilitacion);
+        });
+
+        static::updated(function (Habilitacion $habilitacion) {
+            if ($habilitacion->wasChanged('estado_habilitado') && $habilitacion->estado_habilitado) {
+                ExamenQr::paraHabilitacion($habilitacion);
+            }
+        });
+    }
+
     // Relación de muchos a uno (habilitacion-estudiante)
     public function estudiante()
     {
@@ -36,5 +49,10 @@ class Habilitacion extends Model
     public function personalControl()
     {
         return $this->belongsTo(User::class, 'id_personal_control');
+    }
+
+    public function examenQr()
+    {
+        return $this->hasOne(ExamenQr::class, 'id_habilitacion', 'id_habilitacion');
     }
     }

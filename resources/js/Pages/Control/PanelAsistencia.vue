@@ -65,6 +65,12 @@ function formatearActualizacion(valor) {
     return valor.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
+function exportarReporte(formato) {
+    if (props.examen?.id_examen) {
+        window.location.href = `/panel-asistencia/${props.examen.id_examen}/exportar?formato=${formato}`;
+    }
+}
+
 watch(() => [props.examen?.id_examen, cerrado.value], iniciarRefresco);
 
 onMounted(iniciarRefresco);
@@ -105,6 +111,8 @@ onUnmounted(detenerRefresco);
                             : `Ultima actualizacion: ${formatearActualizacion(ultimaActualizacion)}` }}
                     </span>
                     <button v-if="!cerrado" class="btn-secundario" @click="refrescar">Actualizar ahora</button>
+                    <button class="btn-secundario" @click="exportarReporte('pdf')">Exportar PDF</button>
+                    <button class="btn-secundario" @click="exportarReporte('excel')">Exportar Excel</button>
                 </div>
 
                 <div class="resumen-grid">

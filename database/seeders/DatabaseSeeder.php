@@ -87,6 +87,9 @@ class DatabaseSeeder extends Seeder
             ExamenSeeder::class,
             InscripcionSeeder::class,
             HabilitacionSeeder::class,
+            DemoOperativoSeeder::class,
+            DemoAuditoriaDetalleSeeder::class,
+            DemoIncidenciasSeeder::class,
         ]);
 
         // La cuenta demo "estudiante / pass" se vincula a la matrícula real

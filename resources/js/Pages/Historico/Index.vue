@@ -56,6 +56,10 @@ function cambiarPaginaIncidencias(pagina) {
         preserveScroll: true,
     });
 }
+
+function exportarIncidencias(formato) {
+    window.location.href = `/historico/incidencias/exportar?id_periodo=${periodoActual.value}&formato=${formato}`;
+}
 </script>
 
 <template>
@@ -123,6 +127,10 @@ function cambiarPaginaIncidencias(pagina) {
             <!-- TABLA 2: INCIDENCIAS -->
             <div class="table-section">
                 <h2 class="section-title">Incidencias del Periodo</h2>
+                <div>
+                    <button class="btn-secondary" type="button" @click="exportarIncidencias('pdf')">Exportar PDF</button>
+                    <button class="btn-secondary" type="button" @click="exportarIncidencias('excel')">Exportar Excel</button>
+                </div>
                 
                 <table class="data-table">
                     <thead>

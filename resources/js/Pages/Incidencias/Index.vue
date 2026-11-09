@@ -30,6 +30,16 @@ const filterTipo = ref(props.filters?.tipo_incidencia || '');
 const filterDesde = ref(props.filters?.desde || '');
 const filterHasta = ref(props.filters?.hasta || '');
 
+const exportarIncidencias = (formato) => {
+    const params = new URLSearchParams();
+    if (filterExamen.value) params.set('id_examen', filterExamen.value);
+    if (filterTipo.value) params.set('tipo_incidencia', filterTipo.value);
+    if (filterDesde.value) params.set('desde', filterDesde.value);
+    if (filterHasta.value) params.set('hasta', filterHasta.value);
+    params.set('formato', formato);
+    window.location.href = `/incidencias/exportar?${params.toString()}`;
+};
+
 const applyFilters = () => {
     router.get('/incidencias', {
         id_examen: filterExamen.value || undefined,
@@ -167,6 +177,10 @@ const getColorClass = (tipo) => {
                 <div>
                     <h1 class="panel-title">GESTIÓN DE INCIDENCIAS</h1>
                     <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="btn-exportar btn-pdf" @click="exportarIncidencias('pdf')">Exportar PDF</button>
+                    <button type="button" class="btn-exportar btn-excel" @click="exportarIncidencias('excel')">Exportar Excel</button>
                 </div>
                 <Button variant="danger" @click="openModal" class="btn-reportar">
                     + REPORTAR INCIDENCIA
