@@ -26,7 +26,8 @@ class RegistroIngresoController extends Controller
                   ->orWhereNotIn('estado', ['cancelado', 'anulado']);
             })
             ->whereRaw(
-                "(fecha || ' ' || hora_inicio)::timestamp + (duracion_minutos || ' minutes')::interval > NOW()"
+                "(fecha || ' ' || hora_inicio)::timestamp + ((duracion_minutos + 10) || ' minutes')::interval >= ?",
+                [now('America/La_Paz')]
             )
             ->get()
             ->map(function ($examen) {
@@ -66,6 +67,8 @@ class RegistroIngresoController extends Controller
                     'hora_inicio'            => $examen->hora_inicio,
                     'normas_generales'       => $examen->normas_generales,
                     'estado'                 => $examen->estado_actual,
+                    'en_ventana_ingreso'     => $examen->estaEnVentanaOperacionControl(),
+                    'horario_permitido'      => $examen->horarioPermitidoControl(),
                     'mis_pendientes_count'   => $misAsignados->where('ya_ingreso', false)->count(),
                     'mis_asignados'          => $misAsignados,
                     'ambientes'              => $examen->examenesAmbientes->map(function ($pivot) {
@@ -100,6 +103,15 @@ class RegistroIngresoController extends Controller
 
         $dato    = trim($request->input('dato_estudiante'));
         $idExamen = $request->input('id_examen');
+        $examen   = Examen::findOrFail($idExamen);
+
+        // HU-17: El personal de control solo puede validar ingresos dentro de la ventana
+        // (10 min antes del inicio hasta 10 min después del fin del examen).
+        if (! $examen->estaEnVentanaOperacionControl()) {
+            return response()->json([
+                'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
+            ], 403);
+        }
 
         // ── Normalizar el payload del QR ─────────────────────────────
         // El QR del estudiante codifica "ident:v1:CODIGO_UNIVERSITARIO"
@@ -230,8 +242,18 @@ class RegistroIngresoController extends Controller
             'id_examen_ambiente' => 'required|integer',
         ]);
 
+        $examenAmbiente = ExamenAmbiente::with('examen')->findOrFail($request->id_examen_ambiente);
+        $examen = $examenAmbiente->examen;
+
+        // HU-17: El personal de control solo puede confirmar ingresos dentro de la ventana
+        // (10 min antes del inicio hasta 10 min después del fin del examen).
+        if ($examen && ! $examen->estaEnVentanaOperacionControl()) {
+            return response()->json([
+                'error' => "El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {$examen->horarioPermitidoControl()}).",
+            ], 403);
+        }
+
         // Re-validación de seguridad ante peticiones dobles
-        $examenAmbiente = ExamenAmbiente::findOrFail($request->id_examen_ambiente);
         $ingresoPrevio  = RegistroIngreso::where('id_estudiante', $request->id_estudiante)
             ->whereHas('examenAmbiente', function ($query) use ($examenAmbiente) {
                 $query->where('id_examen', $examenAmbiente->id_examen);
@@ -305,8 +327,6 @@ class RegistroIngresoController extends Controller
             $idExamen = $examenAmbiente->id_examen;
 
             $examen = $examenAmbiente->examen;
-            $inicioExamen = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
-            $finExamen = $inicioExamen->copy()->addMinutes((int) $examen->duracion_minutos);
 
             if (in_array($examen->estado, ['cancelado', 'anulado'], true)) {
                 $resultados['rechazados'][] = [
@@ -317,7 +337,7 @@ class RegistroIngresoController extends Controller
                 continue;
             }
 
-            if ($fechaHoraIntento->lt($inicioExamen) || $fechaHoraIntento->gt($finExamen)) {
+            if (! $examen->estaEnVentanaOperacionControl($fechaHoraIntento)) {
                 $resultados['rechazados'][] = [
                     'uuid_offline'  => $uuidOffline,
                     'id_estudiante' => $idEstudiante,

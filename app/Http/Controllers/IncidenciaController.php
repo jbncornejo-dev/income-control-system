@@ -34,21 +34,18 @@ class IncidenciaController extends Controller
 
         $ahora = Carbon::now('America/La_Paz');
 
-        // BUG CS7 y CS8: Solo exámenes en curso asignados al control, y cargar sus estudiantes habilitados
-        $ahora = Carbon::now('America/La_Paz');
-
-        // BUG CS8: Obtener estudiantes de los grupos inscritos, más habilitados, menos inhabilitados
+        // HU-17: Solo exámenes dentro de la ventana de control (-10 min inicio a +10 min fin) asignados al control
         $examenesEnCurso = Examen::with(['asignatura', 'grupos.inscripciones', 'habilitaciones'])
             ->whereHas('personalControl', function ($query) use ($request) {
                 $query->where('examen_personal_control.id_usuario', $request->user()->id);
             })
-            ->where('fecha', $ahora->toDateString())
-            ->whereTime('hora_inicio', '<=', $ahora->toTimeString())
+            ->where(function ($q) {
+                $q->whereNull('estado')
+                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
+            })
             ->get()
             ->filter(function ($examen) use ($ahora) {
-                $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio);
-                $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
-                return $ahora->between($horaInicio, $horaFin);
+                return $examen->estaEnVentanaOperacionControl($ahora);
             })
             ->map(function ($examen) {
                 // 1. Obtener IDs de estudiantes normales inscritos en los grupos del examen
@@ -64,6 +61,8 @@ class IncidenciaController extends Controller
                     ->diff($idsInhabilitados)
                     ->values()
                     ->toArray();
+
+                $examen->horario_permitido = $examen->horarioPermitidoControl();
                     
                 // Limpiar la carga pesada para no enviar datos innecesarios a Vue
                 $examen->unsetRelation('grupos');
@@ -99,15 +98,21 @@ class IncidenciaController extends Controller
             'descripcion_motivo' => 'required|string',
         ], $mensajes);
 
-        // BUG CS9 (Parte 2): Validar de lado del servidor que el examen siga en curso al guardar
+        // HU-17: Validar que el examen se encuentre en la ventana de control permitida
+        // (-10 min del inicio a +10 min del fin)
         $examen = Examen::find($datos['id_examen']);
         $ahora = Carbon::now('America/La_Paz');
-        $horaInicio = Carbon::parse($examen->fecha . ' ' . $examen->hora_inicio, 'America/La_Paz');
-        $horaFin = $horaInicio->copy()->addMinutes($examen->duracion_minutos);
 
-        if (!$ahora->between($horaInicio, $horaFin)) {
+        if (! $examen || ! $examen->estaEnVentanaOperacionControl($ahora)) {
+            $horario = $examen ? $examen->horarioPermitidoControl() : '';
+            $msg = 'No se puede registrar la incidencia: solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen' . ($horario ? " (Horario permitido: {$horario})" : '') . '.';
+
+            if ($request->wantsJson()) {
+                return response()->json(['error' => $msg, 'message' => $msg], 422);
+            }
+
             return back()->withErrors([
-                'id_examen' => 'No se puede registrar la incidencia porque el examen ya finalizó o no está en curso.'
+                'id_examen' => $msg,
             ]);
         }
 

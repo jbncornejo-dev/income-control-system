@@ -157,7 +157,7 @@ const cancelarSubidaFoto = () => {
 };
 
 const handleRegenerateQr = () => {
-    if (isRegeneratingQr.value || !puedeRegenerarQr.value) return;
+    if (isRegeneratingQr.value || !puedeRegenerarQr.value || !props.estudiante?.en_ventana_qr) return;
 
     const confirmado = window.confirm(
         'Esto invalidará tu código QR actual (incluyendo impresiones o capturas anteriores). ¿Estás seguro de continuar?'
@@ -180,6 +180,16 @@ const handleRegenerateQr = () => {
         }
     });
 };
+
+const botonTitle = computed(() => {
+    if (!props.estudiante?.en_ventana_qr) {
+        return 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al examen';
+    }
+    if (!puedeRegenerarQr.value) {
+        return 'Debes actualizar tu foto antes de generar un nuevo QR';
+    }
+    return 'Generar un nuevo código invalida el actual';
+});
 </script>
 
 <template>
@@ -285,12 +295,20 @@ const handleRegenerateQr = () => {
                         
                         <!-- Contenedor QR -->
                         <div class="qr-frame-box">
-                            <!-- SVG generado desde el propio sistema -->
+                            <!-- SVG generado desde el propio sistema (solo dentro de ventana de 24h) -->
                             <div 
-                                v-if="estudiante.tiene_examen_activo && estudiante.qr_svg" 
+                                v-if="estudiante.tiene_examen_activo && estudiante.en_ventana_qr && estudiante.qr_svg" 
                                 class="qr-svg-content" 
                                 v-html="estudiante.qr_svg"
                             ></div>
+
+                            <!-- Mensaje cuando hay examen pero aún falta más de 24 horas -->
+                            <div v-else-if="estudiante.tiene_examen_activo && !estudiante.en_ventana_qr" class="text-center p-4">
+                                <p class="text-sm font-semibold text-gray-800">Código QR no disponible aún</p>
+                                <p class="text-xs text-amber-700 mt-2 font-medium">
+                                    {{ estudiante.mensaje_ventana_qr || 'El código QR solo puede generarse dentro de las 24 horas previas al inicio del examen.' }}
+                                </p>
+                            </div>
 
                             <!-- Mensaje CS1 cuando no hay exámenes -->
                             <div v-else-if="!estudiante.tiene_examen_activo" class="text-center p-4">
@@ -304,7 +322,7 @@ const handleRegenerateQr = () => {
                         </div>
 
                         <!-- Ocultar Token y Botón si no hay examen activo -->
-                        <span v-if="estudiante.tiene_examen_activo" class="qr-token-string">
+                        <span v-if="estudiante.tiene_examen_activo && estudiante.en_ventana_qr" class="qr-token-string">
                             {{ formattedToken }}
                         </span>
 
@@ -312,15 +330,21 @@ const handleRegenerateQr = () => {
                             <button 
                                 type="button" 
                                 class="btn-regenerate-qr" 
-                                :disabled="isRegeneratingQr || !puedeRegenerarQr"
+                                :disabled="isRegeneratingQr || !puedeRegenerarQr || !estudiante.en_ventana_qr"
                                 @click="handleRegenerateQr"
-                                :title="!puedeRegenerarQr ? 'Debes actualizar tu foto antes de generar un nuevo QR' : 'Generar un nuevo código invalida el actual'"
+                                :title="botonTitle"
                             >
                                 <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
                                 <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO QR' }}</span>
                             </button>
 
-                            <p v-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
+                            <!-- HU-17: Mensaje si está fuera de la ventana de 24 horas -->
+                            <p v-if="!estudiante.en_ventana_qr" class="qr-regen-disabled-message">
+                                {{ estudiante.mensaje_ventana_qr || 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al examen' }}
+                            </p>
+
+                            <!-- HU-16: Mensaje si está en ventana pero falta actualizar foto -->
+                            <p v-else-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
                                 Debes actualizar tu foto antes de generar un nuevo QR
                             </p>
                         </div>

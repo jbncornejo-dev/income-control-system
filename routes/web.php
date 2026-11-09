@@ -231,24 +231,30 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
+        $ahora = \Carbon\Carbon::now('America/La_Paz');
 
-        // 1. Verificar si el estudiante tiene exámenes activos
-        //    La columna `estado` solo almacena decisiones manuales (NULL, cancelado,
-        //    anulado, suspendido). 'programado' y 'en_curso' se calculan desde el
-        //    horario, así que filtramos excluyendo los terminales y verificando que
-        //    la hora de fin (fecha + hora_inicio + duracion) aún no haya pasado.
-        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
-        $tieneExamenActivo = \App\Models\Examen::where(function ($q) {
-                $q->whereNull('estado')
-                  ->orWhereNotIn('estado', ['cancelado', 'anulado']);
-            })
-            ->whereRaw(
-                "(fecha || ' ' || hora_inicio)::timestamp + (duracion_minutos || ' minutes')::interval > NOW()"
-            )
-            ->where(function ($query) use ($estudiante, $grupoIds) {
-                $query->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
-                    ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
-            })->exists();
+        // HU-17: El estudiante solo puede generar su código QR dentro de las 24 horas previas al inicio del examen
+        // (y hasta que el examen finalice).
+        $tieneExamenes = $estudiante->examenesQuery()->exists();
+        $proximoExamen = $estudiante->proximoExamen($ahora);
+        $tieneExamenActivo = $proximoExamen !== null;
+        $enVentanaQr = $estudiante->tieneExamenEnVentanaQr($ahora);
+
+        // Si no tiene exámenes registrados en el sistema, fallback
+        if (! $tieneExamenes) {
+            $enVentanaQr = false;
+        }
+
+        $mensajeVentanaQr = null;
+        if ($proximoExamen && ! $enVentanaQr) {
+            if ($ahora->lt($proximoExamen->inicioExamen()->copy()->subHours(24))) {
+                $mensajeVentanaQr = "El código QR solo estará disponible dentro de las 24 horas previas al inicio del examen (Inicio: {$proximoExamen->fecha} {$proximoExamen->hora_inicio}).";
+            } elseif ($ahora->gt($proximoExamen->finExamen())) {
+                $mensajeVentanaQr = "El examen ha finalizado. No es posible generar el código QR.";
+            }
+        } elseif (! $tieneExamenActivo) {
+            $mensajeVentanaQr = "No tienes exámenes programados o activos en este momento.";
+        }
 
         if ($estudiante->codigo_qr === null) {
             $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
@@ -256,8 +262,8 @@ Route::middleware('auth')->group(function () {
 
         $qrSvg = null;
         
-        // 2. Solo generar el SVG si tiene un examen activo (HOY)
-        if ($tieneExamenActivo && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
+        // 2. Solo generar el SVG si tiene un examen dentro de la ventana de 24h
+        if ($enVentanaQr && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
             try {
                 $result = (new \Endroid\QrCode\Builder\Builder(
                     data: $estudiante->codigo_qr,
@@ -284,6 +290,8 @@ Route::middleware('auth')->group(function () {
                 'foto_path' => $estudiante->foto_path ?? null,
                 'foto_referencia' => $estudiante->foto_referencia,
                 'puede_regenerar_qr' => (bool) $estudiante->puede_regenerar_qr,
+                'en_ventana_qr' => (bool) $enVentanaQr,
+                'mensaje_ventana_qr' => $mensajeVentanaQr,
                 'qr_token' => $estudiante->codigo_qr,
                 'qr_svg' => $qrSvg,
                 'tiene_examen_activo' => $tieneExamenActivo, 
@@ -297,6 +305,18 @@ Route::middleware('auth')->group(function () {
             abort(404, 'No se encontró el perfil de estudiante.');
         }
 
+        $ahora = \Carbon\Carbon::now('America/La_Paz');
+
+        // HU-17: Validación de ventana horaria (máximo 24 h antes del examen y hasta su finalización)
+        if ($estudiante->examenesQuery()->exists() && ! $estudiante->tieneExamenEnVentanaQr($ahora)) {
+            $mensaje = 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al inicio del examen.';
+            return response()->json([
+                'message' => $mensaje,
+                'error'   => $mensaje,
+            ], 403);
+        }
+
+        // HU-16: Validación de fotografía actualizada
         if (! $estudiante->puede_regenerar_qr) {
             return response()->json([
                 'message' => 'Debes actualizar tu foto antes de generar un nuevo QR',
