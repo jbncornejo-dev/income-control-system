@@ -243,6 +243,13 @@ async function buscarEstudiante(dato) {
     estudianteValidado.value = null;
     estudianteError.value    = null;
 
+    // HU-17: Validar que el examen esté en ventana de operación
+    if (selectedExamenData.value && selectedExamenData.value.en_ventana_ingreso === false) {
+        errorMessage.value = `El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: ${selectedExamenData.value.horario_permitido}).`;
+        isLoading.value = false;
+        return;
+    }
+
     // ── VALIDACIÓN OFFLINE EN LOCAL ──────────────────────────────
     if (isOffline.value) {
         let datoBusqueda = dato.trim();
@@ -294,6 +301,13 @@ async function buscarEstudiante(dato) {
 /* ──────────────── Confirmar / Rechazar ingreso ──────────────── */
 async function confirmarIngreso() {
     if (!estudianteValidado.value) return;
+
+    // HU-17: Bloqueo de confirmación si está fuera de ventana
+    if (selectedExamenData.value && selectedExamenData.value.en_ventana_ingreso === false) {
+        errorMessage.value = `El registro de ingreso solo está permitido entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: ${selectedExamenData.value.horario_permitido}).`;
+        return;
+    }
+
     isLoading.value    = true;
     errorMessage.value = '';
 
@@ -470,6 +484,12 @@ function irAIncidencias() {
                         </div>
                     </div>
 
+                    <!-- HU-17: Aviso de ventana de control -->
+                    <div v-if="selectedExamenData && selectedExamenData.en_ventana_ingreso === false" class="alert alert-warning" style="margin-top: 1rem; display: flex; align-items: center; gap: 8px;">
+                        <AlertTriangle :size="18" />
+                        <span>Registro de ingreso bloqueado: La operación solo está permitida entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {{ selectedExamenData.horario_permitido }}).</span>
+                    </div>
+
                     <div class="form-group">
                         <SelectInput
                             label="AMBIENTE"
@@ -482,7 +502,7 @@ function irAIncidencias() {
 
                     <Button
                         @click="iniciarRegistro"
-                        :disabled="!selectedExamenId || !selectedAmbienteId"
+                        :disabled="!selectedExamenId || !selectedAmbienteId || selectedExamenData?.en_ventana_ingreso === false"
                         variant="primary"
                         class="btn-full"
                     >
@@ -533,6 +553,12 @@ function irAIncidencias() {
                             CAMBIAR
                         </button>
                     </div>
+                </div>
+
+                <!-- HU-17: Banner de ventana de control cerrada -->
+                <div v-if="selectedExamenData && selectedExamenData.en_ventana_ingreso === false" class="alert alert-error" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;">
+                    <AlertTriangle :size="18" />
+                    <span>Registro de ingreso bloqueado: La operación solo está permitida entre 10 minutos antes del inicio y 10 minutos después de la finalización del examen (Horario permitido: {{ selectedExamenData.horario_permitido }}).</span>
                 </div>
 
                 <!-- Banner Offline -->
@@ -616,6 +642,7 @@ function irAIncidencias() {
                                     v-else
                                     type="button"
                                     class="btn-validar-item"
+                                    :disabled="selectedExamenData?.en_ventana_ingreso === false"
                                     @click="seleccionarDesdeAsignados(item.codigo_universitario)"
                                 >
                                     Validar
@@ -693,7 +720,7 @@ function irAIncidencias() {
                                 />
                                 <Button
                                     type="submit"
-                                    :disabled="!datoEstudiante.trim() || isLoading"
+                                    :disabled="!datoEstudiante.trim() || isLoading || selectedExamenData?.en_ventana_ingreso === false"
                                     variant="primary"
                                     class="btn-buscar"
                                 >
@@ -785,7 +812,7 @@ function irAIncidencias() {
                             <XCircle :size="20" />
                             RECHAZAR
                         </button>
-                        <button @click="confirmarIngreso" :disabled="isLoading" class="btn-accept">
+                        <button @click="confirmarIngreso" :disabled="isLoading || selectedExamenData?.en_ventana_ingreso === false" class="btn-accept">
                             <UserCheck :size="20" />
                             <span v-if="!isLoading">ACEPTAR INGRESO</span>
                             <LoadingSpinner v-else size="small" />

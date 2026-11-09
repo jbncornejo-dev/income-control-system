@@ -75,16 +75,17 @@ const form = useForm({
 });
 
 // BUG CS8: Mostrar únicamente a los estudiantes autorizados calculados desde el backend
+const examenSeleccionado = computed(() => {
+    if (!form.id_examen) return null;
+    return props.examenes.find(e => e.id_examen == form.id_examen);
+});
+
 const estudiantesDelExamen = computed(() => {
-    if (!form.id_examen) return [];
-    
-    const examenSeleccionado = props.examenes.find(e => e.id_examen == form.id_examen);
-    
-    if (!examenSeleccionado || !examenSeleccionado.estudiantes_habilitados_ids) return [];
+    if (!examenSeleccionado.value || !examenSeleccionado.value.estudiantes_habilitados_ids) return [];
     
     // Comparamos el catálogo global de estudiantes con los IDs habilitados de este examen
     return props.estudiantes.filter(e => 
-        examenSeleccionado.estudiantes_habilitados_ids.includes(e.id_estudiante)
+        examenSeleccionado.value.estudiantes_habilitados_ids.includes(e.id_estudiante)
     );
 });
 
@@ -278,6 +279,12 @@ const getColorClass = (tipo) => {
         <Modal :open="isModalOpen" title="Reportar Incidencia" @close="closeModal">
             <form @submit.prevent="guardarIncidencia">
                 
+                <div v-if="props.examenes.length === 0" class="mb-4">
+                    <p class="text-sm text-yellow-800 bg-yellow-50 p-3 rounded border border-yellow-200">
+                        No hay exámenes disponibles en ventana de control activa (desde 10 minutos antes del inicio hasta 10 minutos después de la finalización).
+                    </p>
+                </div>
+
                 <!-- Examen (Obligatorio) -->
                 <div class="form-group">
                     <SelectInput 
@@ -286,6 +293,9 @@ const getColorClass = (tipo) => {
                         :options="examenesOptions"
                         placeholder="Seleccionar examen..."
                     />
+                    <p v-if="examenSeleccionado?.horario_permitido" class="text-xs text-gray-500 mt-1">
+                        Horario permitido para registro: {{ examenSeleccionado.horario_permitido }}
+                    </p>
                     <p v-if="form.errors.id_examen" class="error-msg">{{ form.errors.id_examen }}</p>
                 </div>
 
@@ -334,7 +344,7 @@ const getColorClass = (tipo) => {
                     <Button type="button" variant="action" @click="closeModal" class="btn-cancelar">
                         CANCELAR
                     </Button>
-                    <Button type="submit" variant="danger" :disabled="form.processing" class="btn-guardar">
+                    <Button type="submit" variant="danger" :disabled="form.processing || props.examenes.length === 0 || !form.id_examen" class="btn-guardar">
                         <span v-if="!form.processing">GUARDAR INCIDENCIA</span>
                         <LoadingSpinner v-else size="small" />
                     </Button>
