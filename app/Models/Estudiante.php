@@ -112,7 +112,7 @@ class Estudiante extends Model
      */
     public function examenesQuery()
     {
-        $grupoIds = $this->inscripciones()->pluck('id_grupo');
+        $grupoIds = $this->inscripciones()->select('id_grupo');
 
         return Examen::where(function ($q) {
                 $q->whereNull('estado')
@@ -132,7 +132,7 @@ class Estudiante extends Model
         $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
 
         return $this->examenesQuery()
-            ->get()
+            ->lazy(500)
             ->contains(fn (Examen $examen) => $examen->estaEnVentanaQr($ahora));
     }
 
@@ -144,9 +144,9 @@ class Estudiante extends Model
         $ahora = $ahora ?? Carbon::now(config('app.timezone', 'America/La_Paz'));
 
         return $this->examenesQuery()
-            ->get()
-            ->filter(fn (Examen $e) => $e->finExamen()->gte($ahora))
-            ->sortBy(fn (Examen $e) => $e->inicioExamen())
-            ->first();
+            ->orderBy('fecha')
+            ->orderBy('hora_inicio')
+            ->lazy(500)
+            ->first(fn (Examen $e) => $e->finExamen()->gte($ahora));
     }
 }

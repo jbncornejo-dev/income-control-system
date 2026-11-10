@@ -4,6 +4,7 @@ import { router } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
 import Button from '@/components/ui/Button.vue';
 import TextInput from '@/components/ui/TextInput.vue';
+import ImportStat from './ImportStat.vue';
 
 const props = defineProps({
   open: Boolean,
@@ -226,50 +227,15 @@ const construirCsv = (filas) => {
     <div v-else class="csv-results">
       <div class="summary-stats">
         <div class="stats-fila stats-totales">
-          <div class="stat-card stat-total">
-            <div class="stat-info">
-              <strong class="stat-number">{{ filasTotales }}</strong>
-              <span class="stat-label">Filas procesadas</span>
-            </div>
-          </div>
-          <div class="stat-card stat-ok">
-            <div class="stat-info">
-              <strong class="stat-number">{{ totalCreados }}</strong>
-              <span class="stat-label">Registrados</span>
-            </div>
-          </div>
-          <div class="stat-card stat-sin-registrar">
-            <div class="stat-info">
-              <strong class="stat-number">{{ sinRegistrar }}</strong>
-              <span class="stat-label">Sin registrar</span>
-            </div>
-          </div>
+          <ImportStat class="stat-total" :value="filasTotales" label="Filas procesadas" />
+          <ImportStat class="stat-ok" :value="totalCreados" label="Registrados" />
+          <ImportStat class="stat-sin-registrar" :value="sinRegistrar" label="Sin registrar" />
         </div>
         <div class="stats-fila stats-detalle" :class="{ 'stats-detalle--cuatro': conteos.inesperado > 0 }">
-          <div class="stat-card stat-formato">
-            <div class="stat-info">
-              <strong class="stat-number">{{ conteos.formato }}</strong>
-              <span class="stat-label">Errores de formato</span>
-            </div>
-          </div>
-          <div class="stat-card stat-duplicado">
-            <div class="stat-info">
-              <strong class="stat-number">{{ conteos.duplicado_archivo }}</strong>
-              <span class="stat-label">Duplicados en archivo</span>
-            </div>
-          </div>
-          <div class="stat-card stat-existente">
-            <div class="stat-info">
-              <strong class="stat-number">{{ conteos.ya_registrado }}</strong>
-              <span class="stat-label">Ya registrados</span>
-            </div>
-          </div>
-          <div v-if="conteos.inesperado > 0" class="stat-card stat-inesperado">
-            <div class="stat-info">
-              <strong class="stat-number">{{ conteos.inesperado }}</strong>
-              <span class="stat-label">Errores inesperados</span>
-            </div>
-          </div>
+          <ImportStat class="stat-formato" :value="conteos.formato" label="Errores de formato" />
+          <ImportStat class="stat-duplicado" :value="conteos.duplicado_archivo" label="Duplicados en archivo" />
+          <ImportStat class="stat-existente" :value="conteos.ya_registrado" label="Ya registrados" />
+          <ImportStat v-if="conteos.inesperado > 0" class="stat-inesperado" :value="conteos.inesperado" label="Errores inesperados" />
         </div>
       </div>
 
@@ -370,32 +336,7 @@ const construirCsv = (filas) => {
   .stats-detalle,
   .stats-detalle--cuatro { grid-template-columns: 1fr; }
 }
-.stat-card {
-  display: flex;
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--color-white-soft);
-  border-left: 4px solid transparent;
-}
-.stat-info { display: flex; flex-direction: column; min-width: 0; }
-.stat-number { font-size: 1.4rem; line-height: 1; color: var(--color-text-main); }
-.stats-totales .stat-number { font-size: 1.6rem; }
-.stat-label { font-size: 11px; color: var(--color-text-secondary); margin-top: 3px; }
-.stat-ok { border-left-color: #198754; background: #f0faf4; }
-.stat-ok .stat-number { color: #198754; }
-.stat-total { border-left-color: #334155; background: #f8fafc; }
-.stat-total .stat-number { color: #334155; }
-.stat-sin-registrar { border-left-color: #dc2626; background: #fef2f2; }
-.stat-sin-registrar .stat-number { color: #dc2626; }
-.stat-formato { border-left-color: #d97706; background: #fffbeb; }
-.stat-formato .stat-number { color: #d97706; }
-.stat-duplicado { border-left-color: #ea580c; background: #fff7ed; }
-.stat-duplicado .stat-number { color: #ea580c; }
-.stat-existente { border-left-color: #dc3545; background: #fef2f2; }
-.stat-existente .stat-number { color: #dc3545; }
-.stat-inesperado { border-left-color: #6c757d; background: #f8f9fa; }
-.stat-inesperado .stat-number { color: #6c757d; }
+.stats-totales :deep(.stat-number) { font-size: 1.6rem; }
 .success-box { background: #e6f4ea; color: #1e7a34; border: 1px solid #b6e2c0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }
 .success-box .help-text { color: #1e7a34; }
 .rejected-list { display: flex; flex-direction: column; gap: 14px; max-height: 420px; overflow-y: auto; margin-bottom: 16px; padding-right: 4px; }

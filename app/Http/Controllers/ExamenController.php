@@ -177,15 +177,15 @@ class ExamenController extends Controller
         ];
 
         // Periodos y tipos de examen disponibles para el filtro del listado.
-        $periodos = $this->periodosDisponibles();
-        $tipos = $this->tiposDisponibles();
+        $periodos = fn () => $this->periodosDisponibles();
+        $tipos = fn () => $this->tiposDisponibles();
 
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json([
                 'examenes' => $examenes,
                 'filtros' => $filtrosVista,
-                'periodos' => $periodos,
-                'tipos' => $tipos,
+                'periodos' => $periodos(),
+                'tipos' => $tipos(),
                 'conteos' => $conteos,
             ]);
         }
@@ -809,23 +809,18 @@ class ExamenController extends Controller
      * automáticamente a los estudiantes inscritos en dichos grupos. La operación
      * es aditiva e idempotente (`insertOrIgnore` respeta la restricción única
      * estudiante+examen y no sobreescribe estados ya ajustados manualmente).
-     * Se inserta por lotes para soportar el volumen de exámenes masivos.
+     * La inserción se resuelve en SQL sin cargar los estudiantes en PHP.
      */
     private function sincronizarHabilitacionesPorGrupos(Examen $examen): void
     {
-        Inscripcion::query()
-            ->whereIn('id_grupo', $examen->grupos()->pluck('grupo.id_grupo'))
-            ->distinct()
-            ->pluck('id_estudiante')
-            ->chunk(500)
-            ->each(function ($idsEstudiantes) use ($examen) {
-                Habilitacion::insertOrIgnore(
-                    $idsEstudiantes->map(fn ($idEstudiante) => [
-                        'id_estudiante' => $idEstudiante,
-                        'id_examen' => $examen->id_examen,
-                    ])->all()
-                );
-            });
+        Habilitacion::query()->insertOrIgnoreUsing(
+            ['id_estudiante', 'id_examen'],
+            Inscripcion::query()
+                ->select('id_estudiante')
+                ->selectRaw('CAST(? AS bigint) AS id_examen', [$examen->id_examen])
+                ->whereIn('id_grupo', $examen->grupos()->select('grupo.id_grupo'))
+                ->distinct()
+        );
     }
 
     /**

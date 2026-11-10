@@ -51,7 +51,7 @@ class HabilitacionController extends Controller
         }
 
         // 3. Calculamos las estadísticas clonando la consulta (evita interferir con la paginación)
-        $stats = [
+        $stats = fn () => [
             'habilitados' => (clone $base)->where('estado_habilitado', true)->count(),
             'inhabilitados' => (clone $base)->where('estado_habilitado', false)->count(),
             'ingresaron' => (clone $base)->whereHas('estudiante.registrosIngreso.examenAmbiente', fn ($q) => $q->where('id_examen', $examen->id_examen))->count(),
@@ -77,32 +77,21 @@ class HabilitacionController extends Controller
             'stats' => $stats,
             'filtros' => ['estado' => $estado, 'busqueda' => $busqueda],
             'coincidencias' => $habilitaciones->total(),
-            'acciones' => [
+            'acciones' => fn () => [
                 'habilitar' => (clone $base)->where('estado_habilitado', false)->whereDoesntHave('estudiante.registrosIngreso.examenAmbiente', fn ($q) => $q->where('id_examen', $examen->id_examen))->count(),
                 'inhabilitar' => (clone $base)->where('estado_habilitado', true)->whereDoesntHave('estudiante.registrosIngreso.examenAmbiente', fn ($q) => $q->where('id_examen', $examen->id_examen))->count(),
             ],
             // Pasamos esAdmin por si necesitamos ocultar algún botón específico más adelante
             'esAdmin' => $request->user()->rol->nombre_rol === 'administrador',
-            'personalAsignado' => $examen->personalControl()->select(['users.id', 'users.name', 'users.username', 'users.email'])->orderBy('users.name')->get(),
-            'personalDisponible' => (function () use ($examen) {
-                $idsInscritosEnLaMateria = Inscripcion::query()
-                    ->whereHas('grupo', fn ($q) => $q->where('id_asignatura', $examen->id_asignatura))
-                    ->pluck('id_estudiante')
-                    ->unique();
-
-                return User::query()
+            'personalAsignado' => fn () => $examen->personalControl()->select(['users.id', 'users.name', 'users.username', 'users.email'])->orderBy('users.name')->get(),
+            'personalDisponible' => fn () => User::query()
                     ->select(['users.id', 'users.name', 'users.username', 'users.id_estudiante'])
+                    ->withExists(['estudiante as conflicto_interes' => fn ($query) => $query
+                        ->whereHas('inscripciones.grupo', fn ($grupo) => $grupo->where('id_asignatura', $examen->id_asignatura))])
                     ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'personal de control de ingreso'))
                     ->whereDoesntHave('examenesAsignados', fn ($q) => $q->where('examen.id_examen', $examen->id_examen))
                     ->orderBy('users.name')
-                    ->get()
-                    ->map(function (User $usuario) use ($idsInscritosEnLaMateria) {
-                        $usuario->conflicto_interes = $usuario->id_estudiante !== null
-                            && $idsInscritosEnLaMateria->contains($usuario->id_estudiante);
-
-                        return $usuario;
-                    });
-            })(),
+                    ->get(),
         ]);
     }
 

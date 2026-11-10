@@ -280,11 +280,13 @@ const getInitial = (name) => {
 };
 </script>
 
+<style scoped src="../../../css/catalog-tables.css"></style>
+
 <style scoped>
 .action-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-md); margin-bottom: var(--spacing-lg); flex-wrap: wrap; }
 .action-controls { display: flex; gap: var(--spacing-sm); flex-wrap: wrap; margin-left: auto; justify-content: flex-end; }
 
-.confirm-text { color: var(--text-dark); font-size: 0.9rem; line-height: 1.6; margin: 0; }
+.confirm-text { margin: 0; }
 .confirm-note { color: var(--color-danger); font-size: 0.85rem; margin: 0; }
 .confirm-box {
   display: flex;
@@ -335,11 +337,6 @@ const getInitial = (name) => {
 
 /* Tabla de Datos */
 .table-container {
-    background: var(--color-white);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-md);
-    overflow-x: auto;
-    box-shadow: var(--shadow-card);
     margin-bottom: var(--spacing-lg);
 }
 
@@ -366,22 +363,7 @@ const getInitial = (name) => {
 }
 
 .actions-cell {
-    display: flex;
-    gap: var(--spacing-sm);
-    justify-content: center;
-    align-items: center;
-    white-space: nowrap;
     min-width: 180px;
-}
-
-.actions-col {
-    text-align: center !important;
-}
-
-.empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 2rem !important;
 }
 
 /* ---- Modal QR ---- */

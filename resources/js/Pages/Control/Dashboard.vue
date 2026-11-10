@@ -111,30 +111,9 @@ function estadoBadgeClass(estado) {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../css/panels.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo estándar */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem; /* p-4 móvil */
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem; /* sm:p-6 */
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem; /* lg:p-8 */
-    }
-}
-
 .panel-title {
     font-size: 1.5rem; /* text-2xl */
     line-height: 2rem;

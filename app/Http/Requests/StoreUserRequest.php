@@ -30,6 +30,7 @@ class StoreUserRequest extends FormRequest
             'personal de control de ingreso',
             'estudiante',
         ])->pluck('id_rol')->toArray();
+        $esRolEstudiante = $this->esRolEstudiante();
 
         return [
             'id_rol' => ['required', 'integer', Rule::in($allowedRoles)],
@@ -38,16 +39,16 @@ class StoreUserRequest extends FormRequest
             'codigo_universitario' => [
                 'required', 'string', 'max:20', 'regex:'.Estudiante::REGEX_CODIGO_SIS,
                 'unique:users,username',
-                Rule::when($this->esRolEstudiante(), ['unique:estudiante,codigo_universitario']),
+                Rule::when($esRolEstudiante, ['unique:estudiante,codigo_universitario']),
             ],
             'documento_identidad' => [
                 'required', 'string', 'max:20', 'regex:'.Estudiante::REGEX_DOCUMENTO_CI,
                 'unique:users,documento_identidad',
-                Rule::when($this->esRolEstudiante(), ['unique:estudiante,documento_identidad']),
+                Rule::when($esRolEstudiante, ['unique:estudiante,documento_identidad']),
             ],
             'email' => [
                 'nullable', 'email', 'max:255', 'unique:users,email',
-                Rule::when($this->esRolEstudiante(), ['unique:estudiante,email']),
+                Rule::when($esRolEstudiante, ['unique:estudiante,email']),
             ],
             'password' => ['prohibited'],
         ];

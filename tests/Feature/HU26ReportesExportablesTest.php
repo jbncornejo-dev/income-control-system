@@ -371,8 +371,9 @@ class HU26ReportesExportablesTest extends TestCase
     {
         $contenidoVue = file_get_contents(resource_path('js/Pages/Control/PanelAsistencia.vue'));
 
-        $this->assertStringContainsString('Exportar PDF', $contenidoVue);
-        $this->assertStringContainsString('Exportar Excel', $contenidoVue);
+        $this->assertStringContainsString('<ReportExportLink', $contenidoVue);
+        $this->assertStringContainsString('format="pdf"', $contenidoVue);
+        $this->assertStringContainsString('format="excel"', $contenidoVue);
         $this->assertStringContainsString('/panel-asistencia/exportar/pdf', $contenidoVue);
         $this->assertStringContainsString('/panel-asistencia/exportar/excel', $contenidoVue);
     }
@@ -384,8 +385,9 @@ class HU26ReportesExportablesTest extends TestCase
     {
         $contenidoVue = file_get_contents(resource_path('js/Pages/Incidencias/Index.vue'));
 
-        $this->assertStringContainsString('Exportar PDF', $contenidoVue);
-        $this->assertStringContainsString('Exportar Excel', $contenidoVue);
+        $this->assertStringContainsString('<ReportExportLink', $contenidoVue);
+        $this->assertStringContainsString('format="pdf"', $contenidoVue);
+        $this->assertStringContainsString('format="excel"', $contenidoVue);
         $this->assertStringContainsString('/incidencias/exportar/pdf', $contenidoVue);
         $this->assertStringContainsString('/incidencias/exportar/excel', $contenidoVue);
         $this->assertStringContainsString('urlExportarPdf', $contenidoVue);

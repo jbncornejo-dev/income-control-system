@@ -1,8 +1,8 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
-import { Users, FileText, BookOpen, Building2, UserCog, Calendar, ExternalLink, Globe } from 'lucide-vue-next';
+import { Users, FileText, BookOpen, Building2, UserCog, ExternalLink } from 'lucide-vue-next';
 
 // Recibimos los datos enviados desde routes/web.php
 const props = defineProps({
@@ -15,6 +15,8 @@ const props = defineProps({
 
 import ExamenesCalendar from '@/components/ui/ExamenesCalendar.vue';
 import StatCard from '@/components/ui/StatCard.vue';
+import OfficialLinks from '@/components/ui/OfficialLinks.vue';
+import DashboardNews from '@/components/ui/DashboardNews.vue';
 
 const enlaces = [
     { titulo: 'Portal UMSS', desc: 'Sitio oficial de la universidad', url: 'https://www.umss.edu.bo', color: 'var(--color-primary)' },
@@ -143,12 +145,7 @@ const noticiasRender = computed(() => {
                 <!-- Widget Enlaces -->
                 <div class="content-box widget-box">
                     <div class="box-header"><h2>Enlaces Oficiales</h2></div>
-                    <div class="link-list">
-                        <a v-for="l in enlaces" :key="l.url" :href="l.url" target="_blank" rel="noopener" class="link-item" :style="{ borderLeftColor: l.color }">
-                            <span class="link-title">{{ l.titulo }}</span>
-                            <span class="link-desc">{{ l.desc }}</span>
-                        </a>
-                    </div>
+                    <OfficialLinks :links="enlaces" />
                 </div>
 
                 <!-- Widget Noticias UMSS -->
@@ -158,25 +155,13 @@ const noticiasRender = computed(() => {
                         <a href="https://www.umss.edu.bo/categoria/noticias/" target="_blank" class="news-link-external">UMSS <ExternalLink :size="12" /></a>
                     </div>
                     
-                    <div v-if="noticiasRender" class="news-list">
-                        <a v-for="(n, i) in noticiasRender" :key="i" :href="n.enlace" target="_blank" rel="noopener" class="news-item">
-                            <span class="news-fecha">{{ n.fecha }}</span>
-                            <span class="news-titulo">{{ n.titulo }}</span>
-                            <p class="news-texto">{{ n.resumen }}</p>
-                        </a>
-                    </div>
-                    <div v-else class="news-fallback">
-                        <Globe :size="32" class="news-fallback-icon" />
-                        <p class="news-fallback-text">No se pudieron cargar las noticias en este momento.</p>
-                        <a href="https://www.umss.edu.bo/categoria/noticias/" target="_blank" class="news-fallback-link">Ver noticias en UMSS &rarr;</a>
-                    </div>
+                    <DashboardNews :news="noticiasRender" />
                 </div>
             </div>
         </div>
     </AuthenticatedLayout>
 </template>
 
-<style scoped>
 <style scoped>
 .panel-container {
     font-family: var(--font-family);
@@ -355,7 +340,7 @@ const noticiasRender = computed(() => {
     gap: var(--spacing-sm);
 }
 
-.link-item {
+:deep(.link-item) {
     display: block;
     padding: 0.75rem;
     background: var(--bg-main);
@@ -365,31 +350,31 @@ const noticiasRender = computed(() => {
     color: var(--text-dark);
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.link-item:hover {
+:deep(.link-item:hover) {
     transform: translateY(-2px);
     box-shadow: var(--shadow-subtle);
     background: var(--color-white);
 }
-.link-title { display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 2px; }
-.link-desc { display: block; font-size: 0.75rem; color: var(--text-muted); }
+:deep(.link-title) { display: block; font-weight: 600; font-size: 0.875rem; margin-bottom: 2px; }
+:deep(.link-desc) { display: block; font-size: 0.75rem; color: var(--text-muted); }
 
 .news-list {
     display: flex;
     flex-direction: column;
 }
 
-.news-item {
+:deep(.news-item) {
     display: block;
     padding: var(--spacing-md) 0;
     text-decoration: none;
     border-bottom: 1px solid var(--border-light);
     transition: background var(--transition-fast);
 }
-.news-item:first-child { padding-top: 0; }
-.news-item:last-child { border-bottom: none; }
-.news-item:hover { background: rgba(0,0,0,0.02); }
+:deep(.news-item:first-child) { padding-top: 0; }
+:deep(.news-item:last-child) { border-bottom: none; }
+:deep(.news-item:hover) { background: rgba(0,0,0,0.02); }
 
-.news-fecha { 
+:deep(.news-fecha) {
     display: block; 
     font-size: 0.75rem; 
     color: var(--color-active); 
@@ -398,14 +383,14 @@ const noticiasRender = computed(() => {
     text-transform: uppercase; 
     letter-spacing: 0.05em; 
 }
-.news-titulo { 
+:deep(.news-titulo) {
     display: block; 
     font-weight: 600; 
     font-size: 0.875rem; 
     color: var(--text-dark); 
     margin-bottom: 4px; 
 }
-.news-texto { 
+:deep(.news-texto) {
     font-size: 0.8rem; 
     color: var(--text-muted); 
     margin: 0; 
@@ -435,8 +420,8 @@ const noticiasRender = computed(() => {
     padding: var(--spacing-xl) 0;
     text-align: center;
 }
-.news-fallback-icon { color: #d1d5db; margin-bottom: var(--spacing-sm); }
-.news-fallback-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--spacing-sm); }
-.news-fallback-link { font-size: 0.75rem; font-weight: 600; color: var(--color-primary); text-decoration: none; }
-.news-fallback-link:hover { text-decoration: underline; }
+:deep(.news-fallback-icon) { color: #d1d5db; margin-bottom: var(--spacing-sm); }
+:deep(.news-fallback-text) { font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--spacing-sm); }
+:deep(.news-fallback-link) { font-size: 0.75rem; font-weight: 600; color: var(--color-primary); text-decoration: none; }
+:deep(.news-fallback-link:hover) { text-decoration: underline; }
 </style>

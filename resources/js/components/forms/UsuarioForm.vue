@@ -1,5 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
+import FormField from '@/components/ui/FormField.vue';
 import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import SelectInput from '@/components/ui/SelectInput.vue';
@@ -33,33 +34,28 @@ const submit = () => {
 <template>
     <form @submit.prevent="submit" class="custom-form">
         <div class="form-row">
-            <div class="form-group">
+            <FormField :error="form.errors.nombres">
                 <TextInput id="nombres" v-model="form.nombres" type="text" label="Nombres" placeholder="Nombres del usuario" required autofocus />
-                <span v-if="form.errors.nombres" class="error-msg">{{ form.errors.nombres }}</span>
-            </div>
-            <div class="form-group">
+            </FormField>
+            <FormField :error="form.errors.apellidos">
                 <TextInput id="apellidos" v-model="form.apellidos" type="text" label="Apellidos" placeholder="Apellidos del usuario" required />
-                <span v-if="form.errors.apellidos" class="error-msg">{{ form.errors.apellidos }}</span>
-            </div>
+            </FormField>
         </div>
 
         <div class="form-row">
-            <div class="form-group">
+            <FormField :error="form.errors.codigo_universitario">
                 <TextInput id="codigo_universitario" v-model="form.codigo_universitario" type="text" label="Código Universitario" placeholder="Ej. 201809372" maxlength="9" inputmode="numeric" required />
-                <span v-if="form.errors.codigo_universitario" class="error-msg">{{ form.errors.codigo_universitario }}</span>
-            </div>
-            <div class="form-group">
+            </FormField>
+            <FormField :error="form.errors.documento_identidad">
                 <TextInput id="documento_identidad" v-model="form.documento_identidad" type="text" label="CI / Documento de identidad" placeholder="Ej. 12590804" maxlength="8" inputmode="numeric" required />
-                <span v-if="form.errors.documento_identidad" class="error-msg">{{ form.errors.documento_identidad }}</span>
-            </div>
+            </FormField>
         </div>
 
         <div class="form-row">
-            <div class="form-group">
+            <FormField :error="form.errors.email">
                 <TextInput id="email" v-model="form.email" type="email" label="Correo electrónico / institucional" placeholder="correo@ejemplo.com" />
-                <span v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</span>
-            </div>
-            <div class="form-group">
+            </FormField>
+            <FormField :error="form.errors.id_rol">
                 <SelectInput
                     id="id_rol"
                     v-model="form.id_rol"
@@ -69,8 +65,7 @@ const submit = () => {
                     :capitalize="true"
                     required
                 />
-                <span v-if="form.errors.id_rol" class="error-msg">{{ form.errors.id_rol }}</span>
-            </div>
+            </FormField>
         </div>
 
         <p class="password-help">
@@ -84,19 +79,15 @@ const submit = () => {
     </form>
 </template>
 
+<style scoped src="./form-layout.css"></style>
+
 <style scoped>
 .custom-form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-lg);
     width: 100%;
     padding: var(--spacing-xs) 0;
 }
 
 .form-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--spacing-lg);
     width: 100%;
 }
 
@@ -107,13 +98,8 @@ const submit = () => {
 }
 
 .form-actions {
-    display: flex;
-    justify-content: flex-end;
     align-items: center;
-    gap: var(--spacing-sm);
     margin-top: var(--spacing-xs);
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--border-light);
 }
 
 .btn-uniform {
@@ -128,8 +114,7 @@ const submit = () => {
 }
 
 @media (max-width: 640px) {
-    .form-row { grid-template-columns: 1fr; gap: var(--spacing-lg); }
-    .form-actions { flex-direction: column-reverse; align-items: stretch; }
+    .form-actions { align-items: stretch; }
     .btn-uniform { width: 100%; }
 }
 </style>

@@ -22,17 +22,16 @@ class PanelAsistenciaController extends Controller
             abort(403, 'Acceso Denegado');
         }
 
-        $examenes = Examen::query()
-            ->with(['asignatura', 'tipo'])
+        $examenes = fn () => Examen::query()
+            ->with(['asignatura', 'tipo', 'periodo'])
             ->where(fn ($q) => $q->whereNull('estado')->orWhereNotIn('estado', ['cancelado', 'anulado']))
+            ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp + (duracion_minutos * interval '1 minute') > CAST(? AS timestamp)", [now()])
             ->orderBy('fecha')
             ->orderBy('hora_inicio')
-            ->get()
-            ->filter(fn ($examen) => in_array($examen->estado_horario, ['programado', 'en_curso'], true))
-            ->values();
+            ->get();
 
         $seleccionado = $request->query('id_examen')
-            ? Examen::with(['asignatura', 'tipo', 'examenesAmbientes.ambiente'])->find($request->query('id_examen'))
+            ? Examen::with('examenesAmbientes.ambiente')->find($request->query('id_examen'))
             : null;
 
         if (! $seleccionado) {
@@ -46,11 +45,11 @@ class PanelAsistenciaController extends Controller
             ]);
         }
 
-        $datosCompletos = $this->obtenerDatosCompletos($seleccionado);
+        $datosCompletos = $this->obtenerDatosCompletos($seleccionado, false);
 
         return $this->responder($request, [
             'examenes' => $examenes,
-            'examen' => $seleccionado,
+            'examen' => fn () => $seleccionado->loadMissing(['asignatura', 'tipo', 'periodo']),
             'ambientes' => $datosCompletos['ambientes'],
             'pendientes' => $datosCompletos['pendientes'],
             'conflictos' => $datosCompletos['conflictos'],
@@ -101,7 +100,7 @@ class PanelAsistenciaController extends Controller
     /**
      * Obtener y consolidar los datos de asistencia del examen.
      */
-    private function obtenerDatosCompletos(Examen $seleccionado): array
+    private function obtenerDatosCompletos(Examen $seleccionado, bool $incluirIngresados = true): array
     {
         $conflictos = ConflictoIngreso::query()
             ->with(['estudiante:id_estudiante,nombres,apellidos,codigo_universitario', 'usuario:id,name'])
@@ -109,29 +108,33 @@ class PanelAsistenciaController extends Controller
             ->get();
 
         $habilitados = Habilitacion::query()
-            ->with('estudiante')
+            ->leftJoin('estudiante', 'estudiante.id_estudiante', '=', 'habilitacion.id_estudiante')
             ->where('id_examen', $seleccionado->id_examen)
             ->where('estado_habilitado', true)
-            ->get();
+            ->toBase()
+            ->get(['habilitacion.id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos']);
 
         $ingresos = RegistroIngreso::query()
-            ->with(['estudiante', 'examenAmbiente.ambiente'])
-            ->whereHas('examenAmbiente', fn ($q) => $q->where('id_examen', $seleccionado->id_examen))
-            ->get();
+            ->leftJoin('estudiante', 'estudiante.id_estudiante', '=', 'registro_ingreso.id_estudiante')
+            ->join('examen_ambiente', 'examen_ambiente.id_examen_ambiente', '=', 'registro_ingreso.id_examen_ambiente')
+            ->leftJoin('ambiente', 'ambiente.id_ambiente', '=', 'examen_ambiente.id_ambiente')
+            ->where('examen_ambiente.id_examen', $seleccionado->id_examen)
+            ->toBase()
+            ->get(['registro_ingreso.id_estudiante', 'registro_ingreso.id_examen_ambiente', 'fecha_hora_ingreso', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'nombre_ambiente'])
+            ->sortBy('fecha_hora_ingreso');
 
-        $idsIngresados = $ingresos->pluck('id_estudiante')->all();
+        $idsIngresados = array_fill_keys($ingresos->pluck('id_estudiante')->all(), true);
+        $ingresosPorAmbiente = $ingresos->groupBy('id_examen_ambiente');
 
-        $ambientes = $seleccionado->examenesAmbientes->map(function ($examenAmbiente) use ($ingresos, $habilitados) {
-            $delAmbiente = $ingresos
-                ->where('id_examen_ambiente', $examenAmbiente->id_examen_ambiente)
-                ->sortBy('fecha_hora_ingreso')
+        $ambientes = $seleccionado->examenesAmbientes->map(function ($examenAmbiente) use ($ingresosPorAmbiente, $habilitados) {
+            $delAmbiente = $ingresosPorAmbiente->get($examenAmbiente->id_examen_ambiente, collect())
                 ->values()
                 ->map(fn ($registro) => [
                     'id_estudiante' => $registro->id_estudiante,
-                    'codigo_universitario' => $registro->estudiante?->codigo_universitario,
-                    'documento_identidad' => $registro->estudiante?->documento_identidad,
-                    'nombres' => $registro->estudiante?->nombres,
-                    'apellidos' => $registro->estudiante?->apellidos,
+                    'codigo_universitario' => $registro->codigo_universitario,
+                    'documento_identidad' => $registro->documento_identidad,
+                    'nombres' => $registro->nombres,
+                    'apellidos' => $registro->apellidos,
                     'hora_ingreso' => $registro->fecha_hora_ingreso,
                     'hora_ingreso_formateada' => Carbon::parse($registro->fecha_hora_ingreso)->setTimezone('America/La_Paz')->format('H:i:s'),
                     'nombre_ambiente' => $examenAmbiente->ambiente?->nombre_ambiente,
@@ -148,29 +151,29 @@ class PanelAsistenciaController extends Controller
         })->values();
 
         $pendientes = $habilitados
-            ->whereNotIn('id_estudiante', $idsIngresados)
-            ->sortBy(fn ($habilitacion) => $habilitacion->estudiante?->apellidos)
+            ->reject(fn ($habilitacion) => isset($idsIngresados[$habilitacion->id_estudiante]))
+            ->sortBy('apellidos')
             ->values()
             ->map(fn ($habilitacion) => [
                 'id_estudiante' => $habilitacion->id_estudiante,
-                'codigo_universitario' => $habilitacion->estudiante?->codigo_universitario,
-                'documento_identidad' => $habilitacion->estudiante?->documento_identidad,
-                'nombres' => $habilitacion->estudiante?->nombres,
-                'apellidos' => $habilitacion->estudiante?->apellidos,
+                'codigo_universitario' => $habilitacion->codigo_universitario,
+                'documento_identidad' => $habilitacion->documento_identidad,
+                'nombres' => $habilitacion->nombres,
+                'apellidos' => $habilitacion->apellidos,
             ]);
 
-        $ingresados = $ingresos->sortBy('fecha_hora_ingreso')->values()->map(function ($registro) {
+        $ingresados = $incluirIngresados ? $ingresos->values()->map(function ($registro) {
             return [
                 'id_estudiante' => $registro->id_estudiante,
-                'codigo_universitario' => $registro->estudiante?->codigo_universitario,
-                'documento_identidad' => $registro->estudiante?->documento_identidad,
-                'nombres' => $registro->estudiante?->nombres,
-                'apellidos' => $registro->estudiante?->apellidos,
-                'nombre_ambiente' => $registro->examenAmbiente?->ambiente?->nombre_ambiente,
+                'codigo_universitario' => $registro->codigo_universitario,
+                'documento_identidad' => $registro->documento_identidad,
+                'nombres' => $registro->nombres,
+                'apellidos' => $registro->apellidos,
+                'nombre_ambiente' => $registro->nombre_ambiente,
                 'hora_ingreso' => $registro->fecha_hora_ingreso,
                 'hora_ingreso_formateada' => Carbon::parse($registro->fecha_hora_ingreso)->setTimezone('America/La_Paz')->format('H:i:s'),
             ];
-        });
+        }) : collect();
 
         return [
             'ambientes' => $ambientes,
@@ -179,7 +182,7 @@ class PanelAsistenciaController extends Controller
             'conflictos' => $conflictos,
             'resumen' => [
                 'habilitados' => $habilitados->count(),
-                'ingresaron' => count($idsIngresados),
+                'ingresaron' => $ingresos->count(),
                 'pendientes' => $pendientes->count(),
                 'estado' => $seleccionado->estado_actual,
                 'cerrado' => $seleccionado->estado_horario === 'finalizado'
@@ -191,7 +194,7 @@ class PanelAsistenciaController extends Controller
     private function responder(Request $request, array $datos)
     {
         if (app()->runningUnitTests() || $request->wantsJson()) {
-            return response()->json($datos);
+            return response()->json(array_map(fn ($dato) => value($dato), $datos));
         }
 
         return Inertia::render('Control/PanelAsistencia', $datos);

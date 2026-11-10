@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="form-group">
+    <FormField :error="form.errors.nombres" error-tag="p">
       <TextInput
         id="nombres"
         type="text"
@@ -9,9 +9,8 @@
         placeholder="Nombres del estudiante"
         :class="{ 'input-error': form.errors.nombres }"
       />
-      <p v-if="form.errors.nombres" class="error-msg">{{ form.errors.nombres }}</p>
-    </div>
-    <div class="form-group">
+    </FormField>
+    <FormField :error="form.errors.apellidos" error-tag="p">
       <TextInput
         id="apellidos"
         type="text"
@@ -20,9 +19,8 @@
         placeholder="Apellidos del estudiante"
         :class="{ 'input-error': form.errors.apellidos }"
       />
-      <p v-if="form.errors.apellidos" class="error-msg">{{ form.errors.apellidos }}</p>
-    </div>
-    <div class="form-group">
+    </FormField>
+    <FormField :error="form.errors.codigo_universitario" error-tag="p">
       <TextInput
         id="codigo_universitario"
         type="text"
@@ -34,9 +32,8 @@
         :disabled="isEdit"
         :class="{ 'input-error': form.errors.codigo_universitario }"
       />
-      <p v-if="form.errors.codigo_universitario" class="error-msg">{{ form.errors.codigo_universitario }}</p>
-    </div>
-    <div class="form-group">
+    </FormField>
+    <FormField :error="form.errors.documento_identidad" error-tag="p">
       <TextInput
         id="documento_identidad"
         type="text"
@@ -48,9 +45,8 @@
         :disabled="isEdit"
         :class="{ 'input-error': form.errors.documento_identidad }"
       />
-      <p v-if="form.errors.documento_identidad" class="error-msg">{{ form.errors.documento_identidad }}</p>
-    </div>
-    <div class="form-group">
+    </FormField>
+    <FormField :error="form.errors.email" error-tag="p">
       <TextInput
         id="email"
         type="email"
@@ -60,8 +56,7 @@
         maxlength="255"
         :class="{ 'input-error': form.errors.email }"
       />
-      <p v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</p>
-    </div>
+    </FormField>
     <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
       <LoadingSpinner size="medium" />
     </div>
@@ -72,6 +67,7 @@
 import { useForm } from '@inertiajs/vue3'
 import { useToastStore } from '@/stores/useToastStore'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import FormField from '@/components/ui/FormField.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import { computed } from 'vue'
 

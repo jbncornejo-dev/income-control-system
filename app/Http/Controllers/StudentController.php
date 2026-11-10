@@ -24,6 +24,7 @@ class StudentController extends Controller
         $filtros = $request->validated();
 
         $students = Estudiante::query()
+            ->select(['id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email'])
             ->when(isset($filtros['search']), function ($query) use ($filtros) {
                 // Buscar literalmente el texto escrito, sin tratar los comodines de LIKE.
                 $termino = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['search']);
@@ -168,7 +169,7 @@ class StudentController extends Controller
         ]);
 
         $handle = fopen($request->file('file')->getRealPath(), 'r');
-        $existentes = $this->indicesExistentes();
+        $existentes = $this->indicesExistentes($handle);
         $vistos = [
             'codigo_universitario' => [],
             'documento_identidad' => [],
@@ -399,47 +400,76 @@ class StudentController extends Controller
     /**
      * @return array<string, array<string, true>>
      */
-    private function indicesExistentes(): array
+    private function indicesExistentes($handle): array
     {
-        $indices = [
-            'codigo_universitario' => [],
-            'documento_identidad' => [],
-            'codigo_qr' => [],
-            'email' => [],
-            'users_username' => [],
-            'users_email' => [],
-        ];
+        $indices = array_fill_keys([
+            'codigo_universitario', 'documento_identidad', 'codigo_qr', 'email',
+            'users_username', 'users_email',
+        ], []);
+        $columnas = null;
+        $candidatos = [];
+        $cantidad = 0;
 
-        Estudiante::query()
-            ->select(['codigo_universitario', 'documento_identidad', 'codigo_qr', 'email'])
-            ->chunk(1000, function ($estudiantes) use (&$indices) {
-                foreach ($estudiantes as $estudiante) {
-                    $indices['codigo_universitario'][$estudiante->codigo_universitario] = true;
-                    $indices['documento_identidad'][$estudiante->documento_identidad] = true;
-
-                    if ($estudiante->codigo_qr !== null) {
-                        $indices['codigo_qr'][$estudiante->codigo_qr] = true;
-                    }
-
-                    if ($estudiante->email !== null) {
-                        $indices['email'][$estudiante->email] = true;
-                    }
+        // Comprobar antes de insertar conserva la distinción entre duplicados de BD y del archivo.
+        while (($fila = fgetcsv($handle, 0, ',')) !== false) {
+            if ($this->esFilaVacia($fila)) {
+                continue;
+            }
+            if ($columnas === null) {
+                $columnas = $this->mapearEncabezados($fila);
+                if ($columnas === null) {
+                    break;
                 }
-            });
+                continue;
+            }
 
-        User::query()
-            ->select(['username', 'email'])
-            ->chunk(1000, function ($usuarios) use (&$indices) {
-                foreach ($usuarios as $usuario) {
-                    $indices['users_username'][$usuario->username] = true;
-
-                    if ($usuario->email !== null) {
-                        $indices['users_email'][$usuario->email] = true;
-                    }
+            $datos = $this->parsearFila($fila, $columnas);
+            foreach (['codigo_universitario', 'documento_identidad', 'codigo_qr', 'email'] as $campo) {
+                if ($datos[$campo] !== null) {
+                    $candidatos[$campo][$datos[$campo]] = true;
                 }
-            });
+            }
+            if (++$cantidad % 500 === 0) {
+                $this->cargarCoincidencias($candidatos, $indices);
+                $candidatos = [];
+            }
+        }
+        if ($candidatos !== []) {
+            $this->cargarCoincidencias($candidatos, $indices);
+        }
+        rewind($handle);
 
         return $indices;
+    }
+
+    private function cargarCoincidencias(array $candidatos, array &$indices): void
+    {
+        $campos = ['codigo_universitario', 'documento_identidad', 'codigo_qr', 'email'];
+        $estudiantes = Estudiante::query()->select($campos)
+            ->where(function ($query) use ($campos, $candidatos) {
+                foreach ($campos as $campo) {
+                    $query->orWhereIn($campo, array_keys($candidatos[$campo] ?? []));
+                }
+            })->toBase()->get();
+
+        foreach ($estudiantes as $estudiante) {
+            foreach ($campos as $campo) {
+                if ($estudiante->$campo !== null) {
+                    $indices[$campo][$estudiante->$campo] = true;
+                }
+            }
+        }
+
+        $usuarios = User::query()->select(['username', 'email'])
+            ->whereIn('username', array_keys($candidatos['codigo_universitario'] ?? []))
+            ->orWhereIn('email', array_keys($candidatos['email'] ?? []))
+            ->toBase()->get();
+        foreach ($usuarios as $usuario) {
+            $indices['users_username'][$usuario->username] = true;
+            if ($usuario->email !== null) {
+                $indices['users_email'][$usuario->email] = true;
+            }
+        }
     }
 
     /**

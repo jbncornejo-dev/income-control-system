@@ -51,11 +51,9 @@ class PersonalControlController extends Controller
 
         // Criterio 1 y 2: Obtener estudiantes habilitados
         $habilitaciones = Habilitacion::where('id_examen', $examen->id_examen)
-            ->where('estado_habilitado', true)
-            ->orderBy('id_habilitacion')
-            ->get();
+            ->where('estado_habilitado', true);
 
-        if ($habilitaciones->isEmpty()) {
+        if (! $habilitaciones->exists()) {
             return back()->withErrors([
                 'reparto' => 'No hay estudiantes habilitados en este examen para repartir.'
             ]);
@@ -64,7 +62,7 @@ class PersonalControlController extends Controller
         // Reparto equitativo Round-Robin (garantiza diferencia máxima de 1)
         DB::transaction(function () use ($habilitaciones, $personal) {
             $totalPersonal = count($personal);
-            foreach ($habilitaciones as $index => $habilitacion) {
+            foreach ($habilitaciones->lazyById(500, 'id_habilitacion') as $index => $habilitacion) {
                 $idAgente = $personal[$index % $totalPersonal];
                 $habilitacion->update([
                     'id_personal_control' => $idAgente

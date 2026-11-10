@@ -97,10 +97,9 @@
 
         <template #footer>
           <Button variant="action" class="btn-modal" @click="cerrarModal" :disabled="form.processing">Cancelar</Button>
-          <Button variant="primary" class="btn-modal" @click="guardar" :disabled="form.processing">
-            <LoadingSpinner v-if="form.processing" size="small" />
-            <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear asignatura' }}</span>
-          </Button>
+          <LoadingButton variant="primary" class="btn-modal" @click="guardar" :disabled="form.processing" :loading="form.processing">
+            {{ modoEdicion ? 'Guardar cambios' : 'Crear asignatura' }}
+          </LoadingButton>
         </template>
       </Modal>
 
@@ -113,10 +112,7 @@
         <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
         <template #footer>
           <Button variant="action" class="btn-modal" @click="cerrarEliminar" :disabled="eliminando">Cancelar</Button>
-          <Button variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando">
-            <LoadingSpinner v-if="eliminando" size="small" />
-            <span v-else>Sí, eliminar</span>
-          </Button>
+          <LoadingButton variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando" :loading="eliminando">Sí, eliminar</LoadingButton>
         </template>
       </Modal>
 
@@ -130,6 +126,7 @@ import { router, useForm } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Modal from '@/components/ui/Modal.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import LoadingButton from '@/components/ui/LoadingButton.vue'
 import TextInput from '@/components/ui/TextInput.vue'
 import Button from '@/components/ui/Button.vue'
 import { useToastStore } from '@/stores/useToastStore'
@@ -287,6 +284,8 @@ function eliminar() {
 }
 </script>
 
+<style scoped src="../../../css/catalog-tables.css"></style>
+
 <style scoped>
 .page-container {
     padding: var(--spacing-lg) var(--spacing-xl);
@@ -321,8 +320,6 @@ function eliminar() {
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-md);
 }
-.filter-field { flex: 1; min-width: 250px; }
-.result-count { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; }
 
 .pagination {
   display: flex;
@@ -334,21 +331,11 @@ function eliminar() {
   background-color: var(--color-white);
 }
 
-.page-info { font-size: 0.85rem; color: var(--text-muted); }
-
 .loading-center { display: flex; justify-content: center; padding: 48px; }
-
-
-.confirm-text { font-size: 0.9rem; color: var(--text-dark); line-height: 1.6; }
 
 /* Estandarización de Tabla */
 .table-container { 
-    background: var(--color-white); 
-    border: 1px solid var(--border-light); 
-    border-radius: var(--radius-md); 
-    overflow-x: auto; 
-    width: 100%; 
-    box-shadow: var(--shadow-card);
+    width: 100%;
 }
 
 .id-cell { 
@@ -356,25 +343,6 @@ function eliminar() {
     font-family: var(--font-mono); 
     font-size: 0.85rem; 
     width: 60px; 
-}
-
-/* Columna de Acciones Centralizadas */
-.actions-col {
-    text-align: center !important;
-}
-
-.actions-cell {
-    display: flex;
-    gap: var(--spacing-sm);
-    justify-content: center;
-    align-items: center;
-    white-space: nowrap;
-}
-
-.empty-row { 
-    text-align: center; 
-    color: var(--text-muted); 
-    padding: 2rem !important; 
 }
 
 /* Responsive */
@@ -392,12 +360,6 @@ function eliminar() {
     .toolbar {
         flex-direction: column;
         align-items: stretch;
-    }
-    .filter-field {
-        width: 100%;
-    }
-    .filter-field > * {
-        max-width: 100% !important;
     }
 }
 </style>

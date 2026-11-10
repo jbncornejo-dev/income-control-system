@@ -21,7 +21,18 @@ class RegistroIngresoController extends Controller
     {
         // 1. Recuperar exámenes vigentes (no cancelados/anulados, cuya hora de
         //    fin aún no pasó) con sus relaciones.
-        $examenes = Examen::with(['asignatura', 'tipo', 'examenesAmbientes.ambiente'])
+        $examenes = Examen::with([
+            'asignatura', 'tipo', 'examenesAmbientes.ambiente',
+            'habilitaciones' => fn ($query) => $query
+                ->where('estado_habilitado', true)
+                ->where('id_personal_control', auth()->id())
+                ->with('estudiante')
+                ->withExists([
+                    'estudiante as ya_ingreso' => fn ($estudiantes) => $estudiantes
+                        ->whereHas('registrosIngreso.examenAmbiente', fn ($ambiente) => $ambiente
+                            ->whereColumn('examen_ambiente.id_examen', 'habilitacion.id_examen')),
+                ]),
+        ])
             ->where(function ($q) {
                 $q->whereNull('estado')
                   ->orWhereNotIn('estado', ['cancelado', 'anulado']);
@@ -32,19 +43,7 @@ class RegistroIngresoController extends Controller
             )
             ->get()
             ->map(function ($examen) {
-                $userId = auth()->id();
-
-                $habilitacionesAsignadas = Habilitacion::with('estudiante')
-                    ->where('id_examen', $examen->id_examen)
-                    ->where('estado_habilitado', true)
-                    ->where('id_personal_control', $userId)
-                    ->get();
-
-                $ingresadosIds = RegistroIngreso::whereHas('examenAmbiente', function ($q) use ($examen) {
-                    $q->where('id_examen', $examen->id_examen);
-                })->pluck('id_estudiante')->toArray();
-
-                $misAsignados = $habilitacionesAsignadas->map(function ($hab) use ($ingresadosIds) {
+                $misAsignados = $examen->habilitaciones->map(function ($hab) {
                     return [
                         'id_habilitacion'       => $hab->id_habilitacion,
                         'id_estudiante'         => $hab->estudiante->id_estudiante,
@@ -56,7 +55,7 @@ class RegistroIngresoController extends Controller
                         'foto_actual'           => $hab->estudiante->foto_url,
                         'foto_referencia'       => $hab->estudiante->foto_referencia,
                         'normas_particulares'   => $hab->normas_particulares,
-                        'ya_ingreso'            => in_array($hab->id_estudiante, $ingresadosIds),
+                        'ya_ingreso'            => (bool) $hab->ya_ingreso,
                     ];
                 });
 
@@ -223,7 +222,7 @@ class RegistroIngresoController extends Controller
         $esMiAsignado = $habilitacion->id_personal_control === auth()->id();
         $agenteAsignado = $habilitacion->personalControl?->name ?? 'Sin asignar';
 
-        $normasGenerales = Examen::find($idExamen)?->normas_generales;
+        $normasGenerales = $examen->normas_generales;
         $normasParticulares = $habilitacion->normas_particulares;
 
         return response()->json([
@@ -268,7 +267,7 @@ class RegistroIngresoController extends Controller
         $ingresoPrevio  = RegistroIngreso::where('id_estudiante', $request->id_estudiante)
             ->whereHas('examenAmbiente', function ($query) use ($examenAmbiente) {
                 $query->where('id_examen', $examenAmbiente->id_examen);
-            })->first();
+            })->exists();
 
         if ($ingresoPrevio) {
             return response()->json(['error' => 'Registro duplicado detectado.'], 409);

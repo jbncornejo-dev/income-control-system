@@ -1,5 +1,6 @@
 <script setup>
 import { useForm } from '@inertiajs/vue3';
+import FormField from '@/components/ui/FormField.vue';
 import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import SelectInput from '@/components/ui/SelectInput.vue';
@@ -28,7 +29,7 @@ const submit = () => {
 
 <template>
     <form @submit.prevent="submit" class="custom-form">
-        <div class="form-group">
+        <FormField :error="form.errors.name">
             <TextInput 
                 id="edit_name" 
                 v-model="form.name" 
@@ -37,11 +38,10 @@ const submit = () => {
                 required 
                 autofocus 
             />
-            <span v-if="form.errors.name" class="error-msg">{{ form.errors.name }}</span>
-        </div>
+        </FormField>
 
         <div class="form-row">
-            <div class="form-group">
+            <FormField :error="form.errors.username">
                 <TextInput 
                     id="edit_username" 
                     v-model="form.username" 
@@ -49,10 +49,8 @@ const submit = () => {
                     label="Nombre de Usuario"
                     disabled 
                 />
-                
-                <span v-if="form.errors.username" class="error-msg">{{ form.errors.username }}</span>
-            </div>
-            <div class="form-group">
+            </FormField>
+            <FormField :error="form.errors.email">
                 <TextInput 
                     id="edit_email" 
                     v-model="form.email" 
@@ -60,11 +58,10 @@ const submit = () => {
                     label="Correo Electrónico"
                     disabled 
                 />
-                <span v-if="form.errors.email" class="error-msg">{{ form.errors.email }}</span>
-            </div>
+            </FormField>
         </div>
 
-        <div class="form-group">
+        <FormField :error="form.errors.id_rol">
             <SelectInput
                 id="edit_id_rol"
                 v-model="form.id_rol"
@@ -72,8 +69,7 @@ const submit = () => {
                 label="Rol del Usuario"
                 required
             />
-            <span v-if="form.errors.id_rol" class="error-msg">{{ form.errors.id_rol }}</span>
-        </div>
+        </FormField>
 
         <div class="form-actions">
             <Button type="button" variant="action" @click="$emit('cancel')">Cancelar</Button>
@@ -82,14 +78,10 @@ const submit = () => {
     </form>
 </template>
 
-<style scoped>
-.custom-form { display: flex; flex-direction: column; gap: var(--spacing-lg); }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-lg); }
-.form-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); margin-top: var(--spacing-sm); padding-top: var(--spacing-md); border-top: 1px solid var(--border-light); }
+<style scoped src="./form-layout.css"></style>
 
+<style scoped>
 @media (max-width: 640px) {
-    .form-row { grid-template-columns: 1fr; }
-    .form-actions { flex-direction: column-reverse; }
     .form-actions > button { width: 100%; }
 }
 </style>

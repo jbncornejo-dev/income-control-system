@@ -37,11 +37,6 @@ class AmbienteController extends Controller
             ->paginate(15)
             ->appends($filtros);
 
-        // NUEVO: Calculamos la sumatoria de la capacidad. 
-        // Si tienes una columna de estado en tu BD (ej: 'estado' => 'Habilitado'), 
-        // cambia esto por: Ambiente::where('estado', 'Habilitado')->sum('capacidad');
-        $totalCapacidad = Ambiente::sum('capacidad');
-
         // Retornamos JSON puro si se están ejecutando los tests
         if (app()->runningUnitTests() || $request->wantsJson()) {
             return response()->json(['ambientes' => $ambientes]);
@@ -50,7 +45,7 @@ class AmbienteController extends Controller
         // Retornamos la vista para los usuarios en el navegador
         return Inertia::render('Admin/Ambientes/Index', [
             'ambientes' => $ambientes,
-            'totalCapacidad' => (int) $totalCapacidad,
+            'totalCapacidad' => fn () => (int) Ambiente::sum('capacidad'),
             'filters' => $filtros
         ]);
     }

@@ -262,30 +262,11 @@ watch(filtroRol, (value) => {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../../css/panels.css"></style>
+
+<style scoped src="../../../../css/admin-lists.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo fiel al mockup */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem; /* p-4 en móvil */
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem; /* sm:p-6 */
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem; /* lg:p-8 */
-    }
-}
-
 /* Título */
 .panel-title {
     font-size: 1.5rem; /* text-2xl */
@@ -344,33 +325,6 @@ watch(filtroRol, (value) => {
     height: 1.25rem;
 }
 
-.search-input-field {
-    display: block;
-    width: 100%;
-    padding-left: 2.5rem; /* pl-10 */
-    padding-right: 0.75rem; /* pr-3 */
-    padding-top: 0.625rem; /* py-2.5 */
-    padding-bottom: 0.625rem;
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb; /* border-gray-200 */
-    border-radius: 0.5rem; /* rounded-lg */
-    font-size: 0.875rem; /* text-sm */
-    color: #1f2937;
-    font-family: var(--font-family);
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-    transition: all 0.2s ease;
-    outline: none;
-}
-
-.search-input-field::placeholder {
-    color: #9ca3af; /* placeholder-gray-400 */
-}
-
-.search-input-field:focus {
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(29, 54, 83, 0.15); /* focus:ring-brand-primary/20 */
-}
-
 /* Filtros y Botón Nuevo Usuario */
 .filter-actions-group {
     display: flex;
@@ -424,25 +378,6 @@ watch(filtroRol, (value) => {
     box-shadow: 0 0 0 3px rgba(29, 54, 83, 0.15);
 }
 
-.select-chevron-icon {
-    position: absolute;
-    top: 50%;
-    right: 0.75rem;
-    transform: translateY(-50%);
-    width: 1rem;
-    height: 1rem;
-    color: #6b7280;
-    pointer-events: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.select-chevron-icon svg {
-    width: 100%;
-    height: 100%;
-}
-
 .btn-new-user {
     display: inline-flex;
     align-items: center;
@@ -481,22 +416,6 @@ watch(filtroRol, (value) => {
 }
 
 /* Tarjeta y Tabla de Usuarios */
-.table-card {
-    background-color: #ffffff;
-    border: 1px solid #e5e7eb; /* border-gray-200 */
-    border-radius: 0.75rem; /* rounded-xl (12px) */
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05); /* shadow-sm */
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.table-scroll-container {
-    overflow-x: auto;
-    width: 100%;
-    scrollbar-width: thin;
-}
 
 .users-table {
     width: 100%;
@@ -700,68 +619,11 @@ watch(filtroRol, (value) => {
     color: #881337;
 }
 
-/* Estado de tabla vacía */
-.empty-table-state {
-    text-align: center;
-    padding: 3rem 1.5rem !important;
-    color: #6b7280;
-    font-size: 0.875rem;
-}
-
 /* Paginación */
-.pagination-container {
-    padding: 1rem; /* p-4 */
-    border-top: 1px solid #f3f4f6; /* border-gray-100 */
-    background-color: rgba(249, 250, 251, 0.6); /* bg-gray-50/50 */
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem; /* gap-4 */
-}
-
-@media (min-width: 640px) {
-    .pagination-container {
-        flex-direction: row;
-    }
-}
-
-.pagination-text {
-    font-size: 0.875rem; /* text-sm */
-    color: #6b7280; /* text-gray-500 */
-    font-weight: 500;
-}
 
 .pagination-buttons {
     display: flex;
     align-items: center;
     gap: 0.5rem; /* gap-2 */
-}
-
-.btn-page-nav {
-    padding: 0.375rem 0.75rem; /* px-3 py-1.5 */
-    border: 1px solid #e5e7eb; /* border-gray-200 */
-    background-color: #ffffff;
-    border-radius: 0.375rem; /* rounded-md */
-    font-size: 0.875rem; /* text-sm */
-    font-weight: 500;
-    color: #374151;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-family: var(--font-family);
-}
-
-.btn-page-nav:hover:not(:disabled) {
-    background-color: #f9fafb;
-    border-color: #d1d5db;
-    color: var(--color-primary);
-}
-
-.btn-page-nav:disabled {
-    color: #9ca3af; /* text-gray-400 */
-    cursor: not-allowed;
-    opacity: 0.6;
-    background-color: #ffffff;
-    border-color: #e5e7eb;
 }
 </style>

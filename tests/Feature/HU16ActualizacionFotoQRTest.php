@@ -355,6 +355,8 @@ class HU16ActualizacionFotoQRTest extends TestCase
     {
         $panelVue = file_get_contents(resource_path('js/Pages/Estudiantes/Panel.vue'));
         $registroVue = file_get_contents(resource_path('js/Pages/Control/RegistroIngreso/Index.vue'));
+        $this->assertStringContainsString('<StudentPhotoComparison', $registroVue);
+        $registroVue .= file_get_contents(resource_path('js/components/ui/StudentPhotoComparison.vue'));
 
         // CA-2: Mensaje exacto requerido y botón deshabilitado condicional
         $this->assertStringContainsString('Debes actualizar tu foto antes de generar un nuevo QR', $panelVue);

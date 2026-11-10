@@ -27,6 +27,7 @@ class EstadisticaIncidenciaController extends Controller
             ->groupBy('tipo_incidencia')
             ->orderByDesc('total')
             ->orderBy('tipo_incidencia')
+            ->toBase()
             ->get()
             ->map(fn ($fila) => [
                 'tipo' => $fila->tipo_incidencia,
@@ -39,6 +40,7 @@ class EstadisticaIncidenciaController extends Controller
             ->select(DB::raw('date(fecha_hora) as dia'), DB::raw('count(*) as total'))
             ->groupBy(DB::raw('date(fecha_hora)'))
             ->orderBy('dia')
+            ->toBase()
             ->get()
             ->map(fn ($fila) => [
                 'dia' => (string) $fila->dia,
@@ -52,11 +54,12 @@ class EstadisticaIncidenciaController extends Controller
             ->orderByDesc('total')
             ->orderBy('id_examen')
             ->limit(10)
+            ->toBase()
             ->get();
 
-        $examenes = Examen::with('asignatura')
+        $examenes = Examen::with('asignatura:id_asignatura,nombre_asignatura')
             ->whereIn('id_examen', $conteoPorExamen->pluck('id_examen'))
-            ->get()
+            ->get(['id_examen', 'id_asignatura', 'fecha'])
             ->keyBy('id_examen');
 
         $porExamen = $conteoPorExamen->map(function ($fila) use ($examenes) {
@@ -89,9 +92,9 @@ class EstadisticaIncidenciaController extends Controller
         }
 
         return Inertia::render('Incidencias/Estadisticas', array_merge($datos, [
-            'examenes' => Examen::with('asignatura')
+            'examenes' => Examen::with('asignatura:id_asignatura,nombre_asignatura')
                 ->orderByDesc('fecha')
-                ->get()
+                ->get(['id_examen', 'id_asignatura', 'fecha'])
                 ->map(fn ($examen) => [
                     'id_examen' => $examen->id_examen,
                     'nombre' => ($examen->asignatura?->nombre_asignatura ?? 'Sin asignatura').' - '.$examen->fecha,
