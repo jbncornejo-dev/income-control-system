@@ -7,34 +7,23 @@
         @page {
             margin: 28px 32px 35px 32px;
         }
+        @include('reportes.partials.pdf-styles')
         body {
-            font-family: Helvetica, Arial, sans-serif;
             font-size: 11px;
-            color: #1f2937;
             line-height: 1.4;
         }
         .header {
-            border-bottom: 2px solid #002147;
-            padding-bottom: 10px;
             margin-bottom: 14px;
         }
         .institution {
             font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #6b7280;
-            margin-bottom: 2px;
         }
         .title {
             font-size: 18px;
-            font-weight: bold;
-            color: #002147;
             margin: 0 0 4px 0;
         }
         .subtitle {
             font-size: 11px;
-            color: #4b5563;
-            margin: 0;
         }
         .meta-table {
             width: 100%;
@@ -94,36 +83,17 @@
         .stat-success .stat-num { color: #059669; }
         .stat-warning .stat-num { color: #d97706; }
         .stat-danger .stat-num { color: #dc2626; }
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 14px;
-        }
         .data-table th {
-            background-color: #002147;
-            color: #ffffff;
-            font-weight: bold;
-            font-size: 9px;
-            text-transform: uppercase;
             letter-spacing: 0.04em;
             padding: 6px 8px;
-            text-align: left;
-            border: 1px solid #002147;
         }
         .data-table td {
             padding: 5px 8px;
             font-size: 10px;
-            border: 1px solid #e2e8f0;
-        }
-        .data-table tr:nth-child(even) td {
-            background-color: #f8fafc;
         }
         .badge {
-            display: inline-block;
             padding: 2px 6px;
-            border-radius: 3px;
             font-size: 9px;
-            font-weight: bold;
         }
         .badge-present {
             background-color: #d1fae5;
@@ -137,31 +107,20 @@
             background-color: #e0f2fe;
             color: #0369a1;
         }
-        .text-center { text-align: center; }
         .text-right { text-align: right; }
         .empty-text {
-            color: #64748b;
-            font-style: italic;
-            text-align: center;
             padding: 10px;
         }
         .footer {
             margin-top: 20px;
-            border-top: 1px solid #cbd5e1;
             padding-top: 8px;
             font-size: 9px;
-            color: #94a3b8;
-            text-align: center;
         }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <div class="institution">Universidad Mayor de San Simón · Sistema de Control de Ingreso y Evaluación</div>
-        <h1 class="title">REPORTE DE ASISTENCIA A EXAMEN</h1>
-        <p class="subtitle">Emisión oficial generada el {{ \Carbon\Carbon::now('America/La_Paz')->format('d/m/Y H:i:s') }}</p>
-    </div>
+    @include('reportes.partials.pdf-header', ['titulo' => 'REPORTE DE ASISTENCIA A EXAMEN'])
 
     <!-- Metadatos del Examen -->
     <table class="meta-table">
@@ -316,9 +275,7 @@
         </tbody>
     </table>
 
-    <div class="footer">
-        Documento generado automáticamente por el Sistema de Control de Ingreso · Página 1
-    </div>
+    @include('reportes.partials.pdf-footer')
 
 </body>
 </html>

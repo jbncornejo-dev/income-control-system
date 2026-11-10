@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { 
@@ -7,11 +7,12 @@ import {
     UserCheck, 
     UserX, 
     CalendarX, 
-    ExternalLink, 
-    Globe 
+    ExternalLink
 } from 'lucide-vue-next';
 import ExamenesCalendar from '@/components/ui/ExamenesCalendar.vue';
 import StatCard from '@/components/ui/StatCard.vue';
+import OfficialLinks from '@/components/ui/OfficialLinks.vue';
+import DashboardNews from '@/components/ui/DashboardNews.vue';
 
 const props = defineProps({
     stats: Object,
@@ -164,20 +165,7 @@ const noticiasRender = computed(() => {
                     <div class="box-header">
                         <h2 class="box-title">Enlaces</h2>
                     </div>
-                    <div class="link-list">
-                        <a 
-                            v-for="l in enlaces" 
-                            :key="l.url" 
-                            :href="l.url" 
-                            target="_blank" 
-                            rel="noopener" 
-                            class="official-link-card"
-                            :style="{ borderLeftColor: l.color }"
-                        >
-                            <span class="official-link-title">{{ l.titulo }}</span>
-                            <span class="official-link-desc">{{ l.desc }}</span>
-                        </a>
-                    </div>
+                    <OfficialLinks :links="enlaces" variant="docente" />
                 </div>
 
                 <!-- Widget Noticias (Funcional y conectado con UMSS) -->
@@ -189,26 +177,7 @@ const noticiasRender = computed(() => {
                         </a>
                     </div>
                     
-                    <div v-if="noticiasRender" class="news-list">
-                        <a 
-                            v-for="(n, i) in noticiasRender" 
-                            :key="i" 
-                            :href="n.enlace || 'https://www.umss.edu.bo/categoria/noticias/'" 
-                            target="_blank" 
-                            rel="noopener" 
-                            class="news-card-item"
-                        >
-                            <span class="news-card-date">{{ n.fecha }}</span>
-                            <span class="news-card-title">{{ n.titulo }}</span>
-                            <p class="news-card-summary">{{ n.resumen }}</p>
-                        </a>
-                    </div>
-                    
-                    <div v-else class="news-fallback">
-                        <Globe :size="32" class="news-fallback-icon" />
-                        <p class="news-fallback-text">No se pudieron cargar las noticias en este momento.</p>
-                        <a href="https://www.umss.edu.bo/categoria/noticias/" target="_blank" class="news-fallback-link">Ver noticias en UMSS &rarr;</a>
-                    </div>
+                    <DashboardNews :news="noticiasRender" variant="docente" />
                 </div>
 
             </div>
@@ -216,30 +185,9 @@ const noticiasRender = computed(() => {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../css/panels.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem; /* p-4 móvil */
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem; /* sm:p-6 */
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem; /* lg:p-8 */
-    }
-}
-
 .panel-title {
     font-size: 1.5rem; /* text-2xl */
     line-height: 2rem;
@@ -544,7 +492,7 @@ const noticiasRender = computed(() => {
     gap: 0.75rem;
 }
 
-.official-link-card {
+:deep(.official-link-card) {
     display: block;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
@@ -555,13 +503,13 @@ const noticiasRender = computed(() => {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.02);
 }
 
-.official-link-card:hover {
+:deep(.official-link-card:hover) {
     background-color: #f3f4f6;
     transform: translateY(-1px);
     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.05);
 }
 
-.official-link-title {
+:deep(.official-link-title) {
     display: block;
     font-size: 0.875rem;
     font-weight: 600;
@@ -569,11 +517,11 @@ const noticiasRender = computed(() => {
     transition: color 0.2s ease;
 }
 
-.official-link-card:hover .official-link-title {
+:deep(.official-link-card:hover .official-link-title) {
     color: var(--color-primary);
 }
 
-.official-link-desc {
+:deep(.official-link-desc) {
     display: block;
     font-size: 0.75rem;
     color: #6b7280;
@@ -586,7 +534,7 @@ const noticiasRender = computed(() => {
     flex-direction: column;
 }
 
-.news-card-item {
+:deep(.news-card-item) {
     display: block;
     padding: 0.75rem 0;
     border-bottom: 1px solid #f3f4f6;
@@ -594,16 +542,16 @@ const noticiasRender = computed(() => {
     transition: background-color 0.15s ease;
 }
 
-.news-card-item:first-child {
+:deep(.news-card-item:first-child) {
     padding-top: 0;
 }
 
-.news-card-item:last-child {
+:deep(.news-card-item:last-child) {
     border-bottom: none;
     padding-bottom: 0;
 }
 
-.news-card-date {
+:deep(.news-card-date) {
     display: block;
     font-size: 0.625rem; /* text-[10px] */
     font-weight: 700;
@@ -613,7 +561,7 @@ const noticiasRender = computed(() => {
     margin-bottom: 0.25rem;
 }
 
-.news-card-title {
+:deep(.news-card-title) {
     display: block;
     font-size: 0.875rem;
     font-weight: 600;
@@ -622,11 +570,11 @@ const noticiasRender = computed(() => {
     transition: color 0.15s ease;
 }
 
-.news-card-item:hover .news-card-title {
+:deep(.news-card-item:hover .news-card-title) {
     color: var(--color-primary);
 }
 
-.news-card-summary {
+:deep(.news-card-summary) {
     font-size: 0.75rem;
     color: #6b7280;
     margin: 0;
@@ -660,25 +608,25 @@ const noticiasRender = computed(() => {
     text-align: center;
 }
 
-.news-fallback-icon {
+:deep(.news-fallback-icon) {
     color: #d1d5db;
     margin-bottom: 0.5rem;
 }
 
-.news-fallback-text {
+:deep(.news-fallback-text) {
     font-size: 0.875rem;
     color: #6b7280;
     margin-bottom: 0.5rem;
 }
 
-.news-fallback-link {
+:deep(.news-fallback-link) {
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--color-primary);
     text-decoration: none;
 }
 
-.news-fallback-link:hover {
+:deep(.news-fallback-link:hover) {
     text-decoration: underline;
 }
 </style>

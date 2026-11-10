@@ -303,6 +303,8 @@ function irAPagina(url) {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../../css/group-pages.css"></style>
+
 <style scoped>
 .panel-container { padding: 2rem 3rem; background-color: var(--bg-main); min-height: 100vh; font-family: var(--font-family); }
 .header-section { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
@@ -311,47 +313,31 @@ function irAPagina(url) {
 .filtros { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
 .filtro-campo { display: flex; flex-direction: column; gap: 4px; }
 .filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-.control { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.95rem; background: #fff; color: var(--text-dark); font-family: inherit; width: 100%; box-sizing: border-box; }
-.control:focus { outline: none; border-color: var(--color-primary); }
+.control { background: #fff; width: 100%; box-sizing: border-box; }
 .control-error { border-color: var(--color-active); }
-.btn-primary { background: var(--color-primary); color: #fff; border: none; padding: 0.6rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; }
-.btn-secundario { background: #fff; color: var(--color-primary); border: 1px solid var(--color-primary); padding: 0.5rem 1rem; border-radius: 0.25rem; font-size: 0.95rem; cursor: pointer; font-family: inherit; }
-.btn-cancelar { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 0.95rem; padding: 0.6rem 1rem; font-family: inherit; }
-.btn-danger { background: var(--color-active); color: #fff; border: none; padding: 0.6rem 1.25rem; border-radius: 0.25rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; font-family: inherit; }
-.table-container { background: #fff; border: 1px solid #e5e7eb; border-radius: 0.5rem; overflow: hidden; }
-.data-table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-.data-table th { background-color: var(--color-primary); color: #fff; text-align: left; padding: 0.75rem 1rem; font-weight: 600; }
-.data-table td { padding: 0.9rem 1rem; border-bottom: 1px solid #c7d0da; color: var(--text-dark); vertical-align: middle; }
-.data-table tr:last-child td { border-bottom: none; }
-.col-mono { font-family: monospace; color: var(--text-muted); }
+.btn-primary { padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 8px; }
+.data-table td { vertical-align: middle; }
 .col-acciones { display: flex; gap: 0.5rem; flex-wrap: wrap; }
 .badge { background: #eff6ff; color: var(--color-primary); padding: 3px 12px; border-radius: 999px; font-size: 0.85rem; font-weight: 700; }
 .btn-accion { padding: 0.35rem 0.75rem; border-radius: 0.25rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; }
 .btn-ver { background: var(--color-primary); color: #fff; border: 1px solid var(--color-primary); text-decoration: none; display: inline-block; }
 .btn-editar { background: #eff6ff; color: var(--color-primary); border: 1px solid var(--color-primary); }
 .btn-eliminar { background: #fdecea; color: var(--color-active); border: 1px solid var(--color-active); }
-.empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
-.paginacion { display: flex; justify-content: center; align-items: center; gap: 1rem; padding: 1rem; }
-.btn-page { background: var(--color-primary); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 0.25rem; cursor: pointer; font-size: 0.9rem; font-family: inherit; }
-.btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
-.page-info { font-size: 0.9rem; color: var(--text-muted); }
 .form-group { margin-bottom: 1rem; }
 .form-label { display: block; font-size: 0.9rem; font-weight: 600; color: var(--text-dark); margin-bottom: 6px; }
 .required { color: var(--color-active); }
 .error-msg { color: var(--color-active); font-size: 0.85rem; margin: 4px 0 0; }
 .help-text { color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0; }
-.confirm-text { font-size: 0.95rem; color: var(--text-dark); line-height: 1.6; }
 @media (max-width: 820px) {
     .panel-container { padding: 1.25rem; }
     .header-section { flex-direction: column; align-items: stretch; }
     .filtros { flex-direction: column; align-items: stretch; }
     .table-container { border: none; background: transparent; }
-    .data-table thead { display: none; }
-    .data-table, .data-table tbody, .data-table tr, .data-table td { display: block; width: 100%; box-sizing: border-box; }
+    .data-table, .data-table tbody, .data-table tr, .data-table td { box-sizing: border-box; }
     .data-table tr { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid var(--color-primary); border-radius: 0.5rem; padding: 0.75rem 0; margin-bottom: 0.75rem; }
     .data-table tr:last-child { margin-bottom: 0; }
-    .data-table td { border: none; padding: 0.4rem 1rem; }
-    .data-table td::before { content: attr(data-label); display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 3px; }
+    .data-table td { padding: 0.4rem 1rem; }
+    .data-table td::before { margin-bottom: 3px; }
     .col-acciones { flex-direction: column; align-items: stretch; gap: 0.5rem; padding-top: 0.75rem !important; }
     .btn-accion, .btn-ver { width: 100%; text-align: center; padding: 0.55rem 0.75rem; font-size: 0.9rem; box-sizing: border-box; }
 }

@@ -383,30 +383,9 @@ const handleRegenerateQr = (idExamen) => {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../css/panels.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem; /* p-4 móvil */
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem; /* sm:p-6 */
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem; /* lg:p-8 */
-    }
-}
-
 .credential-wrapper {
     width: 100%;
     max-width: 56rem; /* max-w-4xl (896px) */

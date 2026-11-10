@@ -6,10 +6,11 @@ import SelectInput from '@/components/ui/SelectInput.vue';
 import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import Modal from '@/components/ui/Modal.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingButton from '@/components/ui/LoadingButton.vue';
+import FormField from '@/components/ui/FormField.vue';
 import Pagination from '@/components/ui/Pagination.vue';
 import { useToastStore } from '@/stores/useToastStore';
-import { FileText, FileSpreadsheet } from 'lucide-vue-next';
+import ReportExportLink from '@/components/ui/ReportExportLink.vue';
 
 const props = defineProps({
     incidencias: Object,
@@ -202,14 +203,8 @@ const getColorClass = (tipo) => {
                     <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
                 </div>
                 <div class="header-actions">
-                    <a :href="urlExportarPdf" target="_blank" class="btn-export btn-pdf" title="Exportar incidencias a PDF">
-                        <FileText :size="16" />
-                        <span>Exportar PDF</span>
-                    </a>
-                    <a :href="urlExportarExcel" class="btn-export btn-excel" title="Exportar incidencias a Excel">
-                        <FileSpreadsheet :size="16" />
-                        <span>Exportar Excel</span>
-                    </a>
+                    <ReportExportLink format="pdf" :href="urlExportarPdf" target="_blank" title="Exportar incidencias a PDF" />
+                    <ReportExportLink format="excel" :href="urlExportarExcel" title="Exportar incidencias a Excel" />
                     <Button variant="danger" @click="openModal" class="btn-reportar">
                         + REPORTAR INCIDENCIA
                     </Button>
@@ -314,7 +309,7 @@ const getColorClass = (tipo) => {
                 </div>
 
                 <!-- Examen (Obligatorio) -->
-                <div class="form-group">
+                <FormField :error="form.errors.id_examen" error-tag="p">
                     <SelectInput 
                         label="EXAMEN *"
                         v-model="form.id_examen" 
@@ -324,22 +319,20 @@ const getColorClass = (tipo) => {
                     <p v-if="examenSeleccionado?.horario_permitido" class="text-xs text-gray-500 mt-1">
                         Horario permitido para registro: {{ examenSeleccionado.horario_permitido }}
                     </p>
-                    <p v-if="form.errors.id_examen" class="error-msg">{{ form.errors.id_examen }}</p>
-                </div>
+                </FormField>
 
                 <!-- Tipo de Incidencia (Obligatorio) -->
-                <div class="form-group">
+                <FormField :error="form.errors.tipo_incidencia" error-tag="p">
                     <SelectInput 
                         label="TIPO DE INCIDENCIA *"
                         v-model="form.tipo_incidencia" 
                         :options="tiposOptions"
                         placeholder="Seleccionar tipo..."
                     />
-                    <p v-if="form.errors.tipo_incidencia" class="error-msg">{{ form.errors.tipo_incidencia }}</p>
-                </div>
+                </FormField>
 
                 <!-- Estudiante (Opcional - con mini buscador) -->
-                <div class="form-group bg-light-gray p-4 rounded">
+                <FormField :error="form.errors.id_estudiante" error-tag="p" class="bg-light-gray p-4 rounded">
                     <label class="form-label font-bold text-xs text-gray-500 mb-2 block">ESTUDIANTE (OPCIONAL)</label>
                     <TextInput 
                         v-model="busquedaEstudiante" 
@@ -352,11 +345,10 @@ const getColorClass = (tipo) => {
                             {{ estudiante.codigo_universitario }} – {{ estudiante.nombres }} {{ estudiante.apellidos }}
                         </option>
                     </select>
-                    <p v-if="form.errors.id_estudiante" class="error-msg">{{ form.errors.id_estudiante }}</p>
-                </div>
+                </FormField>
 
                 <!-- Descripción (Obligatorio) -->
-                <div class="form-group">
+                <FormField :error="form.errors.descripcion_motivo" error-tag="p">
                     <label class="form-label font-bold text-xs text-gray-500 mb-2 block">DESCRIPCIÓN *</label>
                     <textarea 
                         v-model="form.descripcion_motivo" 
@@ -364,18 +356,14 @@ const getColorClass = (tipo) => {
                         class="textarea-custom" 
                         placeholder="Describe la incidencia en detalle..."
                     ></textarea>
-                    <p v-if="form.errors.descripcion_motivo" class="error-msg">{{ form.errors.descripcion_motivo }}</p>
-                </div>
+                </FormField>
 
                 <!-- Footer Modal -->
                 <div class="modal-footer-custom">
                     <Button type="button" variant="action" @click="closeModal" class="btn-cancelar">
                         CANCELAR
                     </Button>
-                    <Button type="submit" variant="danger" :disabled="form.processing || props.examenes.length === 0 || !form.id_examen" class="btn-guardar">
-                        <span v-if="!form.processing">GUARDAR INCIDENCIA</span>
-                        <LoadingSpinner v-else size="small" />
-                    </Button>
+                    <LoadingButton type="submit" variant="danger" :loading="form.processing" :disabled="form.processing || props.examenes.length === 0 || !form.id_examen" class="btn-guardar">GUARDAR INCIDENCIA</LoadingButton>
                 </div>
 
             </form>
@@ -384,30 +372,9 @@ const getColorClass = (tipo) => {
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../css/panels.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo estándar */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem;
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem;
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem;
-    }
-}
-
 .header-section {
     display: flex;
     justify-content: space-between;
@@ -426,40 +393,9 @@ const getColorClass = (tipo) => {
 }
 
 .btn-export {
-    display: inline-flex;
-    align-items: center;
     gap: 0.4rem;
     padding: 0.5rem 0.85rem;
     border-radius: 0.375rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.15s ease-in-out;
-    cursor: pointer;
-    font-family: inherit;
-    border: 1px solid transparent;
-}
-
-.btn-pdf {
-    background-color: #fef2f2;
-    color: #b91c1c;
-    border-color: #fca5a5;
-}
-
-.btn-pdf:hover {
-    background-color: #fee2e2;
-    color: #991b1b;
-}
-
-.btn-excel {
-    background-color: #f0fdf4;
-    color: #15803d;
-    border-color: #86efac;
-}
-
-.btn-excel:hover {
-    background-color: #dcfce7;
-    color: #166534;
 }
 
 .panel-title {
@@ -624,7 +560,7 @@ const getColorClass = (tipo) => {
 }
 .select-html:focus { border-color: var(--color-primary); }
 
-.error-msg {
+:deep(.error-msg) {
     color: var(--color-active);
     font-size: 0.8rem;
     margin-top: 4px;

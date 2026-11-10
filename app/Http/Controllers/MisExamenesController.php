@@ -42,24 +42,25 @@ class MisExamenesController extends Controller
 
     private function examenesDelEstudiante(Estudiante $estudiante): Collection
     {
-        $grupoIds = $estudiante->inscripciones()->pluck('id_grupo');
+        $grupoIds = $estudiante->inscripciones()->select('id_grupo');
 
         return Examen::query()
             ->with([
-                'asignatura',
-                'tipo',
+                'asignatura:id_asignatura,nombre_asignatura',
+                'tipo:id_tipo_examen,nombre',
                 'periodo',
                 'grupos',
                 'examenesAmbientes.ambiente',
-                'habilitaciones' => fn ($query) => $query->with('personalControl')->where('habilitacion.id_estudiante', $estudiante->id_estudiante),
+                'habilitaciones' => fn ($query) => $query->with('personalControl:id,name')->where('habilitacion.id_estudiante', $estudiante->id_estudiante),
             ])
             ->where(function ($query) use ($estudiante, $grupoIds) {
                 $query
                     ->whereHas('grupos', fn ($q) => $q->whereIn('grupo.id_grupo', $grupoIds))
                     ->orWhereHas('habilitaciones', fn ($q) => $q->where('habilitacion.id_estudiante', $estudiante->id_estudiante));
             })
-            ->get()
+            ->lazy(500)
             ->map(fn (Examen $examen) => $this->serializar($examen))
+            ->collect()
             ->sort(fn (array $a, array $b) => $this->comparar($a, $b))
             ->values();
     }
@@ -122,12 +123,14 @@ class MisExamenesController extends Controller
 
     private function calcularStats(Collection $examenes): array
     {
+        $conteos = $examenes->countBy('estado');
+
         return [
             'total' => $examenes->count(),
-            'en_curso' => $examenes->where('estado', 'en_curso')->count(),
-            'proximos' => $examenes->where('estado', 'programado')->count(),
-            'finalizados' => $examenes->where('estado', 'finalizado')->count(),
-            'cerrados' => $examenes->whereIn('estado', ['cancelado', 'anulado', 'suspendido'])->count(),
+            'en_curso' => $conteos->get('en_curso', 0),
+            'proximos' => $conteos->get('programado', 0),
+            'finalizados' => $conteos->get('finalizado', 0),
+            'cerrados' => $conteos->get('cancelado', 0) + $conteos->get('anulado', 0) + $conteos->get('suspendido', 0),
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Examen;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Enumerable;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Common\Entity\Style\Color;
 use OpenSpout\Common\Entity\Style\Style;
@@ -192,8 +193,9 @@ class ReporteExportService
     /**
      * Generar reporte histórico de incidencias en formato Excel (.xlsx).
      */
-    public function exportarIncidenciasExcel(Collection $incidencias, array $filtros, ?Examen $examenFiltro = null): BinaryFileResponse
+    public function exportarIncidenciasExcel(Enumerable $incidencias, array $filtros, ?Examen $examenFiltro = null, ?int $total = null): BinaryFileResponse
     {
+        $total ??= $incidencias->count();
         $filename = 'reporte_incidencias_' . date('Ymd_His') . '.xlsx';
         $tempFile = tempnam(sys_get_temp_dir(), 'incidencias_');
 
@@ -246,7 +248,7 @@ class ReporteExportService
         $writer->addRow(Row::fromValues(['Examen Filtrado:', $examenTxt]));
 
         $writer->addRow(Row::fromValues(['Tipo de Incidencia:', $filtros['tipo_incidencia'] ?? 'Todos los tipos']));
-        $writer->addRow(Row::fromValues(['Total Registros Coincidentes:', $incidencias->count()], $boldStyle));
+        $writer->addRow(Row::fromValues(['Total Registros Coincidentes:', $total], $boldStyle));
 
         $writer->addRow(Row::fromValues(['']));
 
@@ -285,7 +287,7 @@ class ReporteExportService
             ]));
         }
 
-        if ($incidencias->count() === 0) {
+        if ($total === 0) {
             $writer->addRow(Row::fromValues(['No se encontraron incidencias que coincidan con los filtros seleccionados.']));
         }
 

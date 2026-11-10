@@ -4,7 +4,7 @@ import { router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import Modal from '@/components/ui/Modal.vue';
-import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
+import LoadingButton from '@/components/ui/LoadingButton.vue';
 import TextInput from '@/components/ui/TextInput.vue';
 import Button from '@/components/ui/Button.vue';
 import { useToastStore } from '@/stores/useToastStore';
@@ -257,10 +257,9 @@ function eliminar() {
             </div>
             <template #footer>
                 <Button variant="action" class="btn-modal" @click="cerrarModal" :disabled="guardando">Cancelar</Button>
-                <Button variant="primary" class="btn-modal" @click="guardar" :disabled="guardando">
-                    <LoadingSpinner v-if="guardando" size="small" />
-                    <span v-else>{{ modoEdicion ? 'Guardar cambios' : 'Crear ambiente' }}</span>
-                </Button>
+                <LoadingButton variant="primary" class="btn-modal" @click="guardar" :disabled="guardando" :loading="guardando">
+                    {{ modoEdicion ? 'Guardar cambios' : 'Crear ambiente' }}
+                </LoadingButton>
             </template>
         </Modal>
 
@@ -270,40 +269,18 @@ function eliminar() {
             <p v-if="errorEliminar" class="error-msg" role="alert">{{ errorEliminar }}</p>
             <template #footer>
                 <Button variant="action" class="btn-modal" @click="modalEliminar = false" :disabled="eliminando">Cancelar</Button>
-                <Button variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando">
-                    <LoadingSpinner v-if="eliminando" size="small" />
-                    <span v-else>Sí, eliminar</span>
-                </Button>
+                <LoadingButton variant="danger" class="btn-modal" @click="eliminar" :disabled="eliminando" :loading="eliminando">Sí, eliminar</LoadingButton>
             </template>
         </Modal>
 
     </AuthenticatedLayout>
 </template>
 
+<style scoped src="../../../../css/catalog-tables.css"></style>
+
+<style scoped src="../../../../css/panels.css"></style>
+
 <style scoped>
-/* Contenedor principal con padding responsivo estándar */
-.panel-container {
-    font-family: var(--font-family);
-    background-color: transparent;
-    padding: 1rem;
-    flex: 1 1 0%;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-@media (min-width: 640px) {
-    .panel-container {
-        padding: 1.5rem;
-    }
-}
-
-@media (min-width: 1024px) {
-    .panel-container {
-        padding: 2rem;
-    }
-}
-
 .header-section {
     display: flex;
     justify-content: space-between;
@@ -340,17 +317,6 @@ function eliminar() {
     margin-bottom: var(--spacing-md);
 }
 
-.filter-field {
-    flex: 1;
-    min-width: 250px;
-}
-
-.result-count {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    white-space: nowrap;
-}
-
 .capacity-badge {
     background: var(--color-white-soft);
     color: var(--color-primary);
@@ -359,12 +325,6 @@ function eliminar() {
     font-size: 0.75rem;
     font-weight: 600;
     border: 1px solid var(--border-light);
-}
-
-.empty-state {
-    text-align: center;
-    color: var(--text-muted);
-    padding: 2rem !important;
 }
 
 .pagination {
@@ -380,26 +340,9 @@ function eliminar() {
     box-shadow: var(--shadow-card);
 }
 
-.page-info {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-
-.confirm-text {
-    font-size: 0.9rem;
-    color: var(--text-dark);
-    line-height: 1.6;
-}
-
 /* Tabla */
 .table-container { 
-    background: var(--color-white); 
-    border: 1px solid var(--border-light); 
-    border-radius: var(--radius-md); 
-    overflow-x: auto; 
-    width: 100%; 
-    box-shadow: var(--shadow-card);
+    width: 100%;
 }
 
 .col-id { 
@@ -407,18 +350,6 @@ function eliminar() {
     font-family: var(--font-mono); 
     font-size: 0.85rem; 
     width: 60px; 
-}
-
-.actions-col {
-    text-align: center !important;
-}
-
-.actions-cell {
-    display: flex;
-    gap: var(--spacing-sm);
-    justify-content: center;
-    align-items: center;
-    white-space: nowrap;
 }
 
 /* Responsive */
@@ -433,12 +364,6 @@ function eliminar() {
     .search-section {
         flex-direction: column;
         align-items: stretch;
-    }
-    .filter-field {
-        width: 100%;
-    }
-    .filter-field > * {
-        max-width: 100% !important;
     }
 }
 </style>

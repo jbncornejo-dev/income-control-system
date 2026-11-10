@@ -57,10 +57,12 @@ class ReportExporter
             if (! empty($section['headers'])) {
                 $lines[] = self::row($section['headers']);
             }
+            $hayFilas = false;
             foreach ($section['rows'] ?? [] as $row) {
+                $hayFilas = true;
                 $lines[] = self::row($row);
             }
-            if (empty($section['rows'])) {
+            if (! $hayFilas) {
                 $lines[] = 'Sin registros.';
             }
             $lines[] = '';

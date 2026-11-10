@@ -288,9 +288,12 @@ Route::middleware('auth')->group(function () {
             }
         }
 
-        $qrs = Habilitacion::with('examen')
+        $qrs = Habilitacion::with('examen.asignatura')
             ->where('id_estudiante', $estudiante->id_estudiante)
             ->where('estado_habilitado', true)
+            ->whereHas('examen', fn ($query) => $query
+                ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp - interval '24 hours' <= CAST(? AS timestamp)", [now()])
+                ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp + (duracion_minutos * interval '1 minute') >= CAST(? AS timestamp)", [now()]))
             ->get()
             ->filter(function (Habilitacion $habilitacion) {
                 $inicio = Carbon::parse($habilitacion->examen->fecha . ' ' . $habilitacion->examen->hora_inicio);

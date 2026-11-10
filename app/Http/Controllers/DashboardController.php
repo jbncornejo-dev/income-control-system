@@ -22,7 +22,7 @@ class DashboardController extends Controller
         $anio = request('anio', now()->year);
 
         return Inertia::render('Admin/Dashboard', [
-            'stats' => [
+            'stats' => fn () => [
                 'estudiantes' => Estudiante::count(),
                 'examenes' => Examen::count(),
                 'asignaturas' => Asignatura::count(),
@@ -33,38 +33,17 @@ class DashboardController extends Controller
                 'mes' => (int) $mes,
                 'anio' => (int) $anio,
             ],
-            'examenesCalendario' => Examen::with(['asignatura'])
+            'examenesCalendario' => fn () => Examen::with(['asignatura', 'periodo'])
                 ->whereMonth('fecha', $mes)
                 ->whereYear('fecha', $anio)
                 ->get(),
             // Corregida la relación de ambientes para coincidir con tu controlador
-            'proximosExamenes' => Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+            'proximosExamenes' => fn () => Examen::with(['asignatura', 'periodo', 'examenesAmbientes.ambiente'])
                 ->orderBy('fecha', 'asc')
                 ->where('fecha', '>=', now()->toDateString())
                 ->take(4)
                 ->get(),
-            'noticias' => Cache::remember('umss_noticias', 3600, function () {
-                try {
-                    $response = Http::timeout(5)->get('https://www.umss.edu.bo/categoria/noticias/feed/');
-                    if ($response->successful()) {
-                        $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
-                        $items = [];
-                        foreach ($xml->channel->item as $item) {
-                            $items[] = [
-                                'titulo' => (string) $item->title,
-                                'enlace' => (string) $item->link,
-                                'fecha' => date('M Y', strtotime((string) $item->pubDate)),
-                                'resumen' => mb_strimwidth(strip_tags((string) $item->description), 0, 120, '...')
-                            ];
-                            if (count($items) >= 4) break;
-                        }
-                        return $items;
-                    }
-                } catch (\Exception $e) {
-                    return null;
-                }
-                return null;
-            }),
+            'noticias' => fn () => $this->noticiasUmss(),
         ]);
     }
 
@@ -75,72 +54,54 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $proximosExamenes = Examen::with(['asignatura', 'examenesAmbientes.ambiente', 'tipo:id_tipo_examen,nombre'])
-            ->withCount([
-                'habilitaciones as hab_count' => function ($query) {
-                    $query->where('estado_habilitado', true);
-                },
-                'habilitaciones as inhab_count' => function ($query) {
-                    $query->where('estado_habilitado', false);
-                },
-            ])
-            // Solo exámenes que cubren al menos uno de los grupos del docente.
-            ->whereHas('grupos', fn ($query) => $query->where('grupo.id_usuario', $user->id))
-            ->where(function ($query) {
-                $query->where('fecha', '>', now()->toDateString())
-                    ->orWhere(function ($q) {
-                        $q->where('fecha', '=', now()->toDateString())
-                            ->where('hora_inicio', '>', now()->toTimeString());
-                    });
-            })
-            ->orderBy('fecha', 'asc')
-            ->orderBy('hora_inicio', 'asc')
-            ->take(3)
-            ->get();
+        $proximosExamenes = null;
+        $cargarProximos = function () use ($user, &$proximosExamenes) {
+            return $proximosExamenes ??= Examen::with(['asignatura', 'periodo', 'examenesAmbientes.ambiente', 'tipo:id_tipo_examen,nombre'])
+                ->withCount([
+                    'habilitaciones as hab_count' => function ($query) {
+                        $query->where('estado_habilitado', true);
+                    },
+                    'habilitaciones as inhab_count' => function ($query) {
+                        $query->where('estado_habilitado', false);
+                    },
+                ])
+                // Solo exámenes que cubren al menos uno de los grupos del docente.
+                ->whereHas('grupos', fn ($query) => $query->where('grupo.id_usuario', $user->id))
+                ->where(function ($query) {
+                    $query->where('fecha', '>', now()->toDateString())
+                        ->orWhere(function ($q) {
+                            $q->where('fecha', '=', now()->toDateString())
+                                ->where('hora_inicio', '>', now()->toTimeString());
+                        });
+                })
+                ->orderBy('fecha', 'asc')
+                ->orderBy('hora_inicio', 'asc')
+                ->take(3)
+                ->get();
+        };
 
         $mes = request('mes', now()->month);
         $anio = request('anio', now()->year);
 
-        $examenesCalendario = Examen::with(['asignatura'])
+        $examenesCalendario = fn () => Examen::with(['asignatura', 'periodo'])
             ->whereHas('grupos', fn ($query) => $query->where('grupo.id_usuario', $user->id))
             ->whereMonth('fecha', $mes)
             ->whereYear('fecha', $anio)
             ->get();
 
         return Inertia::render('Docente/Dashboard', [
-            'stats' => [
-                'examenes' => $proximosExamenes->count(),
-                'habilitados' => (int) $proximosExamenes->sum('hab_count'),
-                'inhabilitados' => (int) $proximosExamenes->sum('inhab_count'),
+            'stats' => fn () => [
+                'examenes' => $cargarProximos()->count(),
+                'habilitados' => (int) $cargarProximos()->sum('hab_count'),
+                'inhabilitados' => (int) $cargarProximos()->sum('inhab_count'),
             ],
-            'proximosExamenes' => $proximosExamenes,
+            'proximosExamenes' => $cargarProximos,
             'calendarioData' => [
                 'mes' => (int) $mes,
                 'anio' => (int) $anio,
             ],
             'examenesCalendario' => $examenesCalendario,
-            'noticias' => Cache::remember('umss_noticias', 3600, function () {
-                try {
-                    $response = Http::timeout(5)->get('https://www.umss.edu.bo/categoria/noticias/feed/');
-                    if ($response->successful()) {
-                        $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
-                        $items = [];
-                        foreach ($xml->channel->item as $item) {
-                            $items[] = [
-                                'titulo' => (string) $item->title,
-                                'enlace' => (string) $item->link,
-                                'fecha' => date('M Y', strtotime((string) $item->pubDate)),
-                                'resumen' => mb_strimwidth(strip_tags((string) $item->description), 0, 120, '...')
-                            ];
-                            if (count($items) >= 4) break;
-                        }
-                        return $items;
-                    }
-                } catch (\Exception $e) {
-                    return null;
-                }
-                return null;
-            }),
+            'noticias' => fn () => $this->noticiasUmss(),
         ]);
     }
 
@@ -157,7 +118,7 @@ class DashboardController extends Controller
         $fechaInicio = now()->toDateString();
         $fechaFin = now()->addDays($diasVisibilidad)->toDateString();
 
-        $examenesControl = Examen::with(['asignatura', 'examenesAmbientes.ambiente'])
+        $examenesControl = Examen::with(['asignatura', 'periodo', 'examenesAmbientes.ambiente'])
             ->whereBetween('fecha', [$fechaInicio, $fechaFin])
             ->orderBy('fecha', 'asc')
             ->orderBy('hora_inicio', 'asc')
@@ -177,5 +138,31 @@ class DashboardController extends Controller
             ],
             'examenes' => $examenesControl,
         ]);
+    }
+
+    private function noticiasUmss(): ?array
+    {
+        return Cache::remember('umss_noticias', 3600, function () {
+            try {
+                $response = Http::timeout(5)->get('https://www.umss.edu.bo/categoria/noticias/feed/');
+                if ($response->successful()) {
+                    $xml = simplexml_load_string($response->body(), 'SimpleXMLElement', LIBXML_NOCDATA);
+                    $items = [];
+                    foreach ($xml->channel->item as $item) {
+                        $items[] = [
+                            'titulo' => (string) $item->title,
+                            'enlace' => (string) $item->link,
+                            'fecha' => date('M Y', strtotime((string) $item->pubDate)),
+                            'resumen' => mb_strimwidth(strip_tags((string) $item->description), 0, 120, '...')
+                        ];
+                        if (count($items) >= 4) break;
+                    }
+                    return $items;
+                }
+            } catch (\Exception $e) {
+                return null;
+            }
+            return null;
+        });
     }
 }

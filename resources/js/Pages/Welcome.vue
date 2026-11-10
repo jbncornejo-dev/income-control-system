@@ -80,33 +80,13 @@
                 <div class="protocol-grid">
                     <div class="protocol-connector"></div>
 
-                    <div class="step-card reveal delay-100">
+                    <div v-for="paso in pasos" :key="paso.numero" class="step-card reveal" :class="paso.delay">
                         <div class="step-icon-wrapper">
-                            <span class="step-number">01</span>
+                            <span class="step-number">{{ paso.numero }}</span>
                         </div>
-                        <h3 class="step-title">Autenticación</h3>
+                        <h3 class="step-title">{{ paso.titulo }}</h3>
                         <p class="step-text">
-                            Acceso protegido mediante credenciales institucionales. El sistema valida la identidad del evaluador antes de habilitar el terminal.
-                        </p>
-                    </div>
-
-                    <div class="step-card reveal delay-200">
-                        <div class="step-icon-wrapper">
-                            <span class="step-number">02</span>
-                        </div>
-                        <h3 class="step-title">Escaneo Rápido</h3>
-                        <p class="step-text">
-                            Lectura inmediata de códigos QR o credenciales. Optimizado para procesar grandes volúmenes de estudiantes en segundos.
-                        </p>
-                    </div>
-
-                    <div class="step-card reveal delay-300">
-                        <div class="step-icon-wrapper">
-                            <span class="step-number">03</span>
-                        </div>
-                        <h3 class="step-title">Confirmación</h3>
-                        <p class="step-text">
-                            Registro automático en la base de datos central. Guarda un log exacto de fecha, hora y puerta de ingreso para auditorías.
+                            {{ paso.descripcion }}
                         </p>
                     </div>
                 </div>
@@ -133,6 +113,21 @@ import { Link, Head } from '@inertiajs/vue3';
 const isScrolled = ref(false);
 const mobileMenuOpen = ref(false);
 let observer = null;
+
+const pasos = [
+    {
+        numero: '01', delay: 'delay-100', titulo: 'Autenticación',
+        descripcion: 'Acceso protegido mediante credenciales institucionales. El sistema valida la identidad del evaluador antes de habilitar el terminal.',
+    },
+    {
+        numero: '02', delay: 'delay-200', titulo: 'Escaneo Rápido',
+        descripcion: 'Lectura inmediata de códigos QR o credenciales. Optimizado para procesar grandes volúmenes de estudiantes en segundos.',
+    },
+    {
+        numero: '03', delay: 'delay-300', titulo: 'Confirmación',
+        descripcion: 'Registro automático en la base de datos central. Guarda un log exacto de fecha, hora y puerta de ingreso para auditorías.',
+    },
+];
 
 const handleScroll = () => {
     isScrolled.value = window.scrollY > 50;

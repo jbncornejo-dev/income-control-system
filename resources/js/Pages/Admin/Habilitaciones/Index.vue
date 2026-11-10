@@ -448,6 +448,8 @@ function cambiarPersonalManual(hab, idUsuario) {
     </AuthenticatedLayout>
 </template>
  
+<style scoped src="../../../../css/catalog-tables.css"></style>
+
 <style scoped>
 .panel-container {
     padding: var(--spacing-lg) var(--spacing-xl);
@@ -495,7 +497,6 @@ function cambiarPersonalManual(hab, idUsuario) {
 .filter-btn { background: var(--color-white); border: none; padding: 0.5rem 1rem; font-size: 0.875rem; color: var(--text-dark); cursor: pointer; border-right: 1px solid var(--border-light); }
 .filter-btn:last-child { border-right: none; }
 .filter-btn.active { background: var(--color-primary); color: var(--color-white); border-color: var(--color-primary); }
-.table-container { background: var(--color-white); border: 1px solid var(--border-light); border-radius: var(--radius-md); overflow-x: auto; box-shadow: var(--shadow-card); }
 .col-mono { font-family: var(--font-mono); font-size: 0.85rem; }
 .student-name { font-weight: 500; color: var(--text-dark); }
 .student-reason { font-size: 0.75rem; margin-top: 0.25rem; }
@@ -503,11 +504,9 @@ function cambiarPersonalManual(hab, idUsuario) {
 .badge-hab { background-color: rgba(79, 70, 229, 0.1); color: var(--color-primary); border: 1px solid rgba(79, 70, 229, 0.2); }
 .badge-inhab { background-color: rgba(220, 53, 69, 0.1); color: var(--color-danger); border: 1px solid rgba(220, 53, 69, 0.2); }
 .badge-confirmado { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; }
-.empty-state { text-align: center; color: var(--text-muted); padding: 2rem !important; }
 
 /* Estandarización de Modales */
 .btn-modal { padding: 10px 20px !important; font-size: 14px !important; }
-.confirm-text { color: var(--text-dark); font-size: 0.9rem; line-height: 1.6; }
 
 /* Fix para agrupar botones como solapas (Tabs) */
 .filter-group { display: flex; gap: 0; }

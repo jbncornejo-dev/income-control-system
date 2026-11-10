@@ -9,6 +9,7 @@ use App\Models\Examen;
 use App\Models\Incidencia;
 use App\Services\ReporteExportService;
 use App\Support\ReportExporter;
+use App\Support\ReadSnapshot;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -36,6 +37,7 @@ class IncidenciaController extends Controller
         $filtros = $request->validated();
 
         $incidencias = $this->queryIncidencias($filtros)
+            ->with('examen.periodo')
             ->paginate(15)
             ->appends($filtros);
 
@@ -46,7 +48,11 @@ class IncidenciaController extends Controller
         $ahora = Carbon::now('America/La_Paz');
 
         // Solo exámenes en curso o dentro de ventana asignados al control
-        $examenesEnCurso = Examen::with(['asignatura', 'grupos.inscripciones', 'habilitaciones'])
+        $examenesEnCurso = Examen::with([
+            'asignatura', 'periodo',
+            'grupos.inscripciones:id_inscripcion,id_grupo,id_estudiante',
+            'habilitaciones:id_habilitacion,id_examen,id_estudiante,estado_habilitado',
+        ])
             ->whereHas('personalControl', function ($query) use ($request) {
                 $query->where('examen_personal_control.id_usuario', $request->user()->id);
             })
@@ -54,6 +60,8 @@ class IncidenciaController extends Controller
                 $q->whereNull('estado')
                   ->orWhereNotIn('estado', ['cancelado', 'anulado']);
             })
+            ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp - interval '10 minutes' <= CAST(? AS timestamp)", [$ahora->copy()->setTimezone(config('app.timezone'))])
+            ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp + ((duracion_minutos + 10) * interval '1 minute') >= CAST(? AS timestamp)", [$ahora->copy()->setTimezone(config('app.timezone'))])
             ->get()
             ->filter(function ($examen) use ($ahora) {
                 return $examen->estaEnVentanaOperacionControl($ahora);
@@ -113,11 +121,15 @@ class IncidenciaController extends Controller
      */
     public function exportarExcel(IndexIncidenciaRequest $request, ReporteExportService $exportService)
     {
-        $filtros = $request->validated();
-        $incidencias = $this->queryIncidencias($filtros)->get();
-        $examenFiltro = !empty($filtros['id_examen']) ? Examen::with('asignatura')->find($filtros['id_examen']) : null;
+        return ReadSnapshot::run(function () use ($request, $exportService) {
+            $filtros = $request->validated();
+            $query = $this->queryIncidencias($filtros);
+            $total = $query->count();
+            $incidencias = $query->lazy(500);
+            $examenFiltro = !empty($filtros['id_examen']) ? Examen::with('asignatura')->find($filtros['id_examen']) : null;
 
-        return $exportService->exportarIncidenciasExcel($incidencias, $filtros, $examenFiltro);
+            return $exportService->exportarIncidenciasExcel($incidencias, $filtros, $examenFiltro, $total);
+        });
     }
 
     public function store(Request $request)
@@ -166,33 +178,30 @@ class IncidenciaController extends Controller
 
     public function exportar(IndexIncidenciaRequest $request)
     {
-        $filters = $request->validated();
-        $incidencias = Incidencia::with(['examen.asignatura', 'estudiante', 'user'])
-            ->when($filters['id_examen'] ?? null, fn ($q, $id) => $q->where('id_examen', $id))
-            ->when($filters['tipo_incidencia'] ?? null, fn ($q, $tipo) => $q->where('tipo_incidencia', $tipo))
-            ->when($filters['desde'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '>=', $date))
-            ->when($filters['hasta'] ?? null, fn ($q, $date) => $q->whereDate('fecha_hora', '<=', $date))
-            ->latest('fecha_hora')->get();
-        $rows = $incidencias->map(fn ($item) => [
-            $item->examen?->asignatura?->nombre_asignatura ?? 'N/D',
-            $item->tipo_incidencia,
-            $item->estudiante ? trim($item->estudiante->nombres . ' ' . $item->estudiante->apellidos) : 'Sin estudiante',
-            $item->user?->name ?? 'Sistema',
-            $item->descripcion_motivo,
-            $item->fecha_hora,
-        ])->all();
+        return ReadSnapshot::run(function () use ($request) {
+            $filters = $request->validated();
+            $incidencias = $this->queryIncidencias($filters)->lazy(500);
+            $rows = $incidencias->map(fn ($item) => [
+                $item->examen?->asignatura?->nombre_asignatura ?? 'N/D',
+                $item->tipo_incidencia,
+                $item->estudiante ? trim($item->estudiante->nombres . ' ' . $item->estudiante->apellidos) : 'Sin estudiante',
+                $item->user?->name ?? 'Sistema',
+                $item->descripcion_motivo,
+                $item->fecha_hora,
+            ]);
 
-        if ($request->query('formato') === 'pdf') {
-            return ReportExporter::downloadPdf('incidencias.pdf', 'Reporte de incidencias', [], [[
-                'heading' => 'Incidencias filtradas',
+            if ($request->query('formato') === 'pdf') {
+                return ReportExporter::downloadPdf('incidencias.pdf', 'Reporte de incidencias', [], [[
+                    'heading' => 'Incidencias filtradas',
+                    'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
+                    'rows' => $rows,
+                ]]);
+            }
+            return ReportExporter::downloadExcel('incidencias.xls', 'Reporte de incidencias', [[
+                'name' => 'Incidencias',
                 'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
                 'rows' => $rows,
             ]]);
-        }
-        return ReportExporter::downloadExcel('incidencias.xls', 'Reporte de incidencias', [[
-            'name' => 'Incidencias',
-            'headers' => ['Asignatura', 'Tipo', 'Estudiante', 'Reportado por', 'Detalle', 'Fecha'],
-            'rows' => $rows,
-        ]]);
+        });
     }
 }
