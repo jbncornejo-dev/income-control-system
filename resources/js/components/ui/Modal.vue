@@ -1,10 +1,14 @@
 <template>
   <Teleport to="body">
     <div v-if="open" class="modal-overlay" @click.self="emit('close')">
-      <div class="modal-container">
+      <div class="modal-container" :class="{ 'modal-container--wide': wide }">
         <div class="modal-header">
           <h2>{{ title }}</h2>
-          <button @click="emit('close')">✕</button>
+          <button class="modal-close" @click="emit('close')" aria-label="Cerrar" title="Cerrar">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M1 1l12 12M13 1L1 13" />
+          </svg>
+        </button>
         </div>
         <div class="modal-body">
           <slot />
@@ -28,6 +32,10 @@ const props = defineProps({
   title: {
     type: String,
     default: ''
+  },
+  wide: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -50,21 +58,54 @@ onUnmounted(() => window.removeEventListener('keydown', handleEscape))
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: var(--spacing-md);
 }
 .modal-container {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  min-width: 400px;
-  max-width: 90%;
+  background: var(--color-white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-elevated);
+}
+.modal-container--wide {
+  max-width: 860px;
 }
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: var(--spacing-md);
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+.modal-close:hover {
+  background: var(--color-bg-input);
+  color: var(--color-active);
+}
+.modal-close:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-input-focus);
 }
 .modal-footer {
-  margin-top: 16px;
+  margin-top: var(--spacing-md);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
 }
 </style>

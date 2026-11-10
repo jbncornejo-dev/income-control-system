@@ -18,10 +18,14 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'id_rol',
+        'id_estudiante',
         'name',
         'email',
+        'email_verified_at',
         'username',
+        'documento_identidad',
         'password',
+        'debe_cambiar_password',
     ];
 
     /**
@@ -44,6 +48,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'debe_cambiar_password' => 'boolean',
         ];
     }
 
@@ -69,5 +74,42 @@ class User extends Authenticatable
     public function auditorias()
     {
         return $this->hasMany(AuditoriaLog::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a muchos (user-grupo)
+    public function grupos()
+    {
+        return $this->hasMany(Grupo::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a uno (cuenta de usuario - estudiante)
+    public function estudiante()
+    {
+        return $this->belongsTo(Estudiante::class, 'id_estudiante', 'id_estudiante');
+    }
+
+    /**
+     * ¿La cuenta fue creada con una contraseña inicial temporal?
+     */
+    public function esCuentaEstudiantePendiente(): bool
+    {
+        return (bool) $this->debe_cambiar_password;
+    }
+
+    public function examenesAsignados()
+    {
+        return $this->belongsToMany(
+            Examen::class,
+            'examen_personal_control',
+            'id_usuario',
+            'id_examen',
+            'id',
+            'id_examen'
+        );
+    }
+
+    public function habilitacionesAsignadas()
+    {
+        return $this->hasMany(Habilitacion::class, 'id_personal_control');
     }
 }

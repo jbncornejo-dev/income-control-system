@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -38,6 +39,12 @@ class DatabaseSeeder extends Seeder
                 'rol' => 'docente',
             ],
             [
+                'name' => 'Docente de Desarrollo 2',
+                'username' => 'docente2',
+                'email' => 'docente2@example.com',
+                'rol' => 'docente',
+            ],
+            [
                 'name' => 'Personal de Control de Desarrollo',
                 'username' => 'control',
                 'email' => 'control@example.com',
@@ -52,16 +59,52 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($usuariosDesarrollo as $usuario) {
+            // Se identifica por username (el identificador de login) para que
+            // el seed siga siendo idempotente aunque más abajo se sincronice
+            // el correo del demo con el institucional del estudiante.
             User::updateOrCreate(
-                ['email' => $usuario['email']],
+                ['username' => $usuario['username']],
                 [
                     'id_rol' => $roles[$usuario['rol']]->id_rol,
                     'name' => $usuario['name'],
                     'username' => $usuario['username'],
+                    'email' => $usuario['email'],
                     'email_verified_at' => now(),
                     'password' => Hash::make('pass'),
                 ]
             );
+        }
+
+        $this->call([
+            AmbienteSeeder::class,
+            AsignaturaSeeder::class,
+            PeriodoSeeder::class,
+            // Los tipos se crean antes que los exámenes: el ExamenSeeder los
+            // referencia (id_tipo_examen) al construir cada examen del demo.
+            TipoExamenSeeder::class,
+            GrupoSeeder::class,
+            EstudianteSeeder::class,
+            ExamenSeeder::class,
+            InscripcionSeeder::class,
+            HabilitacionSeeder::class,
+            DemoOperativoSeeder::class,
+            DemoAuditoriaDetalleSeeder::class,
+            DemoIncidenciasSeeder::class,
+        ]);
+
+        // La cuenta demo "estudiante / pass" se vincula a la matrícula real
+        // (primer estudiante del demo, código 201800001), así al entrar ve sus
+        // exámenes en /mis-examenes. Su correo se sincroniza con el
+        // institucional del estudiante (@est.umss.edu) para que sea consistente
+        // con los correos que usan las cuentas reales. Requiere que
+        // EstudianteSeeder ya haya corrido.
+        $estudianteDemo = Estudiante::query()->orderBy('id_estudiante')->first();
+
+        if ($estudianteDemo) {
+            User::query()->where('username', 'estudiante')->update([
+                'id_estudiante' => $estudianteDemo->id_estudiante,
+                'email' => $estudianteDemo->email,
+            ]);
         }
     }
 }

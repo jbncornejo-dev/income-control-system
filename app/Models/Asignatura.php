@@ -19,4 +19,10 @@ class Asignatura extends Model
     {
         return $this->hasMany(Examen::class, 'id_asignatura', 'id_asignatura');
     }
+
+    // Relación de uno a muchos (asignatura-grupo)
+    public function grupos()
+    {
+        return $this->hasMany(Grupo::class, 'id_asignatura', 'id_asignatura');
+    }
 }

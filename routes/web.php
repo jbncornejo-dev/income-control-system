@@ -2,38 +2,42 @@
 
 use App\Http\Controllers\AmbienteController;
 use App\Http\Controllers\AsignaturaController;
+use App\Http\Controllers\AuditoriaController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CambiarPasswordController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExamenController;
+use App\Http\Controllers\GrupoController;
+use App\Http\Controllers\InscripcionController;
 use App\Http\Controllers\HabilitacionController;
+use App\Http\Controllers\HistoricoController;
+use App\Http\Controllers\EstadisticaIncidenciaController;
+use App\Http\Controllers\IncidenciaController;
+use App\Http\Controllers\MisExamenesController;
+use App\Http\Controllers\PanelAsistenciaController;
+use App\Http\Controllers\PeriodoTipoExamenController;
+use App\Http\Controllers\PersonalControlController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\TipoExamenController;
+use App\Http\Controllers\UserController;
+use App\Models\Ambiente;
+use App\Models\Asignatura;
+use App\Models\Estudiante;
+use App\Models\Examen;
+use App\Models\ExamenQr;
+use App\Models\Habilitacion;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\RegistroIngresoController;
+use Carbon\Carbon;
 
 Route::get('/', function () {
     if (! Auth::check()) {
         return Inertia::render('Welcome');
     }
 
-    $user = Auth::user();
-
-    $rutaDestino = match ($user->role) {
-        'admin' => 'admin.dashboard',
-        'docente' => 'docente.dashboard',
-        'control' => 'control.dashboard',
-        'estudiante' => 'estudiante.dashboard',
-        default => null, // Asignamos null si el rol no coincide con ninguno
-    };
-
-    if (! $rutaDestino) {
-        Auth::logout(); // Invalidamos la sesión por seguridad
-
-        // Redirigimos al login enviando un mensaje de error a la variable de sesión
-        return redirect()->route('login')->withErrors([
-            'role' => 'Su cuenta no tiene un rol válido asignado. Comuníquese con administración.',
-        ]);
-    }
-
-    return redirect()->route($rutaDestino);
+    // Si está autenticado, que el controlador de tráfico del dashboard se encargue
+    return redirect()->route('dashboard');
 })->name('home');
 
 Route::middleware('guest')->group(function () {
@@ -42,21 +46,94 @@ Route::middleware('guest')->group(function () {
     })->name('login');
 
     Route::post('/login', [AuthController::class, 'store'])->name('login.store');
-    Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
 
 Route::middleware('auth')->group(function () {
     Route::post('/logout', [AuthController::class, 'destroy'])->name('logout');
 
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    })->name('dashboard');
+    // Cambio de contraseña: obligatorio para cuentas de estudiante recién
+    // creadas (contraseña inicial temporal), opcional para el resto.
+    Route::get('/cambiar-password', [CambiarPasswordController::class, 'show'])->name('cambiar-password.show');
+    Route::post('/cambiar-password', [CambiarPasswordController::class, 'store'])->name('cambiar-password.store');
 
-    Route::middleware('role:administrador,docente,personal de control de ingreso')->group(function () {
+    /*Route::get('/admin/dashboard', function () { return Inertia::render('Dashboard'); })->name('admin.dashboard');
+    Route::get('/docente/dashboard', function () { return Inertia::render('Dashboard'); })->name('docente.dashboard');
+    Route::get('/control/dashboard', function () { return Inertia::render('Dashboard'); })->name('control.dashboard');
+    Route::get('/estudiante/dashboard', function () { return Inertia::render('Dashboard'); })->name('estudiante.dashboard');
+    */
+    // Keep generic dashboard route to prevent breaking hardcoded links
+    Route::get('/dashboard', function () {
+        $user = auth()->user();
+
+        // 1. Verificación de seguridad inicial
+        if (! $user->rol) {
+            abort(403, 'No tienes un rol asignado en la base de datos.');
+        }
+
+        $nombreRol = $user->rol->nombre_rol;
+
+        // 2. LÓGICA PARA EL ADMINISTRADOR
+        if ($nombreRol === 'administrador') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // 3. LÓGICA PARA EL DOCENTE
+        if ($nombreRol === 'docente') {
+            return redirect()->route('docente.dashboard');
+        }
+
+        // 4. LÓGICA PARA EL ESTUDIANTE
+        if ($nombreRol === 'estudiante') {
+            return redirect()->route('mis-examenes.index');
+        }
+
+        // 5. LÓGICA PARA CONTROL DE INGRESO
+        if ($nombreRol === 'personal de control de ingreso') {
+            return redirect()->route('control.dashboard');
+        }
+
+        abort(403, 'Tu rol no tiene un panel principal configurado.');
+
+    })->middleware(['password.pendiente', 'verified'])->name('dashboard');
+
+    Route::middleware(['password.pendiente', 'role:administrador,docente,personal de control de ingreso'])->group(function () {
+        Route::get('/control/dashboard', [DashboardController::class, 'control'])->name('control.dashboard');
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('estudiantes.index');
+        Route::get('/incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
+        Route::get('/incidencias/exportar/pdf', [IncidenciaController::class, 'exportarPdf'])->name('incidencias.exportar.pdf');
+        Route::get('/incidencias/exportar/excel', [IncidenciaController::class, 'exportarExcel'])->name('incidencias.exportar.excel');
+        Route::post('/incidencias', [IncidenciaController::class, 'store'])->name('incidencias.store');
+        Route::get('/incidencias/exportar', [IncidenciaController::class, 'exportar'])->name('incidencias.exportar');
+        Route::get('/incidencias/estadisticas', [EstadisticaIncidenciaController::class, 'index'])->name('incidencias.estadisticas');
+        Route::get('/registro-ingreso', [RegistroIngresoController::class, 'index'])->name('registro-ingreso.index');
+        Route::post('/registro-ingreso/validar', [RegistroIngresoController::class, 'validarEstudiante'])->name('registro-ingreso.validar');
+        Route::post('/registro-ingreso', [RegistroIngresoController::class, 'store'])->name('registro-ingreso.store');
+        Route::get('/panel-asistencia', [PanelAsistenciaController::class, 'index'])->name('panel-asistencia.index');
+        Route::get('/panel-asistencia/{examen}/exportar', [PanelAsistenciaController::class, 'exportar'])->name('panel-asistencia.exportar');
+        Route::get('/panel-asistencia/exportar/pdf', [PanelAsistenciaController::class, 'exportarPdf'])->name('panel-asistencia.exportar.pdf');
+        Route::get('/panel-asistencia/exportar/excel', [PanelAsistenciaController::class, 'exportarExcel'])->name('panel-asistencia.exportar.excel');
+        Route::post('/registro-ingreso/sync', [RegistroIngresoController::class, 'sincronizarLote'])->name('registro-ingreso.sync');
+        });
+
+    // Mis Exámenes: cada estudiante ve únicamente sus exámenes (inscripciones
+    // y habilitaciones). El controlador no recibe parámetros de la URL, así
+    // que es imposible pedir los exámenes de otro estudiante.
+    Route::middleware(['password.pendiente', 'role:estudiante'])->group(function () {
+        Route::get('/mis-examenes', [MisExamenesController::class, 'index'])->name('mis-examenes.index');
     });
 
-    Route::middleware('role:administrador')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
+        Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
+        Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
+        Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
+        Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
+        Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
+        Route::post('/grupos', [GrupoController::class, 'store'])->name('grupos.store');
+        Route::patch('/grupos/{grupo}', [GrupoController::class, 'update'])->name('grupos.update');
+        Route::delete('/grupos/{grupo}', [GrupoController::class, 'destroy'])->name('grupos.destroy');
+        Route::get('/grupos/{grupo}', [InscripcionController::class, 'show'])->name('grupos.show');
+        Route::post('/grupos/{grupo}/inscripciones', [InscripcionController::class, 'store'])->name('inscripciones.store');
+        Route::delete('/grupos/{grupo}/inscripciones/{inscripcion}', [InscripcionController::class, 'destroy'])->name('inscripciones.destroy');
         // Listar y buscar ambientes: /ambientes?nombre_ambiente=aula, con paginación de 15 registros.
         Route::get('/ambientes', [AmbienteController::class, 'index'])->name('ambientes.index');
         // Editar nombre y capacidad; el ID de la URL identifica el ambiente y no se modifica.
@@ -70,7 +147,12 @@ Route::middleware('auth')->group(function () {
         // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
-        Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // QR de identificación del estudiante (PNG) para el control de ingreso.
+        Route::get('/estudiantes/{estudiante}/qr', [StudentController::class, 'qr'])->name('estudiantes.qr');
+        // Listar y buscar exámenes: /examenes?asignatura=cálculo&fecha=2026-09-20&hora_inicio=08:00, con paginación de 15 registros.
+        // Eliminar únicamente exámenes sin inscripciones ni registros de ingreso; además borra sus ambientes asociados.
+        Route::delete('/examenes/{examen}', [ExamenController::class, 'destroy'])->name('examenes.destroy');
+
         // Esta ruta atiende el listado y la búsqueda mediante parámetros de consulta:
         // /asignaturas?id_asignatura=12&nombre_asignatura=cálculo
         // Ambos filtros son opcionales; no se necesita una ruta separada para buscar.
@@ -81,9 +163,37 @@ Route::middleware('auth')->group(function () {
         Route::delete('/asignaturas/{asignatura}', [AsignaturaController::class, 'destroy'])->name('asignaturas.destroy');
         // Ruta para registrar asignaturas
         Route::post('/asignaturas', [AsignaturaController::class, 'store'])->name('asignaturas.store');
+
+        // Catálogo de tipos de examen (gestionado por el administrador) y plan
+        // de evaluación por periodo: qué tipos rigen en cada gestión y en qué orden.
+        Route::get('/tipos-examen', [TipoExamenController::class, 'index'])->name('tipos-examen.index');
+        Route::post('/tipos-examen', [TipoExamenController::class, 'store'])->name('tipos-examen.store');
+        Route::patch('/tipos-examen/{tipoExamen}', [TipoExamenController::class, 'update'])->name('tipos-examen.update');
+        Route::delete('/tipos-examen/{tipoExamen}', [TipoExamenController::class, 'destroy'])->name('tipos-examen.destroy');
+        // Plan por periodo: PUT con la lista completa [{id_tipo_examen, orden}, ...].
+        Route::put('/periodos/{periodo}/tipos-examen', [PeriodoTipoExamenController::class, 'sync'])->name('periodos.tipos-examen');
+
+        Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
+        Route::patch('/usuarios/{usuario}/password', [UserController::class, 'updatePassword'])->name('usuarios.password');
+        Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
     });
 
-    Route::middleware('role:administrador,docente')->group(function () {
+    Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
+        Route::get('/historico', [HistoricoController::class, 'index'])->name('historico.index');
+        Route::get('/historico/incidencias/exportar', [HistoricoController::class, 'exportarIncidencias'])->name('historico.incidencias.exportar');
+        Route::get('/docente/dashboard', [DashboardController::class, 'docente'])->name('docente.dashboard');
+        Route::get('/examenes', [ExamenController::class, 'index'])->name('examenes.index');
+        // Registrar exámenes: la vista carga las asignaturas y ambientes disponibles.
+        Route::get('/examenes/crear', [ExamenController::class, 'create'])->name('examenes.create');
+        // Consultar ambientes libres/ocupados para una ventana de tiempo (formulario registro/edición).
+        Route::get('/examenes/disponibilidad', [ExamenController::class, 'disponibilidad'])->name('examenes.disponibilidad');
+        // Página de edición: comparte el mismo formulario que el registro, precargado con el examen.
+        Route::get('/examenes/{examen}/editar', [ExamenController::class, 'edit'])->name('examenes.edit');
+        Route::post('/examenes', [ExamenController::class, 'store'])->name('examenes.store');
+        // Edición parcial (PATCH) de un examen existente.
+        Route::patch('/examenes/{examen}', [ExamenController::class, 'update'])->name('examenes.update');
+        // Cambiar el estado manual del examen: anular (cancelado), suspender o reanudar.
+        Route::patch('/examenes/{examen}/estado', [ExamenController::class, 'cambiarEstado'])->name('examenes.estado');
         // Asociar estudiantes a un examen
         Route::post(
             '/examenes/{examen}/habilitaciones',
@@ -96,14 +206,194 @@ Route::middleware('auth')->group(function () {
             [HabilitacionController::class, 'index']
         )->name('habilitaciones.index');
 
+        Route::post(
+            '/examenes/{examen}/personal-control',
+            [PersonalControlController::class, 'store']
+        )->name('personal-control.store');
+
+        Route::delete(
+            '/examenes/{examen}/personal-control/{usuario}',
+            [PersonalControlController::class, 'destroy']
+        )->name('personal-control.destroy');
+
         // Cambiar estado de una habilitación
         Route::patch(
             '/habilitaciones/{habilitacion}',
             [HabilitacionController::class, 'update']
         )->name('habilitaciones.update');
-    });
+        Route::patch('/examenes/{examen}/habilitaciones', [HabilitacionController::class, 'updateBulk'])
+            ->name('habilitaciones.updateBulk');
+        Route::post('/examenes/{examen}/reparto-automatico', [PersonalControlController::class, 'repartoAutomatico'])
+            ->name('examenes.reparto-automatico');
+        Route::patch('/habilitaciones/{habilitacion}/asignar-personal', [PersonalControlController::class, 'asignarManual'])
+            ->name('habilitaciones.asignar-personal');
+        });
 
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
     })->name('access.denied');
+
+    Route::get('/estudiante/panel', function (\Illuminate\Http\Request $request) {
+        $estudiante = $request->user()->estudiante;
+
+        if (! $estudiante) {
+            abort(404, 'No se encontró el perfil de estudiante.');
+        }
+
+        $ahora = \Carbon\Carbon::now('America/La_Paz');
+
+        // HU-17: El estudiante solo puede generar su código QR dentro de las 24 horas previas al inicio del examen
+        // (y hasta que el examen finalice).
+        $tieneExamenes = $estudiante->examenesQuery()->exists();
+        $proximoExamen = $estudiante->proximoExamen($ahora);
+        $tieneExamenActivo = $proximoExamen !== null;
+        $enVentanaQr = $estudiante->tieneExamenEnVentanaQr($ahora);
+
+        // Si no tiene exámenes registrados en el sistema, fallback
+        if (! $tieneExamenes) {
+            $enVentanaQr = false;
+        }
+
+        $mensajeVentanaQr = null;
+        if ($proximoExamen && ! $enVentanaQr) {
+            if ($ahora->lt($proximoExamen->inicioExamen()->copy()->subHours(24))) {
+                $mensajeVentanaQr = "El código QR solo estará disponible dentro de las 24 horas previas al inicio del examen (Inicio: {$proximoExamen->fecha} {$proximoExamen->hora_inicio}).";
+            } elseif ($ahora->gt($proximoExamen->finExamen())) {
+                $mensajeVentanaQr = "El examen ha finalizado. No es posible generar el código QR.";
+            }
+        } elseif (! $tieneExamenActivo) {
+            $mensajeVentanaQr = "No tienes exámenes programados o activos en este momento.";
+        }
+
+        if ($estudiante->codigo_qr === null) {
+            $estudiante->update(['codigo_qr' => \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario)]);
+        }
+
+        $qrSvg = null;
+        
+        // Solo generar el SVG si tiene un examen dentro de la ventana de 24h
+        if ($enVentanaQr && class_exists(\Endroid\QrCode\Builder\Builder::class)) {
+            try {
+                $result = (new \Endroid\QrCode\Builder\Builder(
+                    data: $estudiante->codigo_qr,
+                    size: 200,
+                    margin: 4,
+                    writer: new \Endroid\QrCode\Writer\SvgWriter,
+                ))->build();
+                $rawSvg = $result->getString();
+                $qrSvg = trim(preg_replace('/<\?xml.*?\?>/i', '', $rawSvg));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Error generando QR: ' . $e->getMessage());
+                $qrSvg = null;
+            }
+        }
+
+        $qrs = Habilitacion::with('examen.asignatura')
+            ->where('id_estudiante', $estudiante->id_estudiante)
+            ->where('estado_habilitado', true)
+            ->whereHas('examen', fn ($query) => $query
+                ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp - interval '24 hours' <= CAST(? AS timestamp)", [now()])
+                ->whereRaw("(fecha::text || ' ' || hora_inicio::text)::timestamp + (duracion_minutos * interval '1 minute') >= CAST(? AS timestamp)", [now()]))
+            ->get()
+            ->filter(function (Habilitacion $habilitacion) {
+                $inicio = Carbon::parse($habilitacion->examen->fecha . ' ' . $habilitacion->examen->hora_inicio);
+                $fin = $inicio->copy()->addMinutes((int) $habilitacion->examen->duracion_minutos);
+                return now()->between($inicio->copy()->subHours(24), $fin);
+            })
+            ->map(function (Habilitacion $habilitacion) {
+                $qr = ExamenQr::paraHabilitacion($habilitacion);
+                return [
+                    'id_examen' => $habilitacion->id_examen,
+                    'nombre' => $habilitacion->examen->asignatura?->nombre_asignatura ?? 'Examen',
+                    'fecha' => $habilitacion->examen->fecha,
+                    'hora_inicio' => $habilitacion->examen->hora_inicio,
+                    'qr_token' => $qr->token,
+                    'expires_at' => $qr->expires_at?->toIso8601String(),
+                ];
+            })->values();
+
+        return \Inertia\Inertia::render('Estudiantes/Panel', [
+            'estudiante' => [
+                'id' => $estudiante->id_estudiante,
+                'nombres' => $estudiante->nombres,
+                'apellidos' => $estudiante->apellidos,
+                'codigo_universitario' => $estudiante->codigo_universitario,
+                'carrera' => $estudiante->carrera ?? null,
+                'foto_url' => $estudiante->foto_url,
+                'foto_path' => $estudiante->foto_path ?? null,
+                'foto_referencia' => $estudiante->foto_referencia,
+                'puede_regenerar_qr' => (bool) $estudiante->puede_regenerar_qr,
+                'en_ventana_qr' => (bool) $enVentanaQr,
+                'mensaje_ventana_qr' => $mensajeVentanaQr,
+                'qr_token' => $estudiante->codigo_qr,
+                'qr_svg' => $qrSvg,
+                'tiene_examen_activo' => $tieneExamenActivo,
+                'qrs' => $qrs,
+            ],
+        ]);
+    })->name('estudiante.panel')->middleware(['auth', 'role:estudiante']);
+
+    Route::post('/estudiante/qr/regenerar', function (\Illuminate\Http\Request $request) {
+        $estudiante = $request->user()->estudiante;
+        if (! $estudiante) {
+            abort(404, 'No se encontró el perfil de estudiante.');
+        }
+
+        $ahora = \Carbon\Carbon::now('America/La_Paz');
+
+        // HU-17: Validación de ventana horaria (máximo 24 h antes del examen y hasta su finalización)
+        if ($estudiante->examenesQuery()->exists() && ! $estudiante->tieneExamenEnVentanaQr($ahora)) {
+            $mensaje = 'Solo puedes generar o regenerar tu código QR dentro de las 24 horas previas al inicio del examen.';
+            return response()->json([
+                'message' => $mensaje,
+                'error'   => $mensaje,
+            ], 403);
+        }
+
+        // HU-16: Validación de fotografía actualizada
+        if (! $estudiante->puede_regenerar_qr) {
+            return response()->json([
+                'message' => 'Debes actualizar tu foto antes de generar un nuevo QR',
+                'error'   => 'Debes actualizar tu foto antes de generar un nuevo QR',
+            ], 403);
+        }
+
+        $nuevoToken = \App\Models\Estudiante::qrPayload($estudiante->codigo_universitario) . '-' . time();
+        $estudiante->update([
+            'codigo_qr' => $nuevoToken,
+            'puede_regenerar_qr' => false,
+        ]);
+
+        return back();
+    })->name('estudiante.qr.regenerate');
+
+    Route::post('/estudiante/foto', function (\Illuminate\Http\Request $request) {
+        $request->validate([
+            'foto' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:2048'],
+        ], [
+            'foto.required' => 'Debe seleccionar una imagen.',
+            'foto.image' => 'El archivo debe ser una imagen válida.',
+            'foto.mimes' => 'La imagen debe tener formato JPEG, JPG, PNG o WEBP.',
+            'foto.max' => 'La imagen no debe superar los 2 MB.',
+        ]);
+
+        $estudiante = $request->user()->estudiante;
+        if ($estudiante && $request->hasFile('foto')) {
+            $path = $request->file('foto')->store('estudiantes', 'public');
+            $url = '/storage/' . $path;
+
+            $payload = [
+                'foto_url' => $url,
+                'puede_regenerar_qr' => true,
+            ];
+
+            if (empty($estudiante->foto_referencia)) {
+                $payload['foto_referencia'] = $url;
+            }
+
+            $estudiante->update($payload);
+        }
+
+        return back();
+    })->name('estudiante.foto.upload');
 });

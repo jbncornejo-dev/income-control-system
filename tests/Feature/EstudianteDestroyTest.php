@@ -34,7 +34,7 @@ class EstudianteDestroyTest extends TestCase
     private function crearEstudiante(): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -47,6 +47,7 @@ class EstudianteDestroyTest extends TestCase
 
         return Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,

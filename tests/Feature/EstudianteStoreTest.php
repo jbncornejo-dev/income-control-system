@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Models\User;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -28,9 +29,9 @@ class EstudianteStoreTest extends TestCase
 
     public function test_guest_cannot_create_estudiante(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $response = $this->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -41,38 +42,37 @@ class EstudianteStoreTest extends TestCase
 
     public function test_authenticated_user_can_create_estudiante(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
-            'codigo_qr' => null,
         ]);
 
         $response->assertRedirect(route('estudiantes.index'));
         $response->assertSessionHas('success');
         $this->assertDatabaseHas('estudiante', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
         ]);
     }
 
     public function test_rejects_duplicate_codigo_universitario(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
@@ -84,17 +84,17 @@ class EstudianteStoreTest extends TestCase
 
     public function test_rejects_duplicate_documento_identidad(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '1111111',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
@@ -104,9 +104,59 @@ class EstudianteStoreTest extends TestCase
         $this->assertDatabaseCount('estudiante', 1);
     }
 
+    public function test_rejects_email_ya_usada_por_otra_cuenta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        // Otra cuenta (docente) ya tiene ese correo institucional.
+        User::create([
+            'id_rol' => $user->id_rol,
+            'name' => 'Docente',
+            'username' => 'docente_x',
+            'email' => '123456789@est.umss.edu',
+            'password' => Hash::make('password'),
+        ]);
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
+            'nombres' => 'Ana',
+            'apellidos' => 'Perez',
+            'email' => '123456789@est.umss.edu',
+        ]);
+
+        $response->assertSessionHasErrors('email');
+        $this->assertDatabaseCount('estudiante', 0);
+        $this->assertDatabaseCount('users', 2);
+    }
+
+    public function test_rejects_codigo_ya_usado_como_username_por_otra_cuenta(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+        // El código ya es el username de otra cuenta (no estudiante).
+        User::create([
+            'id_rol' => $user->id_rol,
+            'name' => 'Personal',
+            'username' => '201809372',
+            'email' => '123456789@est.umss.edu',
+            'password' => Hash::make('password'),
+        ]);
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
+            'nombres' => 'Ana',
+            'apellidos' => 'Perez',
+        ]);
+
+        $response->assertSessionHasErrors('codigo_universitario');
+        $this->assertDatabaseCount('estudiante', 0);
+    }
+
     public function test_rejects_missing_required_fields(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
 
         $response = $this->actingAs($user)->post('/estudiantes', [
@@ -119,12 +169,83 @@ class EstudianteStoreTest extends TestCase
         $response->assertSessionHasErrors(['codigo_universitario', 'documento_identidad', 'nombres', 'apellidos']);
     }
 
-    public function test_rejects_duplicate_codigo_qr(): void
+    public function test_rejects_invalid_field_formats(): void
     {
-        $this->withoutMiddleware(\Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class);
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '2020-00001',   // no es código SIS de 9 dígitos
+            'documento_identidad' => 'ABC123',        // no es CI numérico boliviano
+            'nombres' => 'Ana123',                    // caracteres no permitidos
+            'apellidos' => 'Perez',
+            'email' => 'correo-mal-formado',          // no es un correo válido
+        ]);
+
+        $response->assertSessionHasErrors([
+            'codigo_universitario',
+            'documento_identidad',
+            'nombres',
+            'email',
+        ]);
+        $this->assertDatabaseCount('estudiante', 0);
+    }
+
+    public function test_accepts_personal_email_not_institutional(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        // Se acepta cualquier correo válido: funciona como canal de
+        // notificación (contraseña inicial, avisos), no como identificador.
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => 'laura.perez@gmail.com',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '201809372',
+            'email' => 'laura.perez@gmail.com',
+        ]);
+        $this->assertDatabaseHas('users', [
+            'username' => '201809372',
+            'email' => 'laura.perez@gmail.com',
+        ]);
+    }
+
+    public function test_accepts_valid_umss_formats(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
+        $user = $this->createUser();
+
+        $response = $this->actingAs($user)->post('/estudiantes', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => '201809372@est.umss.edu',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '12590804',
+            'nombres' => 'Laura Nathalia',
+            'apellidos' => 'Pereira Pain',
+            'email' => '201809372@est.umss.edu',
+        ]);
+    }
+
+    public function test_ignores_external_codigo_qr_and_autogenerates_it(): void
+    {
+        $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -132,13 +253,19 @@ class EstudianteStoreTest extends TestCase
         ]);
 
         $response = $this->actingAs($user)->post('/estudiantes', [
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
             'codigo_qr' => 'QR-123',
         ]);
 
-        $response->assertSessionHasErrors('codigo_qr');
+        // El QR externo no forma parte del registro individual: se autogenera
+        // con el payload estándar del sistema.
+        $response->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('estudiante', [
+            'codigo_universitario' => '201809373',
+            'codigo_qr' => Estudiante::qrPayload('201809373'),
+        ]);
     }
 }
