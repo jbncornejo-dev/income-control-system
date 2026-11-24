@@ -7,7 +7,6 @@ body {
     padding-bottom: 10px;
 }
 .institution {
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: #6b7280;
     margin-bottom: 2px;
@@ -30,7 +29,6 @@ body {
     color: #ffffff;
     font-weight: bold;
     font-size: 9px;
-    text-transform: uppercase;
     text-align: left;
     border: 1px solid #002147;
 }

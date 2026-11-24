@@ -226,7 +226,7 @@ function cambiarPersonalManual(hab, idUsuario) {
             <div class="exam-header-card">
                 <div class="header-top">
                     <div>
-                        <span class="eyebrow">EXAMEN PROGRAMADO</span>
+                        <span class="eyebrow">Examen programado</span>
                         <h1 class="exam-title">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</h1>
                     </div>
                     <span class="badge badge-confirmado">Confirmado</span>
@@ -241,7 +241,7 @@ function cambiarPersonalManual(hab, idUsuario) {
                         <span v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0">
                             {{ examen.examenes_ambientes.map(ea => ea.ambiente?.nombre_ambiente).join(', ') }}
                         </span>
-                        <span v-else>N/D</span>
+                        <span v-else>N/d</span>
                     </span>
                 </div>
  
@@ -297,13 +297,13 @@ function cambiarPersonalManual(hab, idUsuario) {
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>CÓDIGO</th>
-                            <th>NOMBRE</th>
-                            <th>ESTADO</th>
-                            <th>INGRESO</th>
-                            <th>PERSONAL ASIGNADO</th>
-                            <th>NORMAS PARTICULARES</th>
-                            <th>HABILITACIÓN</th>
+                            <th>Código</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                            <th>Ingreso</th>
+                            <th>Personal asignado</th>
+                            <th>Normas particulares</th>
+                            <th>Habilitación</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -468,7 +468,7 @@ function cambiarPersonalManual(hab, idUsuario) {
     box-shadow: var(--shadow-card);
 }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); }
-.eyebrow { font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; }
+.eyebrow { font-size: 0.75rem; color: var(--text-muted); letter-spacing: 0.05em; }
 .exam-title { font-size: 1.75rem; font-weight: 700; color: var(--color-primary); margin: 0.25rem 0 0 0; font-family: var(--font-display); }
 .exam-meta-row { display: flex; gap: var(--spacing-lg); font-size: 0.875rem; color: var(--text-muted); margin-bottom: var(--spacing-lg); }
 .exam-meta-row strong { color: var(--text-dark); }

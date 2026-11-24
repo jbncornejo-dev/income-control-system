@@ -15,7 +15,10 @@ class ReportExporterTest extends TestCase
         $lazy = ReportExporter::downloadExcel('reporte.xls', 'Reporte', [['name' => 'Datos', 'headers' => ['Código'], 'rows' => new LazyCollection($rows)]]);
 
         $this->assertSame($array->getContent(), $lazy->getContent());
-        $this->assertSame($array->headers->all(), $lazy->headers->all());
+        $this->assertSame(
+            array_diff_key($array->headers->all(), ['date' => true]),
+            array_diff_key($lazy->headers->all(), ['date' => true]),
+        );
         $this->assertStringContainsString('Código &lt;&amp;&gt;', $lazy->getContent());
     }
 
@@ -26,7 +29,10 @@ class ReportExporterTest extends TestCase
             $lazy = ReportExporter::downloadPdf('reporte.pdf', 'Reporte', [], [['heading' => 'Datos', 'headers' => ['Código'], 'rows' => new LazyCollection($rows)]]);
 
             $this->assertSame($array->getContent(), $lazy->getContent());
-            $this->assertSame($array->headers->all(), $lazy->headers->all());
+            $this->assertSame(
+                array_diff_key($array->headers->all(), ['date' => true]),
+                array_diff_key($lazy->headers->all(), ['date' => true]),
+            );
         }
     }
 }

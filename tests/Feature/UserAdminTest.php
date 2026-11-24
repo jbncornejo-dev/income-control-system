@@ -24,7 +24,6 @@ class UserAdminTest extends TestCase
         Rol::create(['nombre_rol' => 'docente']);
         Rol::create(['nombre_rol' => 'personal de control de ingreso']);
         Rol::create(['nombre_rol' => 'estudiante']);
-        Rol::create(['nombre_rol' => 'otro_rol']); // Invalid role
     }
 
     public function test_admin_can_access_usuarios()
@@ -73,6 +72,39 @@ class UserAdminTest extends TestCase
         $this->assertTrue($user->debe_cambiar_password);
     }
 
+    public function test_console_provisions_the_first_administrator_without_demo_credentials(): void
+    {
+        $this->artisan('admin:provisionar')
+            ->expectsQuestion('Nombre completo', 'Primera Administradora')
+            ->expectsQuestion('Nombre de usuario individual', 'primera.admin')
+            ->expectsQuestion('Correo institucional', 'primera.admin@example.com')
+            ->expectsQuestion('Contraseña', 'ClaveSegura.27-X')
+            ->expectsQuestion('Repite la contraseña', 'ClaveSegura.27-X')
+            ->assertSuccessful();
+
+        $usuario = User::where('username', 'primera.admin')->firstOrFail();
+        $this->assertTrue($usuario->activo);
+        $this->assertSame('administrador', $usuario->rol->nombre_rol);
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ClaveSegura.27-X', $usuario->password));
+    }
+
+    public function test_admin_creation_rejects_shared_username_and_weak_password()
+    {
+        $admin = User::factory()->create();
+
+        $this->actingAs($admin)->post('/usuarios', [
+            'id_rol' => $admin->id_rol,
+            'nombres' => 'Otro',
+            'apellidos' => 'Administrador',
+            'documento_identidad' => '7654321',
+            'username' => 'admin',
+            'password' => '7654321',
+            'password_confirmation' => '7654321',
+        ])->assertSessionHasErrors(['username', 'password']);
+
+        $this->assertDatabaseCount('users', 1);
+    }
+
     public function test_unique_email_validation()
     {
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
@@ -100,21 +132,19 @@ class UserAdminTest extends TestCase
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
         $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
 
-        $invalidRol = Rol::where('nombre_rol', 'otro_rol')->first();
-
         $response = $this->actingAs($admin)->post('/usuarios', [
             'nombres' => 'Test',
             'apellidos' => 'User',
             'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'email' => 'test@example.com',
-            'id_rol' => $invalidRol->id_rol,
+            'id_rol' => 99999,
         ]);
 
         $response->assertSessionHasErrors('id_rol');
     }
 
-    public function test_update_modifies_only_role_and_password()
+    public function test_role_assignment_promotes_a_second_administrator_with_individual_credentials()
     {
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
         $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
@@ -134,24 +164,25 @@ class UserAdminTest extends TestCase
             'email' => 'hacked@example.com',
             'username' => 'hacked_username',
             'id_rol' => $adminRol->id_rol,
-            'password' => 'newpassword123',
+            'password' => 'ClaveSegura.27-X',
+            'password_confirmation' => 'ClaveSegura.27-X',
         ]);
 
         $response->assertRedirect();
         $response->assertSessionHasNoErrors();
         
-        // Verifica que los campos protegidos NO cambiaron
+        // El ascenso conserva los datos personales y cambia las credenciales.
         $this->assertDatabaseHas('users', [
             'id' => $targetUser->id, 
             'name' => 'Original Name',
             'email' => 'original@example.com',
-            'username' => 'original_username',
+            'username' => 'hacked_username',
             'id_rol' => $adminRol->id_rol, // El rol SÍ cambió
         ]);
 
         // Verifica que la contraseña SÍ cambió
         $updatedUser = User::find($targetUser->id);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('newpassword123', $updatedUser->password));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ClaveSegura.27-X', $updatedUser->password));
     }
 
     public function test_update_password_route()
@@ -165,15 +196,15 @@ class UserAdminTest extends TestCase
         ]);
 
         $response = $this->actingAs($admin)->patch("/usuarios/{$targetUser->id}/password", [
-            'password' => 'newpassword123',
-            'password_confirmation' => 'newpassword123',
+            'password' => 'ClaveSegura.27-X',
+            'password_confirmation' => 'ClaveSegura.27-X',
         ]);
 
         $response->assertRedirect();
         $response->assertSessionHas('success', 'Contraseña actualizada exitosamente.');
         
         $updatedUser = User::find($targetUser->id);
-        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('newpassword123', $updatedUser->password));
+        $this->assertTrue(\Illuminate\Support\Facades\Hash::check('ClaveSegura.27-X', $updatedUser->password));
     }
 
     public function test_index_lists_users_with_roles()
@@ -244,7 +275,7 @@ class UserAdminTest extends TestCase
         $response->assertDontSee('unique_admin@example.com'); // Mismo query text pero distinto rol
     }
 
-    public function test_admin_can_delete_other_user()
+    public function test_admin_can_disable_and_reactivate_other_user()
     {
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
         $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
@@ -255,11 +286,13 @@ class UserAdminTest extends TestCase
         $response = $this->actingAs($admin)->delete("/usuarios/{$targetUser->id}");
 
         $response->assertRedirect();
-        $response->assertSessionHas('success', 'Usuario eliminado exitosamente.');
-        $this->assertDatabaseMissing('users', ['id' => $targetUser->id]);
+        $response->assertSessionHas('success', 'Usuario desactivado.');
+        $this->assertFalse($targetUser->fresh()->activo);
+        $this->patch("/usuarios/{$targetUser->id}/activar")->assertRedirect();
+        $this->assertTrue($targetUser->fresh()->activo);
     }
 
-    public function test_admin_cannot_delete_self()
+    public function test_admin_cannot_disable_self()
     {
         $adminRol = Rol::where('nombre_rol', 'administrador')->first();
         $admin = User::factory()->create(['id_rol' => $adminRol->id_rol]);
@@ -267,7 +300,7 @@ class UserAdminTest extends TestCase
         $response = $this->actingAs($admin)->delete("/usuarios/{$admin->id}");
 
         // Un ValidationException lanzado produce un redirect de vuelta con errores en la sesión
-        $response->assertSessionHasErrors(['error' => 'No puedes eliminar tu propia cuenta.']);
+        $response->assertSessionHasErrors(['error' => 'No puedes desactivar tu propia cuenta.']);
         // Verify user still exists
         $this->assertDatabaseHas('users', ['id' => $admin->id]);
     }

@@ -16,22 +16,15 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $roles = collect([
-            'administrador',
-            'docente',
-            'personal de control de ingreso',
-            'estudiante',
-        ])->mapWithKeys(fn (string $nombreRol) => [
+        $roles = collect(array_keys(Rol::ROLES_BASE))->mapWithKeys(fn (string $nombreRol) => [
             $nombreRol => Rol::firstOrCreate(['nombre_rol' => $nombreRol]),
         ]);
 
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         $usuariosDesarrollo = [
-            [
-                'name' => 'Administrador de Desarrollo',
-                'username' => 'admin',
-                'email' => 'admin@example.com',
-                'rol' => 'administrador',
-            ],
             [
                 'name' => 'Docente de Desarrollo',
                 'username' => 'docente',
@@ -90,6 +83,7 @@ class DatabaseSeeder extends Seeder
             DemoOperativoSeeder::class,
             DemoAuditoriaDetalleSeeder::class,
             DemoIncidenciasSeeder::class,
+            DemoHUsSeeder::class,
         ]);
 
         // La cuenta demo "estudiante / pass" se vincula a la matrícula real

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import FormField from '@/components/ui/FormField.vue';
 import TextInput from '@/components/ui/TextInput.vue';
@@ -8,6 +9,7 @@ const props = defineProps({
     user: { type: Object, required: true }
 });
 
+const requiereClaveSegura = computed(() => props.user.rol?.nombre_rol === 'administrador' || Array.isArray(props.user.rol?.permisos));
 const emit = defineEmits(['success', 'cancel']);
 
 const form = useForm({
@@ -33,7 +35,7 @@ const submit = () => {
                     id="new_password" 
                     v-model="form.password" 
                     type="password" 
-                    label="Nueva Contraseña"
+                    label="Nueva contraseña"
                     required 
                     autofocus 
                 />
@@ -43,12 +45,13 @@ const submit = () => {
                     id="new_password_confirmation" 
                     v-model="form.password_confirmation" 
                     type="password" 
-                    label="Confirmar Contraseña"
+                    label="Confirmar contraseña"
                     required 
                 />
             </div>
         </div>
 
+        <p v-if="requiereClaveSegura">Usa al menos 14 caracteres, con mayúsculas, minúsculas, números y símbolos.</p>
         <div class="form-actions">
             <Button type="button" variant="action" @click="$emit('cancel')">Cancelar</Button>
             <Button type="submit" variant="primary" :disabled="form.processing">Actualizar Clave</Button>

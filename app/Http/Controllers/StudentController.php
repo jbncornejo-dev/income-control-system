@@ -24,7 +24,7 @@ class StudentController extends Controller
         $filtros = $request->validated();
 
         $students = Estudiante::query()
-            ->select(['id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email'])
+            ->select(['id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos', 'codigo_qr', 'email', 'activo'])
             ->when(isset($filtros['search']), function ($query) use ($filtros) {
                 // Buscar literalmente el texto escrito, sin tratar los comodines de LIKE.
                 $termino = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $filtros['search']);
@@ -51,6 +51,7 @@ class StudentController extends Controller
                 'apellidos' => $s->apellidos,
                 'codigo_qr' => $s->codigo_qr,
                 'email' => $s->email,
+                'activo' => $s->activo,
             ];
         });
 
@@ -108,29 +109,26 @@ class StudentController extends Controller
 
     public function destroy(Estudiante $estudiante)
     {
-        $mensaje = 'No se puede eliminar el estudiante porque tiene registros asociados en el sistema';
-
-        if (
-            $estudiante->habilitaciones()->exists()
-            || $estudiante->registrosIngreso()->exists()
-            || $estudiante->incidencias()->exists()
-        ) {
-            return back()->with('error', $mensaje);
-        }
-
-        try {
-            DB::transaction(fn () => $estudiante->delete());
-        } catch (QueryException $e) {
-            // La clave foránea protege si se asocia un registro durante el borrado.
-            if ($e->getCode() === '23503') {
-                return back()->with('error', $mensaje);
+        DB::transaction(function () use ($estudiante) {
+            $estudiante = Estudiante::whereKey($estudiante->getKey())->lockForUpdate()->firstOrFail();
+            $estudiante->update(['activo' => false]);
+            $usuario = $estudiante->user;
+            if ($usuario) {
+                $usuario->forceFill(['remember_token' => null])->save();
+                $usuario->revocarSesiones();
             }
+        });
 
-            throw $e;
-        }
+        return back()->with('success', 'Estudiante desactivado.');
+    }
 
-        return redirect()->route('estudiantes.index')
-            ->with('success', 'Estudiante eliminado correctamente.');
+    public function activate(Estudiante $estudiante)
+    {
+        DB::transaction(function () use ($estudiante) {
+            Estudiante::whereKey($estudiante->getKey())->lockForUpdate()->firstOrFail()->update(['activo' => true]);
+        });
+
+        return back()->with('success', 'Estudiante reactivado.');
     }
 
     /**
@@ -140,6 +138,8 @@ class StudentController extends Controller
      */
     public function qr(Estudiante $estudiante)
     {
+        abort_unless($estudiante->activo, 403, 'El estudiante está desactivado.');
+
         if ($estudiante->codigo_qr === null) {
             $estudiante->update(['codigo_qr' => Estudiante::qrPayload($estudiante->codigo_universitario)]);
         }

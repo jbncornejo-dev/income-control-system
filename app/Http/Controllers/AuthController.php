@@ -6,6 +6,7 @@ use App\Models\Estudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
@@ -13,21 +14,37 @@ class AuthController extends Controller
     {
         $request->validate([
             'identificador' => ['required', 'string'],
-            'password' => ['required'],
+            'password' => ['required', 'string'],
         ]);
 
-        $user = $this->resolverUsuarioPorIdentificador($request->input('identificador'));
+        $limite = 'login:ip:'.$request->ip();
+        if (RateLimiter::tooManyAttempts($limite, 20)) {
+            return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
+        }
 
-        if ($user === null || ! Auth::attempt(['id' => $user->id, 'password' => $request->password], $request->boolean('remember'))) {
+        $user = $this->resolverUsuarioPorIdentificador($request->input('identificador'));
+        $limiteCuenta = $user ? 'login:cuenta:'.$user->id : null;
+        if ($limiteCuenta && RateLimiter::tooManyAttempts($limiteCuenta, 10)) {
+            return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
+        }
+
+        $claveDemo = $user?->rol?->nombre_rol === 'administrador'
+            && in_array($request->password, ['pass', $user->documento_identidad], true);
+
+        if (! $user?->puedeIngresar() || $claveDemo || ! Auth::attempt(['id' => $user->id, 'activo' => true, 'password' => $request->password], $request->boolean('remember'))) {
+            RateLimiter::hit($limite, 60);
+            if ($limiteCuenta) {
+                RateLimiter::hit($limiteCuenta, 60);
+            }
             return back()->withErrors([
                 'identificador' => 'Credenciales inválidas.',
             ])->onlyInput('identificador');
         }
 
+        RateLimiter::clear($limiteCuenta);
         $request->session()->regenerate();
 
-        // Las cuentas de estudiante recién creadas llevan una contraseña
-        // inicial temporal: se obliga a cambiarla antes de usar el panel.
+        // Las cuentas con contraseña temporal deben cambiarla antes de usar el panel.
         if ($user->debe_cambiar_password) {
             return redirect()->route('cambiar-password.show');
         }

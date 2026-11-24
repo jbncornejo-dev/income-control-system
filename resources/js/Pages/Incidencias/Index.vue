@@ -199,7 +199,7 @@ const getColorClass = (tipo) => {
             <!-- Encabezado Principal -->
             <header class="header-section">
                 <div>
-                    <h1 class="panel-title">GESTIÓN DE INCIDENCIAS</h1>
+                    <h1 class="panel-title">Gestión de incidencias</h1>
                     <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
                 </div>
                 <div class="header-actions">
@@ -311,7 +311,7 @@ const getColorClass = (tipo) => {
                 <!-- Examen (Obligatorio) -->
                 <FormField :error="form.errors.id_examen" error-tag="p">
                     <SelectInput 
-                        label="EXAMEN *"
+                        label="Examen *"
                         v-model="form.id_examen" 
                         :options="examenesOptions"
                         placeholder="Seleccionar examen..."
@@ -324,7 +324,7 @@ const getColorClass = (tipo) => {
                 <!-- Tipo de Incidencia (Obligatorio) -->
                 <FormField :error="form.errors.tipo_incidencia" error-tag="p">
                     <SelectInput 
-                        label="TIPO DE INCIDENCIA *"
+                        label="Tipo de incidencia *"
                         v-model="form.tipo_incidencia" 
                         :options="tiposOptions"
                         placeholder="Seleccionar tipo..."
@@ -333,7 +333,7 @@ const getColorClass = (tipo) => {
 
                 <!-- Estudiante (Opcional - con mini buscador) -->
                 <FormField :error="form.errors.id_estudiante" error-tag="p" class="bg-light-gray p-4 rounded">
-                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">ESTUDIANTE (OPCIONAL)</label>
+                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">Estudiante (opcional)</label>
                     <TextInput 
                         v-model="busquedaEstudiante" 
                         placeholder="Buscar por código, documento o nombre..." 
@@ -349,7 +349,7 @@ const getColorClass = (tipo) => {
 
                 <!-- Descripción (Obligatorio) -->
                 <FormField :error="form.errors.descripcion_motivo" error-tag="p">
-                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">DESCRIPCIÓN *</label>
+                    <label class="form-label font-bold text-xs text-gray-500 mb-2 block">Descripción *</label>
                     <textarea 
                         v-model="form.descripcion_motivo" 
                         rows="4" 
@@ -361,9 +361,9 @@ const getColorClass = (tipo) => {
                 <!-- Footer Modal -->
                 <div class="modal-footer-custom">
                     <Button type="button" variant="action" @click="closeModal" class="btn-cancelar">
-                        CANCELAR
+                        Cancelar
                     </Button>
-                    <LoadingButton type="submit" variant="danger" :loading="form.processing" :disabled="form.processing || props.examenes.length === 0 || !form.id_examen" class="btn-guardar">GUARDAR INCIDENCIA</LoadingButton>
+                    <LoadingButton type="submit" variant="danger" :loading="form.processing" :disabled="form.processing || props.examenes.length === 0 || !form.id_examen" class="btn-guardar">Guardar incidencia</LoadingButton>
                 </div>
 
             </form>
@@ -403,7 +403,6 @@ const getColorClass = (tipo) => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: 4px;
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 1px;
 }
@@ -469,7 +468,6 @@ const getColorClass = (tipo) => {
     color: var(--text-muted);
     font-size: 0.85rem;
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 
@@ -479,7 +477,6 @@ const getColorClass = (tipo) => {
     padding: 4px 10px;
     border-radius: var(--radius-pill);
     border: 1px solid transparent;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .color-red { color: var(--color-active); border-color: #fca5a5; background: #fef2f2; }

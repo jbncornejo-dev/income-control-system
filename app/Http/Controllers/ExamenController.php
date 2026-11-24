@@ -569,7 +569,7 @@ class ExamenController extends Controller
                 }
             });
         } catch (QueryException $e) {
-            if ($e->getCode() === '23503') {
+            if (in_array($e->getCode(), ['23503', '23001'], true)) {
                 return back()->withErrors([
                     'id_ambientes' => 'No se pueden modificar los ambientes porque el examen ya tiene ingresos registrados.',
                 ])->withInput();
@@ -716,7 +716,7 @@ class ExamenController extends Controller
             DB::transaction(fn () => $examen->delete());
         } catch (QueryException $e) {
             // La clave foránea protege si se registra un ingreso durante el borrado.
-            if ($e->getCode() === '23503') {
+            if (in_array($e->getCode(), ['23503', '23001'], true)) {
                 return back()->with('error', $mensaje);
             }
 
@@ -819,6 +819,7 @@ class ExamenController extends Controller
                 ->select('id_estudiante')
                 ->selectRaw('CAST(? AS bigint) AS id_examen', [$examen->id_examen])
                 ->whereIn('id_grupo', $examen->grupos()->select('grupo.id_grupo'))
+                ->whereHas('estudiante', fn ($query) => $query->where('activo', true))
                 ->distinct()
         );
     }

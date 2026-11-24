@@ -11,6 +11,7 @@ use App\Models\Habilitacion;
 use App\Models\Incidencia;
 use App\Models\Inscripcion;
 use App\Models\RegistroIngreso;
+use App\Models\Rol;
 use App\Models\User;
 use App\Observers\AuditoriaObserver;
 use Illuminate\Support\Facades\URL;
@@ -41,6 +42,7 @@ class AppServiceProvider extends ServiceProvider
             Incidencia::class,
             Inscripcion::class,
             RegistroIngreso::class,
+            Rol::class,
             User::class,
         ] as $modelo) {
             $modelo::observe(AuditoriaObserver::class);

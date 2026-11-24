@@ -67,7 +67,7 @@ function exportarIncidencias(formato) {
 
     <AuthenticatedLayout>
         <div class="panel-container">
-            <h1 class="panel-title">HISTÓRICO POR SEMESTRE</h1>
+            <h1 class="panel-title">Histórico por semestre</h1>
 
             <!-- Selector de Periodo -->
             <div class="filter-wrapper">

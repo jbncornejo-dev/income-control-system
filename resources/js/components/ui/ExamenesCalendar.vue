@@ -105,7 +105,7 @@ const seleccionarDia = (d) => { if (d) diaSeleccionado.value = diaSeleccionado.v
 <style scoped>
 .cal-container { display: flex; flex-direction: column; }
 .cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
-.cal-mes { font-weight: 700; color: var(--color-primary); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85rem; }
+.cal-mes { font-weight: 700; color: var(--color-primary); letter-spacing: 0.08em; font-size: 0.85rem; }
 .cal-btn { background: none; border: 1px solid #e5e7eb; border-radius: 4px; width: 28px; height: 28px; cursor: pointer; color: var(--color-primary); font-size: 1.1rem; line-height: 1; transition: background 0.2s ease, color 0.2s ease; }
 .cal-btn:hover { background: var(--color-primary); color: #fff; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }

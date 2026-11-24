@@ -85,7 +85,7 @@ onUnmounted(detenerRefresco);
         <div class="panel-container">
             <div class="header-section">
                 <div>
-                    <h1 class="panel-title">PANEL DE ASISTENCIA</h1>
+                    <h1 class="panel-title">Panel de asistencia</h1>
                     <p class="subtitle">Estado de ingreso por ambiente durante el examen</p>
                 </div>
                 <div class="selector">
@@ -195,7 +195,7 @@ onUnmounted(detenerRefresco);
 .panel-title { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); margin: 0 0 4px; letter-spacing: 0.05em; font-family: var(--font-display); }
 .subtitle { font-size: 0.95rem; color: var(--text-muted); margin: 0; }
 .selector { display: flex; flex-direction: column; gap: 4px; min-width: 300px; }
-.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; }
 .control { padding: 0.5rem 0.75rem; border: 1px solid var(--border-light); border-radius: 0.25rem; font-size: 0.95rem; background: #fff; color: var(--text-dark); font-family: inherit; width: 100%; box-sizing: border-box; }
 .control:focus { outline: none; border-color: var(--color-primary); }
 .aviso { background: #fff; border: 1px solid #e5e7eb; border-left: 3px solid var(--color-primary); border-radius: 0 0.25rem 0.25rem 0; padding: 1rem; color: var(--text-muted); font-size: 0.95rem; }

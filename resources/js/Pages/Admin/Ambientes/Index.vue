@@ -187,7 +187,7 @@ function eliminar() {
 
             <div class="header-section">
                 <div>
-                    <h1 class="panel-title">AMBIENTES</h1>
+                    <h1 class="panel-title">Ambientes</h1>
                     <p class="subtitle">Capacidad total: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
                 </div>
                 <Button variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
@@ -206,9 +206,9 @@ function eliminar() {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>NOMBRE</th>
-                            <th>CAPACIDAD</th>
-                            <th class="actions-col">ACCIONES</th>
+                            <th>Nombre</th>
+                            <th>Capacidad</th>
+                            <th class="actions-col">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>

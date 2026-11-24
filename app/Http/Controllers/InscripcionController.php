@@ -33,6 +33,7 @@ class InscripcionController extends Controller
             $patron = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $busqueda).'%';
 
             $disponibles = Estudiante::query()
+                ->where('activo', true)
                 ->select(['id_estudiante', 'codigo_universitario', 'documento_identidad', 'nombres', 'apellidos'])
                 ->where(fn ($q) => $q
                     ->where('codigo_universitario', 'ilike', $patron)

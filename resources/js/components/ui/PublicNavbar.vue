@@ -1,7 +1,7 @@
 <!-- resources/js/components/ui/PublicNavbar.vue -->
 <template>
     <nav class="navbar">
-        <div class="logo">TIS • EVALUACIONES</div>
+        <div class="logo">TIS • evaluaciones</div>
         <ul class="nav-links">
             <li><a href="#inicio">Inicio</a></li>
             <li><a href="#tutorial">Tutorial</a></li>
@@ -51,7 +51,6 @@ import { Link } from '@inertiajs/vue3';
     text-decoration: none;
     font-size: 1.4rem;
     letter-spacing: 1.5px;
-    text-transform: uppercase;
     font-family: 'Rajdhani', sans-serif;
 }
 .nav-links a { font-weight: 600; opacity: 0.9; transition: opacity 0.2s ease, color 0.2s ease; }

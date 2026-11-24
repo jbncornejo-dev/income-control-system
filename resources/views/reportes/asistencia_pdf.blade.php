@@ -54,7 +54,6 @@
             border-left: 4px solid #002147;
             padding-left: 8px;
             margin: 16px 0 8px 0;
-            text-transform: uppercase;
             letter-spacing: 0.03em;
         }
         .stats-grid {
@@ -76,7 +75,6 @@
         }
         .stat-label {
             font-size: 9px;
-            text-transform: uppercase;
             color: #64748b;
             font-weight: 600;
         }
@@ -120,7 +118,7 @@
 </head>
 <body>
 
-    @include('reportes.partials.pdf-header', ['titulo' => 'REPORTE DE ASISTENCIA A EXAMEN'])
+    @include('reportes.partials.pdf-header', ['titulo' => 'Reporte de asistencia a examen'])
 
     <!-- Metadatos del Examen -->
     <table class="meta-table">

@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -18,6 +19,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'id_rol',
+        'activo',
         'id_estudiante',
         'name',
         'email',
@@ -48,8 +50,23 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean',
             'debe_cambiar_password' => 'boolean',
         ];
+    }
+
+    public function puedeIngresar(): bool
+    {
+        return $this->activo !== false
+            && ($this->id_estudiante === null || $this->estudiante?->activo !== false);
+    }
+
+    public function revocarSesiones(): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::connection(config('session.connection'))->table(config('session.table'))
+                ->where('user_id', $this->id)->delete();
+        }
     }
 
     // Relación de muchos a uno (user-rol)

@@ -76,7 +76,7 @@
 </head>
 <body>
 
-    @include('reportes.partials.pdf-header', ['titulo' => 'REPORTE HISTÓRICO DE INCIDENCIAS'])
+    @include('reportes.partials.pdf-header', ['titulo' => 'Reporte histórico de incidencias'])
 
     <!-- Filtros Aplicados -->
     <table class="filters-box">

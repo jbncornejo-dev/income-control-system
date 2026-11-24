@@ -18,7 +18,7 @@ class StoreGrupoRequest extends FormRequest
     {
         return [
             'id_asignatura' => ['required', 'integer', 'exists:asignatura,id_asignatura'],
-            'id_usuario' => ['required', 'integer', 'exists:users,id'],
+            'id_usuario' => ['required', 'integer', 'exists:users,id,activo,true'],
             'gestion' => ['required', 'string', 'max:20', 'regex:/^\d{4}$/'],
             'nombre_grupo' => [
                 'required', 'string', 'max:50',

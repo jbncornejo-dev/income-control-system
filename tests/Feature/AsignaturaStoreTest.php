@@ -93,6 +93,7 @@ class AsignaturaStoreTest extends TestCase
         return [
             'exact' => ['Cálculo I'],
             'surrounding whitespace' => ['  Cálculo I  '],
+            'different case and spaces' => ['CÁLCULO    i'],
         ];
     }
 

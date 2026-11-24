@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import FormField from '@/components/ui/FormField.vue';
 import TextInput from '@/components/ui/TextInput.vue';
@@ -18,10 +19,23 @@ const form = useForm({
     documento_identidad: '',
     email: '',
     id_rol: '',
+    username: '',
+    password: '',
+    password_confirmation: '',
 });
 
+const rol = computed(() => props.roles.find(r => Number(r.id_rol) === Number(form.id_rol)));
+const esAdmin = computed(() => rol.value?.nombre_rol === 'administrador');
+const usaClaveSegura = computed(() => esAdmin.value || Array.isArray(rol.value?.permisos));
+
 const submit = () => {
-    form.post('/usuarios', {
+    form.transform(data => ({
+        ...data,
+        username: esAdmin.value ? data.username : null,
+        codigo_universitario: esAdmin.value ? null : data.codigo_universitario,
+        password: usaClaveSegura.value ? data.password : null,
+        password_confirmation: usaClaveSegura.value ? data.password_confirmation : null,
+    })).post('/usuarios', {
         preserveScroll: true,
         onSuccess: () => {
             form.reset();
@@ -43,8 +57,11 @@ const submit = () => {
         </div>
 
         <div class="form-row">
-            <FormField :error="form.errors.codigo_universitario">
-                <TextInput id="codigo_universitario" v-model="form.codigo_universitario" type="text" label="Código Universitario" placeholder="Ej. 201809372" maxlength="9" inputmode="numeric" required />
+            <FormField v-if="esAdmin" :error="form.errors.username">
+                <TextInput id="username" v-model="form.username" label="Nombre de usuario" placeholder="Nombre individual" autocomplete="off" required />
+            </FormField>
+            <FormField v-else :error="form.errors.codigo_universitario">
+                <TextInput id="codigo_universitario" v-model="form.codigo_universitario" type="text" label="Código universitario" placeholder="Ej. 201809372" maxlength="9" inputmode="numeric" required />
             </FormField>
             <FormField :error="form.errors.documento_identidad">
                 <TextInput id="documento_identidad" v-model="form.documento_identidad" type="text" label="CI / Documento de identidad" placeholder="Ej. 12590804" maxlength="8" inputmode="numeric" required />
@@ -68,13 +85,24 @@ const submit = () => {
             </FormField>
         </div>
 
-        <p class="password-help">
+        <div v-if="usaClaveSegura" class="form-row">
+            <FormField :error="form.errors.password">
+                <TextInput id="password" v-model="form.password" type="password" label="Contraseña inicial" autocomplete="new-password" required />
+            </FormField>
+            <FormField>
+                <TextInput id="password_confirmation" v-model="form.password_confirmation" type="password" label="Confirmar contraseña" autocomplete="new-password" required />
+            </FormField>
+        </div>
+        <p v-if="usaClaveSegura" class="password-help">
+            Usa al menos 14 caracteres, con mayúsculas, minúsculas, números y símbolos. El usuario deberá cambiarla en su primer ingreso.
+        </p>
+        <p v-else class="password-help">
             La contraseña inicial se generará automáticamente con el CI y deberá cambiarse en el primer ingreso.
         </p>
 
         <div class="form-actions">
             <Button type="button" variant="action" class="btn-uniform" @click="emit('cancel')">Cancelar</Button>
-            <Button type="submit" variant="primary" class="btn-uniform" :disabled="form.processing">Crear Usuario</Button>
+            <Button type="submit" variant="primary" class="btn-uniform" :disabled="form.processing">Crear usuario</Button>
         </div>
     </form>
 </template>

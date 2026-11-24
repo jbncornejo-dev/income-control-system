@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'password.pendiente' => EnsurePasswordChanged::class,
         ]);
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureActiveAccount::class,
             HandleInertiaRequests::class,
         ]);
         $middleware->redirectGuestsTo('/login');

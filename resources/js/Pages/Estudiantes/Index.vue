@@ -1,13 +1,13 @@
 <template>
   <AuthenticatedLayout>
     <div class="panel-container">
-      <h1 class="panel-title">ESTUDIANTES</h1>
+      <h1 class="panel-title">Estudiantes</h1>
 
       <div class="action-bar">
         <TextInput v-model="searchQuery" placeholder="Buscar por código, documento, correo, nombres o apellidos..." style="width: 100%; max-width: 500px;" />
         <div class="action-controls">
           <Button variant="action" @click="abrirModalCsv">Importar CSV</Button>
-          <Button variant="primary" @click="abrirModalCrear">Añadir Estudiante</Button>
+          <Button variant="primary" @click="abrirModalCrear">Añadir estudiante</Button>
         </div>
       </div>
 
@@ -15,11 +15,12 @@
         <table class="data-table">
           <thead>
             <tr>
-              <th>ESTUDIANTE</th>
-              <th>CÓDIGO UNIV.</th>
-              <th>DOCUMENTO IDENTIDAD</th>
-              <th>CORREO</th>
-              <th class="actions-col">ACCIONES</th>
+              <th>Estudiante</th>
+              <th>Código universitario</th>
+              <th>Documento de identidad</th>
+              <th>Correo</th>
+              <th>Estado</th>
+              <th class="actions-col">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -31,14 +32,16 @@
               <td>{{ student.codigo_universitario }}</td>
               <td>{{ student.documento_identidad }}</td>
               <td>{{ student.email || '—' }}</td>
+              <td>{{ student.activo ? 'Activo' : 'Inactivo' }}</td>
               <td class="actions-cell">
-                <Button variant="action" @click="abrirQr(student)">QR</Button>
+                <Button v-if="student.activo" variant="action" @click="abrirQr(student)">QR</Button>
                 <Button variant="action" @click="abrirModalEditar(student)">Editar</Button>
-                <Button variant="delete" @click="confirmarEliminar(student)">Eliminar</Button>
+                <Button v-if="student.activo" variant="delete" @click="confirmarDesactivar(student)">Desactivar</Button>
+                <Button v-else variant="action" @click="reactivarEstudiante(student)">Reactivar</Button>
               </td>
             </tr>
             <tr v-if="students.length === 0">
-              <td colspan="5" class="empty-state">
+              <td colspan="6" class="empty-state">
                 {{ searchQuery
                   ? 'No se encontraron resultados para la búsqueda.'
                   : 'No hay estudiantes registrados.' }}
@@ -53,7 +56,7 @@
       <!-- Modal: registrar / editar estudiante -->
       <Modal
         :open="mostrarModal"
-        :title="estudianteSeleccionado ? 'Editar Estudiante' : 'Registrar Estudiante'"
+        :title="estudianteSeleccionado ? 'Editar estudiante' : 'Registrar estudiante'"
         @close="mostrarModal = false"
       >
         <EstudianteForm
@@ -65,7 +68,7 @@
         <template #footer>
           <Button variant="action" class="btn-modal" @click="mostrarModal = false">Cancelar</Button>
           <Button variant="primary" @click="refFormulario?.emitirGuardado()">
-            {{ estudianteSeleccionado ? 'Actualizar Registro' : 'Guardar Registro' }}
+            {{ estudianteSeleccionado ? 'Actualizar registro' : 'Guardar registro' }}
           </Button>
         </template>
       </Modal>
@@ -73,11 +76,11 @@
       <!-- Modal: importación CSV -->
       <EstudiantesCsvModal :open="csvModal" @close="csvModal = false" />
 
-      <!-- Modal: confirmar eliminación de estudiante -->
+      <!-- Modal: confirmar desactivación de estudiante -->
       <Modal
-        :open="modalEliminar"
-        title="Eliminar Estudiante"
-        @close="modalEliminar = false"
+        :open="modalDesactivar"
+        title="Desactivar estudiante"
+        @close="modalDesactivar = false"
       >
         <div class="confirm-box">
           <div class="confirm-icon" aria-hidden="true">
@@ -89,19 +92,19 @@
           </div>
           <div class="confirm-content">
             <p class="confirm-text">
-              ¿Está seguro de que desea eliminar al estudiante
-              <strong v-if="estudianteAEliminar">
-                {{ estudianteAEliminar.nombres }} {{ estudianteAEliminar.apellidos }}
+              ¿Está seguro de que desea desactivar al estudiante
+              <strong v-if="estudianteADesactivar">
+                {{ estudianteADesactivar.nombres }} {{ estudianteADesactivar.apellidos }}
               </strong>?
             </p>
-            <p class="confirm-note">Esta acción no se puede deshacer.</p>
+            <p class="confirm-note">Se conservarán sus registros.</p>
           </div>
         </div>
 
         <template #footer>
-          <Button variant="action" :disabled="eliminando" @click="modalEliminar = false">Cancelar</Button>
-          <Button variant="danger" :disabled="eliminando" @click="eliminarEstudiante">
-            {{ eliminando ? 'Eliminando...' : 'Sí, eliminar' }}
+          <Button variant="action" :disabled="desactivando" @click="modalDesactivar = false">Cancelar</Button>
+          <Button variant="danger" :disabled="desactivando" @click="desactivarEstudiante">
+            {{ desactivando ? 'Desactivando…' : 'Sí, desactivar' }}
           </Button>
         </template>
       </Modal>
@@ -167,38 +170,42 @@ const mostrarModal = ref(false);
 const estudianteSeleccionado = ref(null);
 const refFormulario = ref(null);
 
-// --- Eliminación ---
+// --- Desactivación ---
 const toast = useToastStore();
-const modalEliminar = ref(false);
-const estudianteAEliminar = ref(null);
-const eliminando = ref(false);
+const modalDesactivar = ref(false);
+const estudianteADesactivar = ref(null);
+const desactivando = ref(false);
 
-const confirmarEliminar = (estudiante) => {
-  estudianteAEliminar.value = estudiante;
-  modalEliminar.value = true;
+const reactivarEstudiante = (estudiante) => {
+  router.patch('/estudiantes/' + estudiante.id + '/activar', {}, { preserveScroll: true });
 };
 
-const eliminarEstudiante = () => {
-  if (!estudianteAEliminar.value) return;
+const confirmarDesactivar = (estudiante) => {
+  estudianteADesactivar.value = estudiante;
+  modalDesactivar.value = true;
+};
 
-  eliminando.value = true;
+const desactivarEstudiante = () => {
+  if (!estudianteADesactivar.value) return;
 
-  router.delete(`/estudiantes/${estudianteAEliminar.value.id}`, {
+  desactivando.value = true;
+
+  router.delete(`/estudiantes/${estudianteADesactivar.value.id}`, {
     preserveScroll: true,
     onSuccess: (page) => {
       // El backend responde con flash de éxito o de error (bloqueo por registros asociados).
       const flash = page?.props?.flash ?? {};
       if (flash.error) toast.error(flash.error);
       else if (flash.success) toast.success(flash.success);
-      modalEliminar.value = false;
+      modalDesactivar.value = false;
     },
     onError: () => {
-      toast.error('No se pudo eliminar el estudiante.');
-      modalEliminar.value = false;
+      toast.error('No se pudo desactivar el estudiante.');
+      modalDesactivar.value = false;
     },
     onFinish: () => {
-      eliminando.value = false;
-      estudianteAEliminar.value = null;
+      desactivando.value = false;
+      estudianteADesactivar.value = null;
     },
   });
 };
@@ -330,7 +337,6 @@ const getInitial = (name) => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: var(--spacing-lg);
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 1px;
 }

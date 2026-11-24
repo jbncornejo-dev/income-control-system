@@ -50,7 +50,6 @@ defineProps({
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-muted);
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: var(--spacing-xs);
 }

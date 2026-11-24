@@ -42,7 +42,7 @@ class PersonalControlController extends Controller
         }
 
         // Criterio 3: Verificar si el examen tiene personal de control asignado
-        $personal = $examen->personalControl()->pluck('users.id')->toArray();
+        $personal = $examen->personalControl()->where('users.activo', true)->pluck('users.id')->toArray();
         if (empty($personal)) {
             return back()->withErrors([
                 'reparto' => 'No se puede ejecutar el reparto porque el examen aún no tiene personal de control asignado.'
@@ -51,7 +51,8 @@ class PersonalControlController extends Controller
 
         // Criterio 1 y 2: Obtener estudiantes habilitados
         $habilitaciones = Habilitacion::where('id_examen', $examen->id_examen)
-            ->where('estado_habilitado', true);
+            ->where('estado_habilitado', true)
+            ->whereHas('estudiante', fn ($query) => $query->where('activo', true));
 
         if (! $habilitaciones->exists()) {
             return back()->withErrors([
@@ -80,7 +81,7 @@ class PersonalControlController extends Controller
         }
 
         $validated = $request->validate([
-            'id_personal_control' => 'required|exists:users,id',
+            'id_personal_control' => 'required|exists:users,id,activo,true',
         ]);
 
         // Criterio 2: Reasignación manual puntual

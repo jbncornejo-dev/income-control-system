@@ -346,7 +346,7 @@ const handleRegenerateQr = (idExamen) => {
                                     :title="!puedeRegenerarQr ? 'Debes actualizar tu foto antes de generar un nuevo QR' : 'Generar un nuevo código invalida el actual'"
                                 >
                                     <RefreshCw :size="15" :class="{ 'spin-animation': isRegeneratingQr }" />
-                                    <span>{{ isRegeneratingQr ? 'REGENERANDO...' : 'REGENERAR CÓDIGO QR' }}</span>
+                                    <span>{{ isRegeneratingQr ? 'Regenerando…' : 'Regenerar código QR' }}</span>
                                 </button>
 
                                 <p v-if="!puedeRegenerarQr" class="qr-regen-disabled-message">
@@ -398,7 +398,6 @@ const handleRegenerateQr = (idExamen) => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: 1.5rem;
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 0.05em;
     text-align: center;
@@ -470,7 +469,6 @@ const handleRegenerateQr = (idExamen) => {
     font-size: 0.625rem; /* text-[10px] */
     font-weight: 700;
     color: #9ca3af;
-    text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 1.5rem;
 }
@@ -558,7 +556,6 @@ const handleRegenerateQr = (idExamen) => {
 .sis-code-label {
     font-size: 0.625rem; /* text-[10px] */
     color: #9ca3af;
-    text-transform: uppercase;
     font-weight: 600;
     letter-spacing: 0.05em;
     display: block;
@@ -654,7 +651,6 @@ const handleRegenerateQr = (idExamen) => {
     font-size: 0.625rem; /* text-[10px] */
     font-weight: 700;
     color: var(--color-primary);
-    text-transform: uppercase;
     letter-spacing: 0.1em;
     margin-bottom: 1.5rem;
     text-align: center;

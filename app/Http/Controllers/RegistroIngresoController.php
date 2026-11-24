@@ -26,6 +26,7 @@ class RegistroIngresoController extends Controller
             'habilitaciones' => fn ($query) => $query
                 ->where('estado_habilitado', true)
                 ->where('id_personal_control', auth()->id())
+                ->whereHas('estudiante', fn ($estudiantes) => $estudiantes->where('activo', true))
                 ->with('estudiante')
                 ->withExists([
                     'estudiante as ya_ingreso' => fn ($estudiantes) => $estudiantes
@@ -145,6 +146,10 @@ class RegistroIngresoController extends Controller
             ], 404);
         }
 
+        if (! $estudiante->activo) {
+            return response()->json(['error' => 'El estudiante está desactivado.'], 422);
+        }
+
         // ── Verificar habilitación ───────────────────────────────────
         $habilitacion = Habilitacion::with('personalControl')
             ->where('id_estudiante', $estudiante->id_estudiante)
@@ -251,7 +256,7 @@ class RegistroIngresoController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'id_estudiante'      => 'required|integer',
+            'id_estudiante'      => 'required|integer|exists:estudiante,id_estudiante,activo,true',
             'id_examen_ambiente' => 'required|integer',
         ]);
 
@@ -355,6 +360,15 @@ class RegistroIngresoController extends Controller
                     'uuid_offline'  => $uuidOffline,
                     'id_estudiante' => $idEstudiante,
                     'motivo'        => 'Ingreso fuera de la ventana horaria permitida para el examen.',
+                ];
+                continue;
+            }
+
+            if (! Estudiante::whereKey($idEstudiante)->where('activo', true)->exists()) {
+                $resultados['rechazados'][] = [
+                    'uuid_offline' => $uuidOffline,
+                    'id_estudiante' => $idEstudiante,
+                    'motivo' => 'El estudiante no existe o está desactivado.',
                 ];
                 continue;
             }

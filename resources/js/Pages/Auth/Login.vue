@@ -31,8 +31,8 @@
               <div class="gold-line"></div>
               <h1 class="brand-title font-display">CIE</h1>
             </div>
-            <h2 class="section-title">Acceso Restringido</h2>
-            <p class="section-desc">Ingrese sus credenciales administrativas para continuar al panel de control de evaluaciones.</p>
+            <h2 class="section-title">Acceso restringido</h2>
+            <p class="section-desc">Ingresa tus credenciales para acceder al sistema de evaluaciones.</p>
           </div>
 
           <!-- Formulario -->
@@ -40,7 +40,7 @@
             
             <!-- Input Identificador (Correo, código o documento) -->
             <div class="form-group">
-              <label for="identificador" class="form-label">Correo Electrónico Institucional</label>
+              <label for="identificador" class="form-label">Correo, usuario o documento de identidad</label>
               <div class="input-wrapper">
                 <div class="input-icon">
                   <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
@@ -51,7 +51,7 @@
                   v-model.trim="loginForm.identificador"
                   required 
                   autocomplete="username"
-                  placeholder="nombre@umss.edu.bo" 
+                  placeholder="Correo o nombre de usuario"
                   class="form-input"
                 >
               </div>
@@ -98,7 +98,7 @@
             <div class="submit-wrapper">
               <button type="submit" class="btn-submit font-display" :disabled="loginForm.processing">
                 <template v-if="loginForm.processing">
-                  AUTENTICANDO...
+                  Autenticando...
                 </template>
                 <template v-else>
                   Autenticar
@@ -121,7 +121,7 @@
             <!-- Emblema Principal UMSS -->
             <div class="umss-emblem-container">
               <div class="umss-circle">
-                <span class="umss-text font-display">U<span class="text-brand-gold">M</span>SS</span>
+                <span class="umss-text font-display">U<span class="text-brand-gold">M</span>Ss</span>
               </div>
               <h3 class="umss-subtitle font-display">Universidad Mayor</h3>
               <p class="umss-subtext font-display text-brand-gold">De San Simón</p>
@@ -135,8 +135,8 @@
             <div class="agency-footer">
               <span class="agency-label">Desarrollado por</span>
               <div class="agency-logo-container">
-                <img src="/images/TexCorp.png" alt="TEXCORP" class="texcorp-img" />
-                <span class="texcorp-text font-display">TEXCORP</span>
+                <img src="/images/TexCorp.png" alt="TexCorp" class="texcorp-img" />
+                <span class="texcorp-text font-display">TexCorp</span>
               </div>
             </div>
 
@@ -266,7 +266,6 @@ function handleLogin() {
   font-weight: 700;
   font-size: 0.875rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
 }
 
 /* Contenido Principal */
@@ -373,7 +372,6 @@ function handleLogin() {
   color: #374151;
   margin-bottom: 0.5rem;
   letter-spacing: 0.025em;
-  text-transform: uppercase;
 }
 
 .password-header {
@@ -489,7 +487,6 @@ function handleLogin() {
   border-radius: 0.5rem;
   font-weight: 600;
   font-size: 0.875rem;
-  text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
   outline: none;
@@ -601,14 +598,12 @@ function handleLogin() {
   color: #ffffff;
   font-size: 1.125rem;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
   margin-bottom: 0.25rem;
 }
 
 .umss-subtext {
   font-size: 0.875rem;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
   margin: 0;
 }
 
@@ -641,7 +636,6 @@ function handleLogin() {
 .agency-label {
   font-size: 0.625rem;
   color: #6b7280;
-  text-transform: uppercase;
   letter-spacing: 0.1em;
   margin-bottom: 0.75rem;
   font-weight: 600;

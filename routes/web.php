@@ -20,6 +20,8 @@ use App\Http\Controllers\PersonalControlController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TipoExamenController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\RolController;
+use App\Http\Controllers\ReportesController;
 use App\Models\Ambiente;
 use App\Models\Asignatura;
 use App\Models\Estudiante;
@@ -92,7 +94,9 @@ Route::middleware('auth')->group(function () {
             return redirect()->route('control.dashboard');
         }
 
-        abort(403, 'Tu rol no tiene un panel principal configurado.');
+        abort_unless($user->rol->esPersonalizado(), 403, 'Tu rol no tiene un panel principal configurado.');
+
+        return redirect()->route('reportes.index');
 
     })->middleware(['password.pendiente', 'verified'])->name('dashboard');
 
@@ -126,6 +130,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
         Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
+        Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
+        Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
+        Route::patch('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
         Route::post('/grupos', [GrupoController::class, 'store'])->name('grupos.store');
@@ -144,8 +151,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/ambientes', [AmbienteController::class, 'store'])->name('ambientes.store');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('estudiantes.store');
         Route::put('/estudiantes/{estudiante}', [StudentController::class, 'update'])->name('estudiantes.update');
-        // Eliminar únicamente estudiantes sin habilitaciones, registros de ingreso o incidencias.
+        // Desactivar estudiantes conservando sus relaciones.
         Route::delete('/estudiantes/{estudiante}', [StudentController::class, 'destroy'])->name('estudiantes.destroy');
+        Route::patch('/estudiantes/{estudiante}/activar', [StudentController::class, 'activate'])->name('estudiantes.activate');
         Route::post('/estudiantes/importar', [StudentController::class, 'importar'])->name('estudiantes.importar');
         // QR de identificación del estudiante (PNG) para el control de ingreso.
         Route::get('/estudiantes/{estudiante}/qr', [StudentController::class, 'qr'])->name('estudiantes.qr');
@@ -176,6 +184,7 @@ Route::middleware('auth')->group(function () {
         Route::put('/usuarios/{usuario}', [UserController::class, 'update'])->name('usuarios.update');
         Route::patch('/usuarios/{usuario}/password', [UserController::class, 'updatePassword'])->name('usuarios.password');
         Route::delete('/usuarios/{usuario}', [UserController::class, 'destroy'])->name('usuarios.destroy');
+        Route::patch('/usuarios/{usuario}/activar', [UserController::class, 'activate'])->name('usuarios.activate');
     });
 
     Route::middleware(['password.pendiente', 'role:administrador,docente'])->group(function () {
@@ -228,6 +237,12 @@ Route::middleware('auth')->group(function () {
         Route::patch('/habilitaciones/{habilitacion}/asignar-personal', [PersonalControlController::class, 'asignarManual'])
             ->name('habilitaciones.asignar-personal');
         });
+
+    Route::middleware('password.pendiente')->group(function () {
+        Route::get('/reportes', [ReportesController::class, 'index'])->name('reportes.index');
+        Route::get('/reportes/examenes', [ReportesController::class, 'examenes'])->name('reportes.examenes');
+        Route::get('/reportes/incidencias', [ReportesController::class, 'incidencias'])->name('reportes.incidencias');
+    });
 
     Route::get('/access-denied', function () {
         return Inertia::render('Errors/403');
@@ -365,7 +380,7 @@ Route::middleware('auth')->group(function () {
         ]);
 
         return back();
-    })->name('estudiante.qr.regenerate');
+    })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.qr.regenerate');
 
     Route::post('/estudiante/foto', function (\Illuminate\Http\Request $request) {
         $request->validate([
@@ -395,5 +410,5 @@ Route::middleware('auth')->group(function () {
         }
 
         return back();
-    })->name('estudiante.foto.upload');
+    })->middleware(['password.pendiente', 'role:estudiante'])->name('estudiante.foto.upload');
 });

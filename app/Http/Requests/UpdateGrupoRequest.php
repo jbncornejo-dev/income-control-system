@@ -16,7 +16,7 @@ class UpdateGrupoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_usuario' => ['required', 'integer', 'exists:users,id'],
+            'id_usuario' => ['required', 'integer', 'exists:users,id,activo,true'],
         ];
     }
 

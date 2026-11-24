@@ -451,12 +451,12 @@ function irAIncidencias() {
                 </div>
 
                 <div class="paso1-card">
-                    <span class="paso-indicador">PASO 1 DE 2</span>
+                    <span class="paso-indicador">Paso 1 de 2</span>
                     <h2 class="card-titulo">Configurar Sesión de Control</h2>
 
                     <div class="form-group">
                         <SelectInput
-                            label="EXAMEN"
+                            label="Examen"
                             v-model="selectedExamenId"
                             :options="examenesOptions"
                             placeholder="Seleccione un examen..."
@@ -494,7 +494,7 @@ function irAIncidencias() {
 
                     <div class="form-group">
                         <SelectInput
-                            label="AMBIENTE"
+                            label="Ambiente"
                             v-model="selectedAmbienteId"
                             :options="ambientesOptions"
                             :disabled="!selectedExamenId"
@@ -509,7 +509,7 @@ function irAIncidencias() {
                         class="btn-full"
                     >
                         <ScanLine :size="18" class="btn-icon" />
-                        INICIAR CONTROL DE INGRESO
+                        Iniciar control de ingreso
                     </Button>
                 </div>
             </div>
@@ -521,22 +521,22 @@ function irAIncidencias() {
                 <div class="context-bar">
                     <div class="context-info">
                         <div class="context-item">
-                            <span class="context-label">EXAMEN</span>
+                            <span class="context-label">Examen</span>
                             <span class="context-value">{{ selectedExamenLabel }}</span>
                         </div>
                         <div class="context-divider"></div>
                         <div class="context-item">
-                            <span class="context-label">AMBIENTE</span>
+                            <span class="context-label">Ambiente</span>
                             <span class="context-value context-highlight">{{ selectedAmbienteLabel }}</span>
                         </div>
                         <div class="context-divider"></div>
                         <div class="context-item">
-                            <span class="context-label">INGRESOS</span>
+                            <span class="context-label">Ingresos</span>
                             <span class="context-value context-count">{{ ingresosRegistrados }}</span>
                         </div>
                         <div class="context-divider"></div>
                         <div class="context-item">
-                            <span class="context-label">MIS PENDIENTES</span>
+                            <span class="context-label">Mis pendientes</span>
                             <span class="context-value context-pending">{{ misPendientesCount }}</span>
                         </div>
                     </div>
@@ -547,12 +547,12 @@ function irAIncidencias() {
                             :class="['btn-asignados', { active: mostrarMisAsignados }]"
                         >
                             <Users :size="14" />
-                            <span>MIS ASIGNADOS</span>
+                            <span>Mis asignados</span>
                             <span class="badge-pendientes">{{ misPendientesCount }}</span>
                         </button>
                         <button @click="cambiarExamen" class="btn-cambiar">
                             <RotateCcw :size="14" />
-                            CAMBIAR
+                            Cambiar
                         </button>
                     </div>
                 </div>
@@ -715,7 +715,7 @@ function irAIncidencias() {
                                 <TextInput
                                     ref="inputRef"
                                     v-model="datoEstudiante"
-                                    label="CÓDIGO UNIVERSITARIO / CI"
+                                    label="Código universitario / CI"
                                     placeholder="Ej: 202109372"
                                     :disabled="isLoading"
                                     class="flex-1"
@@ -726,7 +726,7 @@ function irAIncidencias() {
                                     :loading="isLoading"
                                     variant="primary"
                                     class="btn-buscar"
-                                >BUSCAR</LoadingButton>
+                                >Buscar</LoadingButton>
                             </form>
                         </div>
                     </div>
@@ -736,7 +736,7 @@ function irAIncidencias() {
                 <div v-if="estudianteValidado" class="result-card result-ok">
                     <div class="result-status-bar ok">
                         <CheckCircle :size="20" />
-                        <span>ESTUDIANTE HABILITADO</span>
+                        <span>Estudiante habilitado</span>
                     </div>
 
                     <div class="student-header-info">
@@ -781,11 +781,11 @@ function irAIncidencias() {
                     <div class="action-buttons">
                         <button @click="rechazarIngreso" :disabled="isLoading" class="btn-reject">
                             <XCircle :size="20" />
-                            RECHAZAR
+                            Rechazar
                         </button>
                         <button @click="confirmarIngreso" :disabled="isLoading || selectedExamenData?.en_ventana_ingreso === false" class="btn-accept">
                             <UserCheck :size="20" />
-                            <span v-if="!isLoading">ACEPTAR INGRESO</span>
+                            <span v-if="!isLoading">Aceptar ingreso</span>
                             <LoadingSpinner v-else size="small" />
                         </button>
                     </div>
@@ -795,9 +795,9 @@ function irAIncidencias() {
                 <div v-if="estudianteError" class="result-card result-error">
                     <div class="result-status-bar error">
                         <UserX :size="20" />
-                        <span v-if="estudianteError.inhabilitado">ESTUDIANTE INHABILITADO</span>
-                        <span v-else-if="estudianteError.ya_ingreso">INGRESO YA REGISTRADO</span>
-                        <span v-else>ACCESO DENEGADO</span>
+                        <span v-if="estudianteError.inhabilitado">Estudiante inhabilitado</span>
+                        <span v-else-if="estudianteError.ya_ingreso">Ingreso ya registrado</span>
+                        <span v-else>Acceso denegado</span>
                     </div>
 
                     <div class="student-header-info">
@@ -827,11 +827,11 @@ function irAIncidencias() {
                     <div class="action-buttons">
                         <button @click="rechazarIngreso" class="btn-dismiss">
                             <RotateCcw :size="18" />
-                            ESCANEAR SIGUIENTE
+                            Escanear siguiente
                         </button>
                         <button @click="irAIncidencias" class="btn-incidencia">
                             <AlertTriangle :size="18" />
-                            REPORTAR INCIDENCIA
+                            Reportar incidencia
                         </button>
                     </div>
                 </div>
@@ -953,7 +953,6 @@ function irAIncidencias() {
     font-size: 12px;
     color: var(--text-muted);
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .preview-value {
@@ -967,7 +966,6 @@ function irAIncidencias() {
     font-weight: 700;
     padding: 3px 10px;
     border-radius: 20px;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .estado-programado {
@@ -1345,7 +1343,6 @@ function irAIncidencias() {
     font-size: 10px;
     font-weight: 700;
     color: var(--text-muted);
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 .meta-value {
@@ -1636,6 +1633,6 @@ function irAIncidencias() {
 .normas-bloque { display: flex; flex-direction: column; gap: 0.75rem; margin: 1rem 0; }
 .norma { background: #f9fafb; border-left: 3px solid var(--color-primary); border-radius: 0 0.25rem 0.25rem 0; padding: 0.75rem 1rem; }
 .norma-particular { border-left-color: var(--color-active); }
-.norma-titulo { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
+.norma-titulo { display: block; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; color: var(--text-muted); margin-bottom: 4px; }
 .norma-texto { margin: 0; font-size: 0.9rem; color: var(--text-dark); line-height: 1.5; }
 </style>

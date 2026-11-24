@@ -6,7 +6,7 @@
                 <div class="brand">
                     <img src="/images/LogoUMSS.png" alt="Logo UMSS" class="brand-logo" />
                     <div class="brand-text">
-                        TIS <span class="brand-accent">•</span> EVALUACIONES
+                        TIS <span class="brand-accent">•</span> Evaluaciones
                     </div>
                 </div>
                 
@@ -96,7 +96,7 @@
         <footer class="public-footer">
             <div class="footer-container">
                 <div class="footer-brand">
-                    TIS <span class="brand-accent">•</span> EVALUACIONES
+                    TIS <span class="brand-accent">•</span> Evaluaciones
                 </div>
                 <p class="footer-copy">
                     &copy; 2026 Universidad Mayor de San Simón. Todos los derechos reservados.
@@ -233,7 +233,6 @@ h1, h2, h3, h4, .font-display {
     font-size: 0.875rem;
     font-weight: 500;
     letter-spacing: 0.025em;
-    text-transform: uppercase;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -295,7 +294,6 @@ h1, h2, h3, h4, .font-display {
     color: #ffffff;
     text-decoration: none;
     font-weight: 500;
-    text-transform: uppercase;
     font-size: 0.875rem;
     display: block;
     padding: 0.5rem;
@@ -359,7 +357,6 @@ h1, h2, h3, h4, .font-display {
     font-weight: 900;
     color: #ffffff;
     margin-bottom: 0.5rem;
-    text-transform: uppercase;
     letter-spacing: -0.025em;
 }
 @media (min-width: 768px) { .hero-title { font-size: 3.75rem; } }
@@ -375,7 +372,6 @@ h1, h2, h3, h4, .font-display {
     color: #d1d5db;
     letter-spacing: 0.15em;
     margin-bottom: 2.5rem;
-    text-transform: uppercase;
 }
 @media (min-width: 768px) { .hero-subtitle { font-size: 2.25rem; } }
 @media (min-width: 1024px) { .hero-subtitle { font-size: 3rem; } }
@@ -424,7 +420,6 @@ h1, h2, h3, h4, .font-display {
     color: #ffffff;
     font-family: 'Orbitron', sans-serif;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.1em;
     padding: 1rem 2.5rem;
     border-radius: 2px;

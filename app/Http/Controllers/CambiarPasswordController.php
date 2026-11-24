@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\AdminCredentials;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -17,7 +18,12 @@ class CambiarPasswordController extends Controller
     {
         $request->validate([
             'password_actual' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'password' => [
+                'required', 'string', 'max:72', 'confirmed', 'different:password_actual',
+                $request->user()->rol?->requiereClaveSegura()
+                    ? AdminCredentials::password()
+                    : 'min:8',
+            ],
         ]);
 
         $user = $request->user();

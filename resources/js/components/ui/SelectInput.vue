@@ -54,12 +54,10 @@ const props = defineProps({
 
 defineEmits(['update:modelValue']);
 
-// Capitaliza la primera letra de cada palabra
 const formatLabel = (label) => {
     if (!props.capitalize || !label) return label;
-    return String(label)
-        .toLowerCase()
-        .replace(/\b\w/g, (char) => char.toUpperCase());
+    const texto = String(label);
+    return texto.charAt(0).toLocaleUpperCase('es') + texto.slice(1);
 };
 </script>
 

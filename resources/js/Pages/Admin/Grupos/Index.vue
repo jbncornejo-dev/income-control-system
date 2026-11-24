@@ -161,7 +161,7 @@ function irAPagina(url) {
         <div class="panel-container">
             <div class="header-section">
                 <div>
-                    <h1 class="panel-title">GRUPOS</h1>
+                    <h1 class="panel-title">Grupos</h1>
                     <p class="subtitle">Paralelos por asignatura y gestion con su docente responsable</p>
                 </div>
                 <button class="btn-primary" @click="abrirCrear">Nuevo grupo</button>
@@ -312,7 +312,7 @@ function irAPagina(url) {
 .subtitle { font-size: 0.95rem; color: var(--text-muted); margin: 0; }
 .filtros { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
 .filtro-campo { display: flex; flex-direction: column; gap: 4px; }
-.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; }
 .control { background: #fff; width: 100%; box-sizing: border-box; }
 .control-error { border-color: var(--color-active); }
 .btn-primary { padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 8px; }

@@ -32,8 +32,8 @@
           <thead>
             <tr>
               <th>ID</th>
-              <th>NOMBRE</th>
-              <th class="actions-col">ACCIONES</th>
+              <th>Nombre</th>
+              <th class="actions-col">Acciones</th>
             </tr>
           </thead>
           <tbody>

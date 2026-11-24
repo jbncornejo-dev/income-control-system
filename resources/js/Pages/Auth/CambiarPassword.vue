@@ -3,11 +3,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Button from '@/components/ui/Button.vue';
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue';
 import PasswordField from '@/components/ui/PasswordField.vue';
-import { useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 import { useToastStore } from '@/stores/useToastStore';
-import { Head } from '@inertiajs/vue3';
 
 const toastStore = useToastStore();
+const page = usePage();
+const requiereClaveSegura = computed(() => page.props.auth.user.requiere_clave_segura);
+const longitudMinima = computed(() => requiereClaveSegura.value ? 14 : 8);
 
 const form = useForm({
   password_actual: '',
@@ -29,21 +32,20 @@ function guardar() {
 </script>
 
 <template>
-  <Head title="Cambiar Contraseña" />
+  <Head title="Cambiar contraseña" />
   <AuthenticatedLayout>
     <div class="panel-container">
-      <h1 class="panel-title">CAMBIAR CONTRASEÑA</h1>
+      <h1 class="panel-title">Cambiar contraseña</h1>
 
       <div class="card">
         <p class="help-text">
-          Tu cuenta está usando una contraseña temporal. Para continuar, crea una
-          contraseña personal nueva (mínimo 8 caracteres).
+          Usa una contraseña nueva de al menos {{ longitudMinima }} caracteres<span v-if="requiereClaveSegura">, con mayúsculas, minúsculas, números y símbolos</span>.
         </p>
 
         <form @submit.prevent="guardar" class="form-cambiar">
           <PasswordField v-model="form.password_actual" label="Contraseña actual" toggle-label="Mostrar contraseña actual" :error="form.errors.password_actual" />
-          <PasswordField v-model="form.password" label="Nueva contraseña" toggle-label="Mostrar nueva contraseña" minlength="8" :error="form.errors.password" />
-          <PasswordField v-model="form.password_confirmation" label="Confirmar nueva contraseña" toggle-label="Mostrar confirmación" minlength="8" :error="form.errors.password_confirmation" />
+          <PasswordField v-model="form.password" label="Nueva contraseña" toggle-label="Mostrar nueva contraseña" :minlength="longitudMinima" :error="form.errors.password" />
+          <PasswordField v-model="form.password_confirmation" label="Confirmar nueva contraseña" toggle-label="Mostrar confirmación" :minlength="longitudMinima" :error="form.errors.password_confirmation" />
 
           <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
             <LoadingSpinner size="medium" />
@@ -60,7 +62,7 @@ function guardar() {
 
 <style scoped>
 .panel-container { padding: 2rem; background-color: #f3f4f6; min-height: 100vh; }
-.panel-title { font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-bottom: 1.5rem; text-transform: uppercase; }
+.panel-title { font-size: 1.5rem; font-weight: 700; color: #1f2937; margin-bottom: 1.5rem; }
 .card {
   max-width: 480px;
   background: #ffffff;
