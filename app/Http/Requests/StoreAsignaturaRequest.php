@@ -9,6 +9,10 @@ class StoreAsignaturaRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         return $this->user()?->rol?->nombre_rol === 'administrador';
     }
 
@@ -19,7 +23,7 @@ class StoreAsignaturaRequest extends FormRequest
         }
 
         $this->merge([
-            'nombre_asignatura' => trim(preg_replace('/\s+/u', ' ', $this->input('nombre_asignatura'))),
+            'nombre_asignatura' => Asignatura::formatearNombre($this->input('nombre_asignatura')),
         ]);
     }
 

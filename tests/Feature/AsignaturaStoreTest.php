@@ -68,13 +68,13 @@ class AsignaturaStoreTest extends TestCase
             ->post(route('asignaturas.store'), ['nombre_asignatura' => $name]);
 
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('asignatura', ['nombre_asignatura' => $name]);
+        $this->assertDatabaseHas('asignatura', ['nombre_asignatura' => mb_convert_case($name, MB_CASE_TITLE)]);
     }
 
     #[DataProvider('duplicateNames')]
-    public function test_rejects_an_existing_name(string $name): void
+    public function test_rejects_an_existing_name(string $name, string $existing = 'Cálculo I'): void
     {
-        Asignatura::create(['nombre_asignatura' => 'Cálculo I']);
+        Asignatura::create(['nombre_asignatura' => $existing]);
 
         $response = $this->actingAs(User::factory()->create())
             ->from('/dashboard')->post(route('asignaturas.store'), [
@@ -93,7 +93,10 @@ class AsignaturaStoreTest extends TestCase
         return [
             'exact' => ['Cálculo I'],
             'surrounding whitespace' => ['  Cálculo I  '],
+            'without accents' => ['calculo i'],
             'different case and spaces' => ['CÁLCULO    i'],
+            'arabic replaces roman' => ['CALCULO 2', 'Cálculo II'],
+            'roman replaces arabic' => ['calculo xiv', 'Cálculo 14'],
         ];
     }
 

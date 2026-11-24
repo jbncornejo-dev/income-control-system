@@ -134,19 +134,13 @@ const busquedaAmbiente = ref('');
 const normalizarBusqueda = texto => texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
 
 const ambientesVisibles = computed(() => {
-    const consulta = normalizarBusqueda(busquedaAmbiente.value.trim());
+    const partes = normalizarBusqueda(busquedaAmbiente.value).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
     return props.ambientes.filter(ambiente =>
         !form.id_ambientes.includes(ambiente.id_ambiente)
         && (!mostrarSoloLibres.value || !estaOcupado(ambiente.id_ambiente))
-        && normalizarBusqueda(ambiente.nombre_ambiente).includes(consulta)
+        && partes.every(parte => normalizarBusqueda(ambiente.nombre_ambiente).replace(/[^\p{L}\p{N}]+/gu, '').includes(parte))
     );
 });
-
-function agregarAmbiente(evento) {
-    const id = Number(evento.target.value);
-    if (id) toggleAmbiente(id);
-    evento.target.value = '';
-}
 
 function solicitarDisponibilidad() {
     if (!form.fecha || !form.hora_inicio || !form.duracion_minutos) {
@@ -482,19 +476,18 @@ function guardar() {
 
                         <template v-if="ambientes.length">
                             <label class="form-label" for="buscar-ambiente">Buscar por nombre</label>
-                            <input id="buscar-ambiente" v-model="busquedaAmbiente" type="search" class="form-input" placeholder="Ej. Aula 101" />
-                            <label class="form-label" for="agregar-ambiente">Añadir un ambiente</label>
-                            <select id="agregar-ambiente" class="form-input" :disabled="form.processing || !ambientesVisibles.length" @change="agregarAmbiente">
-                                <option value="">Selecciona un ambiente</option>
-                                <option v-for="ambiente in ambientesVisibles" :key="ambiente.id_ambiente" :value="ambiente.id_ambiente" :disabled="estaOcupado(ambiente.id_ambiente)">
+                            <input id="buscar-ambiente" v-model="busquedaAmbiente" @keydown.enter.prevent type="search" class="form-input" placeholder="Ej. Aula 101" />
+                            <div v-if="ambientesVisibles.length" class="resultados-aula" aria-label="Resultados de ambientes">
+                                <button v-for="ambiente in ambientesVisibles" :key="ambiente.id_ambiente" type="button"
+                                    :disabled="form.processing || estaOcupado(ambiente.id_ambiente)" @click="toggleAmbiente(ambiente.id_ambiente)">
                                     {{ ambiente.nombre_ambiente }} · {{ ambiente.capacidad }} pers.{{ estaOcupado(ambiente.id_ambiente) ? ' · Ocupado' : '' }}
-                                </option>
-                            </select>
+                                </button>
+                            </div>
                             <p v-if="!ambientesVisibles.length" class="help-text">No hay ambientes adicionales que coincidan con los filtros.</p>
                             <ul v-if="ambientesSeleccionados.length" class="ambientes-seleccionados" aria-label="Ambientes seleccionados">
-                                <li v-for="ambiente in ambientesSeleccionados" :key="ambiente.id_ambiente" class="ambiente-item ambiente-item--selected">
+                                <li v-for="ambiente in ambientesSeleccionados" :key="ambiente.id_ambiente" class="aula-chip">
                                     <span class="ambiente-name">{{ ambiente.nombre_ambiente }}</span>
-                                    <button type="button" class="quitar-ambiente" :disabled="form.processing" :aria-label="'Quitar ' + ambiente.nombre_ambiente" @click="toggleAmbiente(ambiente.id_ambiente)">Quitar</button>
+                                    <button type="button" class="quitar-ambiente" :disabled="form.processing" :aria-label="'Quitar ' + ambiente.nombre_ambiente" @click="toggleAmbiente(ambiente.id_ambiente)">×</button>
                                 </li>
                             </ul>
                         </template>
@@ -642,8 +635,13 @@ textarea.form-input { resize: vertical; }
     border-color: var(--color-primary);
 }
 
+.resultados-aula { max-height: 9rem; overflow: auto; display: grid; border: 1px solid var(--border-light); }
+.resultados-aula button { text-align: left; padding: .4rem .65rem; }
+.resultados-aula button:hover:enabled { background: #eff6ff; }
+.aula-chip { display: inline-flex; align-items: center; gap: .4rem; background: #eff6ff; border-radius: 1rem; padding: .15rem .6rem; }
 .ambientes-seleccionados {
-    display: grid;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     list-style: none;
     padding: 0;

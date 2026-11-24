@@ -204,18 +204,20 @@ Cuando termines, ejecuta `exit` para salir del contenedor `workspace` y volver a
 
 ## Accesos de demostración
 
-Con APP_ENV=local, ejecuta php artisan migrate --seed y entra con uno de
-estos correos. Todas las cuentas demo usan la contraseña **pass**.
+Con `APP_ENV=local`, ejecuta `php artisan migrate --seed` y usa uno de estos
+accesos.
 
-| Rol | Correo |
-| --- | --- |
-| Administrador | admin@example.com |
-| Docente | docente@example.com |
-| Personal de control | control@example.com |
-| Estudiante | estudiante@example.com |
+| Rol | Correo | Contraseña |
+| --- | --- | --- |
+| Administrador | administrador@gmail.com | `SalchiPapa123*` |
+| Docente | docente@example.com | `pass` |
+| Personal de control | control@example.com | `pass` |
+| Estudiante | estudiante@example.com | `pass` |
+
+El administrador demo también puede ingresar con el usuario `administrador.local`.
 
 Para actualizar solo las cuentas demo de una base local ya inicializada,
-ejecuta php artisan db:seed --class=DemoUserSeeder.
+ejecuta `php artisan db:seed --class=DemoUserSeeder`.
 
 ## Puesta en marcha en el servidor de la universidad
 

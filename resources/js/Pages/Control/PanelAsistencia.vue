@@ -114,14 +114,14 @@ onUnmounted(detenerRefresco);
                     <button v-if="!cerrado" class="btn-secundario" @click="refrescar">Actualizar ahora</button>
                     <!-- Botones de Exportación (HU-26) -->
                     <div class="export-actions">
-                        <ReportExportLink
+                        <ReportExportLink v-if="!$page.props.auth.user.rol_personalizado"
                             format="pdf"
                             :icon-size="15"
                             :href="`/panel-asistencia/exportar/pdf?id_examen=${examen.id_examen}`"
                             target="_blank"
                             title="Descargar Reporte en PDF"
                         />
-                        <ReportExportLink
+                        <ReportExportLink v-if="!$page.props.auth.user.rol_personalizado"
                             format="excel"
                             :icon-size="15"
                             :href="`/panel-asistencia/exportar/excel?id_examen=${examen.id_examen}`"

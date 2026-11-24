@@ -35,7 +35,7 @@ const navItems = [
 
 // Solo se recalcula cuando cambia el rol, no re-evalúa condicionales en el template
 const visibleNavItems = computed(() =>
-  navItems.filter((item) => user.value?.rol_personalizado ? item.href === '/reportes' : item.roles.includes(role.value))
+  navItems.filter((item) => user.value?.rol_personalizado ? user.value.permisos_menu.includes(item.href) : item.roles.includes(role.value))
 );
 
 const currentMenuLabel = computed(() => {

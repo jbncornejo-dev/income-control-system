@@ -9,6 +9,7 @@ import TextInput from '@/components/ui/TextInput.vue';
 
 const props = defineProps({
     roles: { type: Array, required: true },
+    recursos: Object,
     rolesBase: { type: Object, required: true },
     permisos: { type: Object, required: true },
     asignaturas: { type: Array, required: true },
@@ -18,7 +19,21 @@ const mostrarFormulario = ref(false);
 const editando = ref(null);
 const limitarAsignaturas = ref(false);
 const form = useForm({ nombre_rol: '', permisos: [], asignaturas_reportes: [] });
+const rolParaEliminar = ref(null);
+const formEliminar = useForm({});
 const nombreVisible = nombre => nombre.charAt(0).toLocaleUpperCase('es') + nombre.slice(1);
+
+function pedirConfirmacion(rol) {
+    formEliminar.clearErrors();
+    rolParaEliminar.value = rol;
+}
+
+function eliminar() {
+    formEliminar.delete('/roles/' + rolParaEliminar.value.id_rol, {
+        preserveScroll: true,
+        onSuccess: () => { rolParaEliminar.value = null; },
+    });
+}
 
 function abrir(rol = null) {
     editando.value = rol;
@@ -36,7 +51,7 @@ function guardar() {
     const opciones = { preserveScroll: true, onSuccess: () => { mostrarFormulario.value = false; } };
     form.transform(data => ({
         ...data,
-        asignaturas_reportes: limitarAsignaturas.value ? data.asignaturas_reportes : null,
+        asignaturas_reportes: limitarAsignaturas.value && data.permisos.some(p => p.startsWith('reportes.')) ? data.asignaturas_reportes : null,
     }));
     if (editando.value) {
         form.patch('/roles/' + editando.value.id_rol, opciones);
@@ -51,7 +66,7 @@ function guardar() {
     <AuthenticatedLayout>
         <div class="panel-container">
             <h1 class="panel-title">Roles</h1>
-            <Button variant="primary" @click="abrir()">Nuevo rol</Button>
+            <Button v-if="$page.props.auth.user.rol === 'administrador'" variant="primary" @click="abrir()">Nuevo rol</Button>
 
             <ul class="role-list">
                 <li v-for="rol in roles" :key="rol.id_rol" class="role-card">
@@ -60,9 +75,23 @@ function guardar() {
                         <p>{{ (Object.hasOwn(rolesBase, rol.nombre_rol) ? rolesBase[rol.nombre_rol] : (rol.permisos ?? []).map(permiso => permisos[permiso]).join(', ')) || 'Sin permisos' }}</p>
                         <p>{{ rol.users_count === 1 ? '1 usuario' : rol.users_count + ' usuarios' }}</p>
                     </div>
-                    <Button v-if="!Object.hasOwn(rolesBase, rol.nombre_rol)" variant="action" @click="abrir(rol)">Editar</Button>
+                    <div v-if="$page.props.auth.user.rol === 'administrador' && !Object.hasOwn(rolesBase, rol.nombre_rol)" class="role-actions">
+                        <Button variant="action" @click="abrir(rol)">Editar</Button>
+                        <Button v-if="rol.users_count === 0" variant="delete" @click="pedirConfirmacion(rol)">Eliminar</Button>
+                    </div>
                 </li>
             </ul>
+
+            <Modal :open="rolParaEliminar !== null" title="Eliminar rol" @close="!formEliminar.processing && (rolParaEliminar = null)">
+                <form v-if="rolParaEliminar" class="role-form" @submit.prevent="eliminar">
+                    <p>¿Quieres eliminar el rol «{{ nombreVisible(rolParaEliminar.nombre_rol) }}»?</p>
+                    <p v-if="formEliminar.errors.eliminar_rol" role="alert">{{ formEliminar.errors.eliminar_rol }}</p>
+                    <div class="role-actions">
+                        <Button variant="action" :disabled="formEliminar.processing" @click="rolParaEliminar = null">Cancelar</Button>
+                        <Button type="submit" variant="danger" :disabled="formEliminar.processing">Eliminar rol</Button>
+                    </div>
+                </form>
+            </Modal>
 
             <Modal :open="mostrarFormulario" :title="editando ? 'Editar rol' : 'Nuevo rol'" @close="mostrarFormulario = false">
                 <form class="role-form" @submit.prevent="guardar">
@@ -70,14 +99,17 @@ function guardar() {
                         <TextInput id="nombre_rol" v-model="form.nombre_rol" label="Nombre del rol" maxlength="50" required />
                     </FormField>
                     <fieldset>
-                        <legend>Permisos</legend>
-                        <label v-for="(etiqueta, clave) in permisos" :key="clave">
-                            <input v-model="form.permisos" type="checkbox" :value="clave" />
-                            {{ etiqueta }}
-                        </label>
+                        <legend>Recursos y funcionalidades</legend>
+                        <fieldset v-for="(recurso, id) in recursos" :key="id">
+                            <legend>{{ recurso.nombre }}</legend>
+                            <label v-for="(etiqueta, clave) in recurso.acciones" :key="clave">
+                                <input v-model="form.permisos" type="checkbox" :value="clave" /> {{ etiqueta }}
+                            </label>
+                        </fieldset>
+                        <p>Las acciones incluyen acceso a la consulta del módulo. Inicio abre el primer recurso asignado. Mi código QR y Mis exámenes requieren un perfil de estudiante.</p>
                         <p v-if="form.errors.permisos" role="alert">{{ form.errors.permisos }}</p>
                     </fieldset>
-                    <fieldset>
+                    <fieldset v-if="form.permisos.some(p => p.startsWith('reportes.'))">
                         <legend>Asignaturas de los reportes</legend>
                         <label>
                             <input v-model="limitarAsignaturas" type="checkbox" />
@@ -95,7 +127,7 @@ function guardar() {
                     </fieldset>
                     <div class="role-actions">
                         <Button type="button" variant="action" @click="mostrarFormulario = false">Cancelar</Button>
-                        <Button type="submit" variant="primary" :disabled="form.processing">Guardar rol</Button>
+                        <Button type="submit" variant="primary" :disabled="form.processing || !form.permisos.length">Guardar rol</Button>
                     </div>
                 </form>
             </Modal>

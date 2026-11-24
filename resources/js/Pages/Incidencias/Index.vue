@@ -203,9 +203,9 @@ const getColorClass = (tipo) => {
                     <p class="subtitle">Historial inmutable de situaciones ocurridas durante los exámenes</p>
                 </div>
                 <div class="header-actions">
-                    <ReportExportLink format="pdf" :href="urlExportarPdf" target="_blank" title="Exportar incidencias a PDF" />
-                    <ReportExportLink format="excel" :href="urlExportarExcel" title="Exportar incidencias a Excel" />
-                    <Button variant="danger" @click="openModal" class="btn-reportar">
+                    <ReportExportLink v-if="!$page.props.auth.user.rol_personalizado" format="pdf" :href="urlExportarPdf" target="_blank" title="Exportar incidencias a PDF" />
+                    <ReportExportLink v-if="!$page.props.auth.user.rol_personalizado" format="excel" :href="urlExportarExcel" title="Exportar incidencias a Excel" />
+                    <Button v-if="$permiteAccion('incidencias.store')" variant="danger" @click="openModal" class="btn-reportar">
                         + REPORTAR INCIDENCIA
                     </Button>
                 </div>

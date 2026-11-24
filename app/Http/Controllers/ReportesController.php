@@ -18,7 +18,7 @@ class ReportesController extends Controller
     public function index(Request $request)
     {
         $rol = $request->user()->rol;
-        abort_unless($rol?->nombre_rol === 'administrador' || $rol?->esPersonalizado(), 403);
+        abort_unless($rol?->nombre_rol === 'administrador' || in_array('/reportes', $rol?->recursos() ?? [], true), 403);
 
         $reportes = array_filter(
             Rol::PERMISOS_REPORTES,

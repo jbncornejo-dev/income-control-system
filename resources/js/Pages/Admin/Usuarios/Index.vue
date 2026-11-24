@@ -147,8 +147,8 @@ watch(filtroRol, (value) => {
                         </div>
                     </div>
 
-                    <Link href="/roles" class="btn-action-edit">Gestionar roles</Link>
-                    <button type="button" class="btn-new-user" @click="showCreateModal = true">
+                    <Link v-if="$page.props.auth.user.rol === 'administrador'" href="/roles" class="btn-new-user btn-manage-roles">Gestionar roles</Link>
+                    <button v-if="$page.props.auth.user.rol === 'administrador'" type="button" class="btn-new-user" @click="showCreateModal = true">
                         <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -167,7 +167,7 @@ watch(filtroRol, (value) => {
                                 <th>Correo</th>
                                 <th>Estado</th>
                                 <th>Rol</th>
-                                <th class="th-actions">Acciones</th>
+                                <th v-if="$page.props.auth.user.rol === 'administrador'" class="th-actions">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -189,7 +189,7 @@ watch(filtroRol, (value) => {
                                         {{ nombreRol(user.rol?.nombre_rol) }}
                                     </span>
                                 </td>
-                                <td class="td-actions">
+                                <td v-if="$page.props.auth.user.rol === 'administrador'" class="td-actions">
                                     <div class="actions-btn-group">
                                         <button type="button" class="btn-action-edit" @click="openEditModal(user)">Editar</button>
                                         <button type="button" class="btn-action-pwd" @click="openPasswordModal(user)">Clave</button>
@@ -418,6 +418,17 @@ watch(filtroRol, (value) => {
 
 .btn-new-user:hover {
     background-color: var(--color-primary-hover, #3A5A7E); /* hover:bg-brand-light */
+}
+
+.btn-manage-roles {
+    background-color: #fff;
+    color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+    text-decoration: none;
+}
+
+.btn-manage-roles:hover {
+    background-color: #eff6ff;
 }
 
 .btn-icon {

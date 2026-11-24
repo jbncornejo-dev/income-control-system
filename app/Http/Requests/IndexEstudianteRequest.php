@@ -8,6 +8,10 @@ class IndexEstudianteRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         $rolesPermitidos = ['administrador', 'docente', 'personal de control de ingreso'];
 
         return in_array($this->user()?->rol?->nombre_rol, $rolesPermitidos, true);

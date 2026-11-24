@@ -18,8 +18,9 @@ class DemoUserSeeder extends Seeder
         $usuariosDesarrollo = [
             [
                 'name' => 'Administrador de Desarrollo',
-                'username' => 'admin',
-                'email' => 'admin@example.com',
+                'username' => 'administrador.local',
+                'email' => 'administrador@gmail.com',
+                'password' => 'SalchiPapa123*',
                 'rol' => 'administrador',
             ],
             [
@@ -49,15 +50,26 @@ class DemoUserSeeder extends Seeder
         ];
 
         foreach ($usuariosDesarrollo as $usuario) {
+            $idRol = Rol::where('nombre_rol', $usuario['rol'])->firstOrFail()->id_rol;
+            $identificador = ['username' => $usuario['username']];
+
+            if ($usuario['rol'] === 'administrador') {
+                $anterior = User::where('username', 'admin')->where('email', 'admin@example.com')
+                    ->where('id_rol', $idRol)->first();
+                if ($anterior && ! User::where('username', $usuario['username'])->exists()) {
+                    $identificador = ['id' => $anterior->id];
+                }
+            }
+
             User::updateOrCreate(
-                ['username' => $usuario['username']],
+                $identificador,
                 [
-                    'id_rol' => Rol::where('nombre_rol', $usuario['rol'])->firstOrFail()->id_rol,
+                    'id_rol' => $idRol,
                     'name' => $usuario['name'],
                     'username' => $usuario['username'],
                     'email' => $usuario['email'],
                     'email_verified_at' => now(),
-                    'password' => Hash::make('pass'),
+                    'password' => Hash::make($usuario['password'] ?? 'pass'),
                     'debe_cambiar_password' => false,
                 ]
             );

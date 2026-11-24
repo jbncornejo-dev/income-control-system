@@ -367,6 +367,7 @@ function clicFila(examen) {
 }
 
 function verExamen(examen) {
+    if (page.props.auth.user.rol_personalizado) return;
     router.visit(`/examenes/${examen.id_examen}/habilitaciones`);
 }
 
@@ -434,7 +435,7 @@ onBeforeUnmount(() => {
 
                 <button 
                     type="button" 
-                    class="btn-register-exam" 
+                    v-if="!$page.props.auth.user.rol_personalizado" class="btn-register-exam" 
                     @click="router.visit('/examenes/crear')"
                 >
                     <svg class="btn-plus-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -613,7 +614,7 @@ onBeforeUnmount(() => {
                                         </span>
                                         <button
                                             type="button"
-                                            class="row-menu-btn"
+                                            v-if="!$page.props.auth.user.rol_personalizado" class="row-menu-btn"
                                             aria-haspopup="menu"
                                             :aria-label="`Acciones del examen de ${examen.asignatura?.nombre_asignatura || 'la asignatura'}`"
                                             @click.stop="abrirMenuExamen($event, examen)"

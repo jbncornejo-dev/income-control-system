@@ -8,7 +8,7 @@
           <h1 class="page-title">Gestión de Asignaturas</h1>
           <p class="page-subtitle">Administra el catálogo de materias del sistema</p>
         </div>
-        <Button variant="primary" @click="abrirModalNueva">
+        <Button v-if="$permiteAccion('asignaturas.store')" variant="primary" @click="abrirModalNueva">
           + Nueva Asignatura
         </Button>
       </div>
@@ -41,10 +41,10 @@
               <td class="id-cell">{{ asignatura.id_asignatura }}</td>
               <td>{{ asignatura.nombre_asignatura }}</td>
               <td class="actions-cell">
-                <Button variant="action" @click="abrirModalEditar(asignatura)">
+                <Button v-if="$permiteAccion('asignaturas.update')" variant="action" @click="abrirModalEditar(asignatura)">
                   Editar
                 </Button>
-                <Button variant="delete" @click="confirmarEliminar(asignatura)">
+                <Button v-if="$permiteAccion('asignaturas.destroy')" variant="delete" @click="confirmarEliminar(asignatura)">
                   Eliminar
                 </Button>
               </td>

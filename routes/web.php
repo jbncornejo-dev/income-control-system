@@ -96,7 +96,9 @@ Route::middleware('auth')->group(function () {
 
         abort_unless($user->rol->esPersonalizado(), 403, 'Tu rol no tiene un panel principal configurado.');
 
-        return redirect()->route('reportes.index');
+        $recursos = $user->rol->recursos();
+        abort_if(empty($recursos), 403, 'Tu rol no tiene recursos asignados.');
+        return redirect($recursos[0]);
 
     })->middleware(['password.pendiente', 'verified'])->name('dashboard');
 
@@ -129,10 +131,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware(['password.pendiente', 'role:administrador'])->group(function () {
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/auditoria', [AuditoriaController::class, 'index'])->name('auditoria.index');
-        Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::get('/roles', [RolController::class, 'index'])->name('roles.index');
         Route::post('/roles', [RolController::class, 'store'])->name('roles.store');
         Route::patch('/roles/{rol}', [RolController::class, 'update'])->name('roles.update');
+        Route::delete('/roles/{rol}', [RolController::class, 'destroy'])->name('roles.destroy');
         Route::post('/usuarios', [UserController::class, 'store'])->name('usuarios.store');
         Route::get('/grupos', [GrupoController::class, 'index'])->name('grupos.index');
         Route::post('/grupos', [GrupoController::class, 'store'])->name('grupos.store');
@@ -239,6 +241,7 @@ Route::middleware('auth')->group(function () {
         });
 
     Route::middleware('password.pendiente')->group(function () {
+        Route::get('/usuarios', [UserController::class, 'index'])->name('usuarios.index');
         Route::get('/reportes', [ReportesController::class, 'index'])->name('reportes.index');
         Route::get('/reportes/examenes', [ReportesController::class, 'examenes'])->name('reportes.examenes');
         Route::get('/reportes/incidencias', [ReportesController::class, 'incidencias'])->name('reportes.incidencias');

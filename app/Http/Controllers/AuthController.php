@@ -28,11 +28,8 @@ class AuthController extends Controller
             return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
         }
 
-        $administradorDemoLocal = app()->isLocal()
-            && $user?->username === 'admin' && $user->email === 'admin@example.com';
         $claveAdminDebil = $user?->rol?->nombre_rol === 'administrador'
-            && (($request->password === 'pass' && ! $administradorDemoLocal)
-                || $request->password === $user->documento_identidad);
+            && in_array($request->password, ['pass', $user->documento_identidad], true);
         $cuentaDemo = in_array($user?->username, ['docente', 'docente2', 'control', 'estudiante'], true);
         $demoFueraDeLocal = ! app()->isLocal() && $cuentaDemo && $request->password === 'pass';
 

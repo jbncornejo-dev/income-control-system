@@ -190,7 +190,7 @@ function eliminar() {
                     <h1 class="panel-title">Ambientes</h1>
                     <p class="subtitle">Capacidad total: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
                 </div>
-                <Button variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
+                <Button v-if="$permiteAccion('ambientes.store')" variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
             </div>
 
             <div class="search-section">
@@ -217,8 +217,8 @@ function eliminar() {
                             <td>{{ ambiente.nombre_ambiente }}</td>
                             <td><span class="capacity-badge">{{ ambiente.capacidad }} personas</span></td>
                             <td class="actions-cell">
-                                <Button variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
-                                <Button variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
+                                <Button v-if="$permiteAccion('ambientes.update')" variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
+                                <Button v-if="$permiteAccion('ambientes.destroy')" variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
                             </td>
                         </tr>
                         <tr v-if="!ambientes.data || ambientes.data.length === 0">

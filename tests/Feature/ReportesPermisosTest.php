@@ -58,7 +58,7 @@ class ReportesPermisosTest extends TestCase
         );
         $this->get(route('reportes.examenes', $filtros))->assertOk()
             ->assertHeader('Content-Disposition', 'attachment; filename="examenes.xls"')
-            ->assertSee('Materia de prueba')->assertDontSee('Materia restringida');
+            ->assertSee('Materia De Prueba')->assertDontSee('Materia Restringida');
         $this->get(route('reportes.examenes', $filtros + ['id_asignatura' => $restringida->id_asignatura]))
             ->assertForbidden();
         $this->get(route('reportes.incidencias', $filtros))->assertForbidden();
@@ -68,8 +68,57 @@ class ReportesPermisosTest extends TestCase
 
         $this->actingAs($admin)->patch(route('roles.update', $rol), [
             'nombre_rol' => $rol->nombre_rol, 'permisos' => [],
+        ])->assertSessionHasErrors('permisos');
+        $this->patch(route('roles.update', $rol), [
+            'nombre_rol' => $rol->nombre_rol, 'permisos' => ['usuarios.ver'],
         ])->assertSessionHasNoErrors();
+        $this->actingAs($usuario->fresh())->get('/dashboard')->assertRedirect('/usuarios');
+        $this->get('/usuarios')->assertOk();
+        $this->post('/usuarios')->assertForbidden();
+        $this->get('/reportes')->assertForbidden();
         $this->actingAs($usuario->fresh())->get(route('reportes.examenes', $filtros))->assertForbidden();
+    }
+
+    public function test_each_resource_works_as_the_only_permission(): void
+    {
+        $rol = Rol::create(['nombre_rol' => 'auxiliar', 'permisos' => ['usuarios.ver']]);
+        $user = User::factory()->create(['id_rol' => $rol->id_rol]);
+        foreach (Rol::RECURSOS as $recurso) {
+            $rol->update(['permisos' => [array_key_first($recurso['acciones'])]]);
+            $this->actingAs($user->fresh());
+            $url = route($recurso['inicio']);
+            $this->get('/dashboard')->assertRedirect($url);
+            $this->get($url)->assertOk();
+            $this->post('/roles')->assertForbidden();
+            $this->post('/asignaturas')->assertForbidden();
+        }
+    }
+
+    public function test_admin_can_delete_a_custom_role_after_reassigning_its_users(): void
+    {
+        $admin = User::factory()->create();
+        $rol = Rol::create(['nombre_rol' => 'auxiliar', 'permisos' => ['roles.ver']]);
+        $usuario = User::factory()->create(['id_rol' => $rol->id_rol]);
+        $url = route('roles.destroy', $rol);
+
+        $this->actingAs($usuario)->delete($url)->assertForbidden();
+        $usuario->update(['activo' => false]);
+
+        $this->actingAs($admin)->delete($url)->assertSessionHasErrors('eliminar_rol');
+        $this->assertModelExists($rol);
+
+        $usuario->update(['id_rol' => $admin->id_rol]);
+        $this->from('/roles')->delete($url)->assertRedirect('/roles')->assertSessionHasNoErrors();
+        $this->assertModelMissing($rol);
+        $this->assertModelExists($usuario);
+    }
+
+    public function test_admin_cannot_delete_an_unused_system_role(): void
+    {
+        $rol = Rol::firstOrCreate(['nombre_rol' => 'docente']);
+
+        $this->actingAs(User::factory()->create())->delete(route('roles.destroy', $rol))->assertForbidden();
+        $this->assertModelExists($rol);
     }
 
     public function test_admin_rejects_reserved_names_and_permissions_outside_the_catalog(): void

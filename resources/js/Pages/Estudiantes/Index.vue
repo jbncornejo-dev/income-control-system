@@ -6,8 +6,8 @@
       <div class="action-bar">
         <TextInput v-model="searchQuery" placeholder="Buscar por código, documento, correo, nombres o apellidos..." style="width: 100%; max-width: 500px;" />
         <div class="action-controls">
-          <Button variant="action" @click="abrirModalCsv">Importar CSV</Button>
-          <Button variant="primary" @click="abrirModalCrear">Añadir estudiante</Button>
+          <Button v-if="$permiteAccion('estudiantes.importar')" variant="action" @click="abrirModalCsv">Importar CSV</Button>
+          <Button v-if="$permiteAccion('estudiantes.store')" variant="primary" @click="abrirModalCrear">Añadir estudiante</Button>
         </div>
       </div>
 
@@ -34,10 +34,10 @@
               <td>{{ student.email || '—' }}</td>
               <td>{{ student.activo ? 'Activo' : 'Inactivo' }}</td>
               <td class="actions-cell">
-                <Button v-if="student.activo" variant="action" @click="abrirQr(student)">QR</Button>
-                <Button variant="action" @click="abrirModalEditar(student)">Editar</Button>
-                <Button v-if="student.activo" variant="delete" @click="confirmarDesactivar(student)">Desactivar</Button>
-                <Button v-else variant="action" @click="reactivarEstudiante(student)">Reactivar</Button>
+                <Button v-if="$permiteAccion('estudiantes.qr') && student.activo" variant="action" @click="abrirQr(student)">QR</Button>
+                <Button v-if="$permiteAccion('estudiantes.update')" variant="action" @click="abrirModalEditar(student)">Editar</Button>
+                <Button v-if="$permiteAccion('estudiantes.destroy') && student.activo" variant="delete" @click="confirmarDesactivar(student)">Desactivar</Button>
+                <Button v-if="!student.activo && $permiteAccion('estudiantes.activate')" variant="action" @click="reactivarEstudiante(student)">Reactivar</Button>
               </td>
             </tr>
             <tr v-if="students.length === 0">

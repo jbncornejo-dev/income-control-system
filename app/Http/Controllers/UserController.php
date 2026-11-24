@@ -18,6 +18,8 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
+        $rol = $request->user()->rol;
+        abort_unless($rol?->nombre_rol === 'administrador' || in_array('/usuarios', $rol?->recursos() ?? [], true), 403);
         $query = User::with('rol')->orderBy('id', 'desc');
 
         // Filtro por rol (soporta 'id_rol' o 'role' según convención del frontend)
