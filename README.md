@@ -75,9 +75,8 @@ cd app
    # Genera la clave de la aplicación
    php artisan key:generate
 
-   # Ejecuta las migraciones y crea la primera cuenta administrativa
+   # Ejecuta las migraciones y carga los datos demo
    php artisan migrate --seed
-   php artisan admin:provisionar
    ```
    > Compila la interfaz:
 
@@ -203,6 +202,21 @@ npm run build
 Cuando termines, ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
 
 
+## Accesos de demostración
+
+Con APP_ENV=local, ejecuta php artisan migrate --seed y entra con uno de
+estos correos. Todas las cuentas demo usan la contraseña **pass**.
+
+| Rol | Correo |
+| --- | --- |
+| Administrador | admin@example.com |
+| Docente | docente@example.com |
+| Personal de control | control@example.com |
+| Estudiante | estudiante@example.com |
+
+Para actualizar solo las cuentas demo de una base local ya inicializada,
+ejecuta php artisan db:seed --class=DemoUserSeeder.
+
 ## Puesta en marcha en el servidor de la universidad
 
 Configurar Laravel con `APP_ENV=production`, `APP_DEBUG=false`, HTTPS,
@@ -221,8 +235,7 @@ php artisan admin:provisionar
 
 En producción, el seeder general registra los roles base. El último comando
 solicita un correo y un nombre de usuario individual, y lee la contraseña sin
-mostrarla. También se usa para habilitar el primer administrador en un entorno
-local recién sembrado. Ejecutarlo con `--rotar=ID` para reemplazar las
+mostrarla. Ejecutarlo con `--rotar=ID` para reemplazar las
 credenciales de un administrador existente conservando su historial. Desde
 **Usuarios** se pueden crear más cuentas administrativas o asignar ese rol a
 una cuenta existente con credenciales nuevas. En **Roles** se pueden crear

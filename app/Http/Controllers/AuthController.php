@@ -28,10 +28,15 @@ class AuthController extends Controller
             return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
         }
 
-        $claveDemo = $user?->rol?->nombre_rol === 'administrador'
-            && in_array($request->password, ['pass', $user->documento_identidad], true);
+        $administradorDemoLocal = app()->isLocal()
+            && $user?->username === 'admin' && $user->email === 'admin@example.com';
+        $claveAdminDebil = $user?->rol?->nombre_rol === 'administrador'
+            && (($request->password === 'pass' && ! $administradorDemoLocal)
+                || $request->password === $user->documento_identidad);
+        $cuentaDemo = in_array($user?->username, ['docente', 'docente2', 'control', 'estudiante'], true);
+        $demoFueraDeLocal = ! app()->isLocal() && $cuentaDemo && $request->password === 'pass';
 
-        if (! $user?->puedeIngresar() || $claveDemo || ! Auth::attempt(['id' => $user->id, 'activo' => true, 'password' => $request->password], $request->boolean('remember'))) {
+        if (! $user?->puedeIngresar() || $claveAdminDebil || $demoFueraDeLocal || ! Auth::attempt(['id' => $user->id, 'activo' => true, 'password' => $request->password], $request->boolean('remember'))) {
             RateLimiter::hit($limite, 60);
             if ($limiteCuenta) {
                 RateLimiter::hit($limiteCuenta, 60);
