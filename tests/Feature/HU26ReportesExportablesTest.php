@@ -52,8 +52,10 @@ class HU26ReportesExportablesTest extends TestCase
 
     private function crearExamen(array $atributos = []): Examen
     {
+        // El mutator normaliza a título ("Ingeniería De Software II"); hay que
+        // buscar con ese mismo valor o firstOrCreate intenta insertar un duplicado.
         $asignatura = Asignatura::firstOrCreate(
-            ['nombre_asignatura' => 'Ingeniería de Software II'],
+            ['nombre_asignatura' => Asignatura::formatearNombre('Ingeniería de Software II')],
             ['codigo' => 'ISW202']
         );
 
