@@ -187,10 +187,10 @@ function eliminar() {
 
             <div class="header-section">
                 <div>
-                    <h1 class="panel-title">AMBIENTES</h1>
+                    <h1 class="panel-title">Ambientes</h1>
                     <p class="subtitle">Capacidad total: <span class="highlight-number">{{ totalCapacidad }}</span> personas</p>
                 </div>
-                <Button variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
+                <Button v-if="$permiteAccion('ambientes.store')" variant="primary" @click="abrirModalNuevo">+ Nuevo Ambiente</Button>
             </div>
 
             <div class="search-section">
@@ -206,9 +206,9 @@ function eliminar() {
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>NOMBRE</th>
-                            <th>CAPACIDAD</th>
-                            <th class="actions-col">ACCIONES</th>
+                            <th>Nombre</th>
+                            <th>Capacidad</th>
+                            <th class="actions-col">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -217,8 +217,8 @@ function eliminar() {
                             <td>{{ ambiente.nombre_ambiente }}</td>
                             <td><span class="capacity-badge">{{ ambiente.capacidad }} personas</span></td>
                             <td class="actions-cell">
-                                <Button variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
-                                <Button variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
+                                <Button v-if="$permiteAccion('ambientes.update')" variant="action" @click="abrirModalEditar(ambiente)">Editar</Button>
+                                <Button v-if="$permiteAccion('ambientes.destroy')" variant="delete" @click="confirmarEliminar(ambiente)">Eliminar</Button>
                             </td>
                         </tr>
                         <tr v-if="!ambientes.data || ambientes.data.length === 0">

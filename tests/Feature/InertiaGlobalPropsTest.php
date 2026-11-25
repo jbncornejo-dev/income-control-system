@@ -51,6 +51,8 @@ class InertiaGlobalPropsTest extends TestCase
                     ->where('rol', 'administrador')
                     ->where('nombre_rol', 'administrador')
                     ->where('permisos_menu', [])
+                    ->where('rol_personalizado', false)
+                    ->where('requiere_clave_segura', true)
                 )
             );
     }

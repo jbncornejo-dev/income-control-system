@@ -161,10 +161,10 @@ function irAPagina(url) {
         <div class="panel-container">
             <div class="header-section">
                 <div>
-                    <h1 class="panel-title">GRUPOS</h1>
+                    <h1 class="panel-title">Grupos</h1>
                     <p class="subtitle">Paralelos por asignatura y gestion con su docente responsable</p>
                 </div>
-                <button class="btn-primary" @click="abrirCrear">Nuevo grupo</button>
+                <button v-if="$permiteAccion('grupos.store')" class="btn-primary" @click="abrirCrear">Nuevo grupo</button>
             </div>
 
             <div class="filtros">
@@ -205,9 +205,9 @@ function irAPagina(url) {
                             <td data-label="Docente">{{ nombreDocente(grupo.usuario) }}</td>
                             <td data-label="Inscritos">{{ grupo.inscripciones_count }}</td>
                             <td data-label="Acciones" class="col-acciones">
-                                <a :href="`/grupos/${grupo.id_grupo}`" class="btn-accion btn-ver">Ver inscritos</a>
-                                <button class="btn-accion btn-editar" @click="abrirEditar(grupo)">Reasignar docente</button>
-                                <button class="btn-accion btn-eliminar" @click="confirmarEliminar(grupo)">Eliminar</button>
+                                <a v-if="!$page.props.auth.user.rol_personalizado" :href="`/grupos/${grupo.id_grupo}`" class="btn-accion btn-ver">Ver inscritos</a>
+                                <button v-if="$permiteAccion('grupos.update')" class="btn-accion btn-editar" @click="abrirEditar(grupo)">Reasignar docente</button>
+                                <button v-if="$permiteAccion('grupos.destroy')" class="btn-accion btn-eliminar" @click="confirmarEliminar(grupo)">Eliminar</button>
                             </td>
                         </tr>
                         <tr v-if="!grupos.data || grupos.data.length === 0">
@@ -312,7 +312,7 @@ function irAPagina(url) {
 .subtitle { font-size: 0.95rem; color: var(--text-muted); margin: 0; }
 .filtros { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end; margin-bottom: 1.5rem; }
 .filtro-campo { display: flex; flex-direction: column; gap: 4px; }
-.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.filtro-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); letter-spacing: 0.05em; }
 .control { background: #fff; width: 100%; box-sizing: border-box; }
 .control-error { border-color: var(--color-active); }
 .btn-primary { padding: 0.6rem 1.25rem; display: inline-flex; align-items: center; gap: 8px; }

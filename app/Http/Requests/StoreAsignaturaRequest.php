@@ -3,12 +3,16 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use App\Models\Asignatura;
 
 class StoreAsignaturaRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         return $this->user()?->rol?->nombre_rol === 'administrador';
     }
 
@@ -19,7 +23,7 @@ class StoreAsignaturaRequest extends FormRequest
         }
 
         $this->merge([
-            'nombre_asignatura' => trim($this->input('nombre_asignatura')),
+            'nombre_asignatura' => Asignatura::formatearNombre($this->input('nombre_asignatura')),
         ]);
     }
 
@@ -27,10 +31,20 @@ class StoreAsignaturaRequest extends FormRequest
     {
         return [
             'nombre_asignatura' => [
+                'bail',
                 'required',
                 'string',
                 'max:150',
-                Rule::unique('asignatura', 'nombre_asignatura'),
+                function (string $attribute, string $value, \Closure $fail) {
+                    $asignatura = $this->route('asignatura');
+                    $query = Asignatura::whereRaw('normalizar_nombre_asignatura(nombre_asignatura) = normalizar_nombre_asignatura(?)', [$value]);
+                    if ($asignatura && (clone $query)->whereKey($asignatura->getKey())->exists()) {
+                        return;
+                    }
+                    if ($query->exists()) {
+                        $fail('Ya existe una asignatura con ese nombre');
+                    }
+                },
             ],
         ];
     }

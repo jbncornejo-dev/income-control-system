@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Estudiante;
 use App\Models\Rol;
 use App\Models\User;
+use Database\Seeders\DemoUserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
@@ -47,6 +48,28 @@ class AuthTest extends TestCase
         ]);
 
         return [$estudiante, $cuenta];
+    }
+
+    public function test_demo_seed_rotates_existing_admin_credentials_and_keeps_the_account(): void
+    {
+        foreach (array_keys(Rol::ROLES_BASE) as $nombre) {
+            Rol::firstOrCreate(['nombre_rol' => $nombre]);
+        }
+        $admin = $this->userWithRole('administrador');
+        $admin->update(['username' => 'admin', 'email' => 'admin@example.com', 'password' => 'pass']);
+
+        $this->seed(DemoUserSeeder::class);
+
+        $this->post('/login', [
+            'identificador' => 'administrador@gmail.com',
+            'password' => 'pass',
+        ])->assertSessionHasErrors('identificador');
+        $this->post('/login', [
+            'identificador' => 'administrador@gmail.com',
+            'password' => 'SalchiPapa123*',
+        ])->assertRedirect('/dashboard');
+        $this->assertAuthenticatedAs($admin->fresh());
+        $this->assertSame('administrador.local', $admin->fresh()->username);
     }
 
     public function test_login_exitoso_redirecciona_al_dashboard()

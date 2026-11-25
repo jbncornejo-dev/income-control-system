@@ -88,6 +88,7 @@ class HabilitacionController extends Controller
                     ->select(['users.id', 'users.name', 'users.username', 'users.id_estudiante'])
                     ->withExists(['estudiante as conflicto_interes' => fn ($query) => $query
                         ->whereHas('inscripciones.grupo', fn ($grupo) => $grupo->where('id_asignatura', $examen->id_asignatura))])
+                    ->where('activo', true)
                     ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'personal de control de ingreso'))
                     ->whereDoesntHave('examenesAsignados', fn ($q) => $q->where('examen.id_examen', $examen->id_examen))
                     ->orderBy('users.name')
@@ -268,7 +269,7 @@ class HabilitacionController extends Controller
                 'required',
                 'integer',
                 'distinct',
-                'exists:estudiante,id_estudiante',
+                'exists:estudiante,id_estudiante,activo,true',
             ],
         ]);
 

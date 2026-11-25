@@ -21,7 +21,7 @@ const logDetalle = ref(null);
 
 const opcionesTablas = computed(() => (props.tablas || []).map((tabla) => ({
     value: tabla,
-    label: tabla.toUpperCase(),
+    label: tabla.charAt(0).toUpperCase() + tabla.slice(1).replaceAll('_', ' '),
 })));
 
 const opcionesUsuarios = computed(() => (props.usuarios || []).map((usuario) => ({
@@ -90,7 +90,7 @@ function mostrarValor(valor) {
         <div class="panel-container">
             <header class="header-section">
                 <div>
-                    <h1 class="panel-title">AUDITORÍA DE OPERACIONES</h1>
+                    <h1 class="panel-title">Auditoría de operaciones</h1>
                     <p class="subtitle">Historial de trazabilidad de creaciones, ediciones y eliminaciones del sistema</p>
                 </div>
             </header>
@@ -180,7 +180,7 @@ function mostrarValor(valor) {
 .subtitle { font-size: .95rem; color: var(--text-muted); margin: 0; }
 .filters-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; align-items: end; background: #fff; padding: 1rem 1.25rem; border: 1px solid var(--border-light, #e5e7eb); border-radius: .5rem; }
 .btn-limpiar { padding: .55rem 1rem; border: 1px solid var(--color-primary); background: #fff; color: var(--color-primary); border-radius: .375rem; font-weight: 600; cursor: pointer; height: 40px; }
-.badge-tabla, .badge-accion { padding: .2rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 700; text-transform: uppercase; }
+.badge-tabla, .badge-accion { padding: .2rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 700; }
 .badge-tabla { background: #eef2f7; color: var(--color-primary); }
 .accion-create { background: #ecfdf5; color: #047857; }
 .accion-update { background: #eff6ff; color: #1d4ed8; }
@@ -199,7 +199,7 @@ function mostrarValor(valor) {
 .detail-modal { width: min(760px, 100%); max-height: min(680px, 90vh); overflow: auto; background: #fff; border-radius: .75rem; box-shadow: 0 24px 60px rgba(15, 23, 42, .28); }
 .detail-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1.25rem 1.5rem; border-bottom: 1px solid #e5e7eb; }
 .detail-modal-header h2 { margin: 0; color: var(--color-primary); font-size: 1.1rem; }
-.detail-modal-header p { margin: .35rem 0 0; color: var(--text-muted); font-size: .85rem; text-transform: uppercase; }
+.detail-modal-header p { margin: .35rem 0 0; color: var(--text-muted); font-size: .85rem; }
 .modal-close { border: 0; background: transparent; color: #64748b; font-size: 1.7rem; line-height: 1; cursor: pointer; }
 .detail-modal-body { padding: 1.25rem 1.5rem; }
 .detail-summary { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; color: #475569; font-size: .85rem; }

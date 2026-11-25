@@ -367,6 +367,7 @@ function clicFila(examen) {
 }
 
 function verExamen(examen) {
+    if (page.props.auth.user.rol_personalizado) return;
     router.visit(`/examenes/${examen.id_examen}/habilitaciones`);
 }
 
@@ -380,8 +381,8 @@ onBeforeUnmount(() => {
     <Head title="Gestión de Exámenes" />
 
     <AuthenticatedLayout>
-        <div class="panel-container">
-            <h1 class="panel-title">GESTIÓN DE EXÁMENES</h1>
+        <div class="panel-container exam-management">
+            <h1 class="panel-title">Gestión de exámenes</h1>
 
             <!-- Pestañas de Estado -->
             <nav class="state-tabs" aria-label="Filtrar exámenes por estado">
@@ -434,7 +435,7 @@ onBeforeUnmount(() => {
 
                 <button 
                     type="button" 
-                    class="btn-register-exam" 
+                    v-if="!$page.props.auth.user.rol_personalizado" class="btn-register-exam" 
                     @click="router.visit('/examenes/crear')"
                 >
                     <svg class="btn-plus-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -494,23 +495,24 @@ onBeforeUnmount(() => {
             <!-- Tabla de Exámenes -->
             <div class="table-card">
                 <div class="table-scroll-container">
-                    <table class="exams-table">
-                        <thead>
-                            <tr>
-                                <th>Asignatura</th>
-                                <th>Tipo</th>
-                                <th>Periodo</th>
+                    <table role="table" class="exams-table">
+                        <thead role="rowgroup">
+                            <tr role="row">
+                                <th role="columnheader">Asignatura</th>
+                                <th role="columnheader">Tipo</th>
+                                <th role="columnheader">Periodo</th>
                                 <th v-if="esAdmin">Docente</th>
-                                <th>Grupos</th>
-                                <th>Fecha</th>
-                                <th>Horario</th>
-                                <th>Ambientes</th>
-                                <th class="th-actions">Estado</th>
+                                <th role="columnheader">Grupos</th>
+                                <th role="columnheader">Fecha</th>
+                                <th role="columnheader">Horario</th>
+                                <th role="columnheader">Ambientes</th>
+                                <th role="columnheader" class="th-actions">Estado</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody role="rowgroup">
                             <tr
                                 v-for="examen in examenes.data"
+                                role="row"
                                 :key="examen.id_examen"
                                 :class="['row-examen', { 'row-examen--seleccionada': filaSeleccionadaId === examen.id_examen }]"
                                 @click="clicFila(examen)"
@@ -518,7 +520,7 @@ onBeforeUnmount(() => {
                                 @contextmenu.prevent="abrirMenuContextual($event, examen)"
                             >
                                 <!-- Asignatura -->
-                                <td>
+                                <td role="cell" data-label="Asignatura">
                                     <span class="col-asignatura-container">
                                         <span class="col-asignatura-text">{{ examen.asignatura?.nombre_asignatura || 'N/D' }}</span>
                                         <svg
@@ -543,12 +545,12 @@ onBeforeUnmount(() => {
                                 </td>
 
                                 <!-- Tipo -->
-                                <td>
+                                <td role="cell" data-label="Tipo">
                                     <span class="col-tipo-text">{{ examen.tipo?.nombre || 'Sin tipo' }}</span>
                                 </td>
 
                                 <!-- Periodo -->
-                                <td>
+                                <td role="cell" data-label="Periodo">
                                     <span 
                                         class="col-periodo-code" 
                                         :title="examen.periodo?.nombre || ('Gestión ' + (examen.periodo_codigo || ''))"
@@ -558,12 +560,12 @@ onBeforeUnmount(() => {
                                 </td>
 
                                 <!-- Docente (si es admin) -->
-                                <td v-if="esAdmin">
+                                <td role="cell" data-label="Docente" v-if="esAdmin">
                                     <span class="col-docente-text">{{ examen.docentes?.join(', ') || 'N/D' }}</span>
                                 </td>
 
                                 <!-- Grupos -->
-                                <td>
+                                <td role="cell" data-label="Grupos">
                                     <div v-if="examen.grupos && examen.grupos.length > 0" class="group-badges-list">
                                         <span
                                             v-for="grupo in examen.grupos"
@@ -579,12 +581,12 @@ onBeforeUnmount(() => {
                                 </td>
 
                                 <!-- Fecha -->
-                                <td>
+                                <td role="cell" data-label="Fecha">
                                     <span class="col-fecha-text">{{ examen.fecha }}</span>
                                 </td>
 
                                 <!-- Horario -->
-                                <td>
+                                <td role="cell" data-label="Horario">
                                     <span v-if="examen.hora_inicio" class="col-horario-text">
                                         <span class="time-bold">{{ String(examen.hora_inicio).slice(0, 5) }}</span>
                                         <span v-if="examen.hora_fin"> a <span class="time-bold">{{ String(examen.hora_fin).slice(0, 5) }}</span></span>
@@ -593,7 +595,7 @@ onBeforeUnmount(() => {
                                 </td>
 
                                 <!-- Ambientes -->
-                                <td>
+                                <td role="cell" data-label="Ambientes">
                                     <span 
                                         v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0"
                                         class="col-ambientes-text"
@@ -605,14 +607,14 @@ onBeforeUnmount(() => {
                                 </td>
 
                                 <!-- Estado y Menú de Acciones -->
-                                <td class="th-actions">
+                                <td role="cell" data-label="Estado" class="th-actions">
                                     <div class="estado-actions-wrapper">
                                         <span class="status-badge" :class="estadoInfo(examen.estado_actual).clase">
                                             {{ estadoInfo(examen.estado_actual).etiqueta }}
                                         </span>
                                         <button
                                             type="button"
-                                            class="row-menu-btn"
+                                            v-if="!$page.props.auth.user.rol_personalizado" class="row-menu-btn"
                                             aria-haspopup="menu"
                                             :aria-label="`Acciones del examen de ${examen.asignatura?.nombre_asignatura || 'la asignatura'}`"
                                             @click.stop="abrirMenuExamen($event, examen)"
@@ -627,8 +629,8 @@ onBeforeUnmount(() => {
                                 </td>
                             </tr>
 
-                            <tr v-if="!examenes.data || examenes.data.length === 0">
-                                <td :colspan="esAdmin ? 9 : 8" class="empty-table-state">
+                            <tr role="row" v-if="!examenes.data || examenes.data.length === 0">
+                                <td role="cell" :colspan="esAdmin ? 9 : 8" class="empty-table-state">
                                     {{ hayFiltrosActivos ? 'No hay exámenes que coincidan con los filtros aplicados.' : 'No hay exámenes registrados.' }}
                                 </td>
                             </tr>
@@ -740,7 +742,41 @@ onBeforeUnmount(() => {
     </AuthenticatedLayout>
 </template>
 
-<style scoped src="../../../../css/panels.css"></style>
+<style scoped src="../../../../css/panels.css">.exam-management { container-type: inline-size; }
+
+@container (max-width: 70rem) {
+    .exams-table, .exams-table tbody { display: block; }
+    .exams-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+    .exams-table tr { display: block; }
+    .exams-table .row-examen {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+        padding: 0.75rem;
+    }
+    .exams-table td {
+        display: block;
+        min-width: 0;
+        padding: 0.45rem;
+        overflow-wrap: anywhere;
+    }
+    .exams-table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 0.2rem;
+        color: var(--text-muted);
+        font-size: 0.75rem;
+    }
+    .col-asignatura-container, .col-ambientes-text, .col-docente-text { white-space: normal; }
+    .col-ambientes-text { max-width: none; }
+    .estado-actions-wrapper { justify-content: flex-start; flex-wrap: wrap; }
+}
+</style>
 
 <style scoped src="../../../../css/admin-lists.css"></style>
 
@@ -751,7 +787,6 @@ onBeforeUnmount(() => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: 2rem; /* mb-8 */
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 0.05em;
 }
@@ -990,7 +1025,6 @@ onBeforeUnmount(() => {
     font-size: 0.75rem;
     font-weight: 700;
     color: #6b7280;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     font-family: var(--font-family);
 }
@@ -1059,7 +1093,6 @@ onBeforeUnmount(() => {
     border-bottom: 1px solid #f3f4f6;
     color: #6b7280;
     font-size: 0.75rem;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 600;
 }

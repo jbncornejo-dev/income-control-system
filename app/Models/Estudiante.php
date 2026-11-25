@@ -16,7 +16,10 @@ class Estudiante extends Model
 
     public $timestamps = false;
 
+    protected $attributes = ['activo' => true];
+
     protected $fillable = [
+        'activo',
         'codigo_universitario',
         'documento_identidad',
         'nombres',
@@ -29,6 +32,7 @@ class Estudiante extends Model
     ];
 
     protected $casts = [
+        'activo' => 'boolean',
         'puede_regenerar_qr' => 'boolean',
     ];
 

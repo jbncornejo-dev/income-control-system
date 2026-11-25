@@ -4,8 +4,8 @@ import UsuarioForm from '@/components/forms/UsuarioForm.vue';
 import EditUsuarioForm from '@/components/forms/EditUsuarioForm.vue';
 import EditPasswordForm from '@/components/forms/EditPasswordForm.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, router } from '@inertiajs/vue3';
-import { ref, watch, onBeforeUnmount } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { computed, ref, watch, onBeforeUnmount } from 'vue';
 
 const props = defineProps({
     usuarios: Object, // Paginador de Laravel
@@ -30,15 +30,22 @@ const openPasswordModal = (user) => {
     showPasswordModal.value = true;
 };
 
-const eliminarUsuario = (id) => {
-    if (confirm('¿Estás seguro de que deseas eliminar este usuario? Esta acción no se puede deshacer.')) {
-        router.delete(`/usuarios/${id}`, {
-            preserveScroll: true,
-        });
+const page = usePage();
+const idActual = computed(() => page.props.auth.user.id);
+
+const cambiarEstado = (user) => {
+    if (user.activo) {
+        if (confirm('¿Desactivar esta cuenta y bloquear su acceso? Se conservarán sus registros.')) {
+            router.delete(`/usuarios/${user.id}`, { preserveScroll: true });
+        }
+    } else {
+        router.patch(`/usuarios/${user.id}/activar`, {}, { preserveScroll: true });
     }
 };
 
 // Función auxiliar para obtener la inicial del nombre para el avatar
+const nombreRol = nombre => nombre ? nombre.charAt(0).toLocaleUpperCase('es') + nombre.slice(1) : 'Sin rol';
+
 const getInitial = (name) => {
     return name ? name.charAt(0).toUpperCase() : '?';
 };
@@ -105,7 +112,7 @@ watch(filtroRol, (value) => {
 
     <AuthenticatedLayout>
         <div class="panel-container">
-            <h1 class="panel-title">USUARIOS DEL SISTEMA</h1>
+            <h1 class="panel-title">Usuarios del sistema</h1>
 
             <!-- Barra de Acciones y Filtros -->
             <div class="actions-bar">
@@ -130,7 +137,7 @@ watch(filtroRol, (value) => {
                         <select v-model="filtroRol" class="custom-role-select">
                             <option value="">Todos los roles</option>
                             <option v-for="r in roles" :key="r.id_rol" :value="r.id_rol">
-                                {{ r.nombre_rol }}
+                                {{ nombreRol(r.nombre_rol) }}
                             </option>
                         </select>
                         <div class="select-chevron-icon">
@@ -140,7 +147,8 @@ watch(filtroRol, (value) => {
                         </div>
                     </div>
 
-                    <button type="button" class="btn-new-user" @click="showCreateModal = true">
+                    <Link v-if="$page.props.auth.user.rol === 'administrador'" href="/roles" class="btn-new-user btn-manage-roles">Gestionar roles</Link>
+                    <button v-if="$page.props.auth.user.rol === 'administrador'" type="button" class="btn-new-user" @click="showCreateModal = true">
                         <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -156,9 +164,10 @@ watch(filtroRol, (value) => {
                         <thead>
                             <tr>
                                 <th>Nombre</th>
-                                <th>Email</th>
+                                <th>Correo</th>
+                                <th>Estado</th>
                                 <th>Rol</th>
-                                <th class="th-actions">Acciones</th>
+                                <th v-if="$page.props.auth.user.rol === 'administrador'" class="th-actions">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -174,21 +183,24 @@ watch(filtroRol, (value) => {
                                 <td>
                                     <span class="user-email-text">{{ user.email }}</span>
                                 </td>
+                                <td>{{ user.activo ? 'Activo' : 'Inactivo' }}</td>
                                 <td>
                                     <span class="role-badge" :class="getRoleTheme(user.rol?.nombre_rol)">
-                                        {{ user.rol ? user.rol.nombre_rol : 'Sin rol' }}
+                                        {{ nombreRol(user.rol?.nombre_rol) }}
                                     </span>
                                 </td>
-                                <td class="td-actions">
+                                <td v-if="$page.props.auth.user.rol === 'administrador'" class="td-actions">
                                     <div class="actions-btn-group">
                                         <button type="button" class="btn-action-edit" @click="openEditModal(user)">Editar</button>
                                         <button type="button" class="btn-action-pwd" @click="openPasswordModal(user)">Clave</button>
-                                        <button type="button" class="btn-action-del" @click="eliminarUsuario(user.id)">Eliminar</button>
+                                        <button v-if="user.id !== idActual" type="button" :class="user.activo ? 'btn-action-del' : 'btn-action-edit'" @click="cambiarEstado(user)">
+                                            {{ user.activo ? 'Desactivar' : 'Reactivar' }}
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
                             <tr v-if="!usuarios.data || usuarios.data.length === 0">
-                                <td colspan="4" class="empty-table-state">
+                                <td colspan="5" class="empty-table-state">
                                     {{ searchQuery || filtroRol ? 'No se encontraron usuarios que coincidan con la búsqueda o filtro.' : 'No hay usuarios registrados.' }}
                                 </td>
                             </tr>
@@ -274,7 +286,6 @@ watch(filtroRol, (value) => {
     font-weight: 700;
     color: var(--color-primary); /* brand.primary #1D3653 */
     margin-bottom: 1.5rem; /* mb-6 */
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 0.05em; /* tracking-wide */
 }
@@ -409,6 +420,17 @@ watch(filtroRol, (value) => {
     background-color: var(--color-primary-hover, #3A5A7E); /* hover:bg-brand-light */
 }
 
+.btn-manage-roles {
+    background-color: #fff;
+    color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+    text-decoration: none;
+}
+
+.btn-manage-roles:hover {
+    background-color: #eff6ff;
+}
+
 .btn-icon {
     width: 1rem; /* w-4 h-4 */
     height: 1rem;
@@ -429,7 +451,6 @@ watch(filtroRol, (value) => {
     border-bottom: 1px solid #f3f4f6; /* border-gray-100 */
     color: #6b7280; /* text-gray-500 */
     font-size: 0.75rem; /* text-xs */
-    text-transform: uppercase;
     letter-spacing: 0.05em; /* tracking-wider */
     font-weight: 600;
 }
@@ -505,7 +526,6 @@ watch(filtroRol, (value) => {
     border-radius: 9999px;
     font-size: 0.75rem; /* text-xs */
     font-weight: 600;
-    text-transform: uppercase;
     letter-spacing: 0.05em; /* tracking-wide */
     white-space: nowrap;
 }

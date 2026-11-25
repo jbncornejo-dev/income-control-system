@@ -10,13 +10,17 @@ class UpdateGrupoRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         return $this->user()?->rol?->nombre_rol === 'administrador';
     }
 
     public function rules(): array
     {
         return [
-            'id_usuario' => ['required', 'integer', 'exists:users,id'],
+            'id_usuario' => ['required', 'integer', 'exists:users,id,activo,true'],
         ];
     }
 

@@ -130,15 +130,16 @@ function estaOcupado(idAmbiente) {
     return disponibilidad.value[idAmbiente] === false;
 }
 
-function estaLibre(idAmbiente) {
-    return disponibilidad.value[idAmbiente] === true;
-}
+const busquedaAmbiente = ref('');
+const normalizarBusqueda = texto => texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLocaleLowerCase('es');
 
-// Con "solo disponibles" activo se ocultan los ambientes ocupados del grid.
 const ambientesVisibles = computed(() => {
-    if (!mostrarSoloLibres.value) return props.ambientes;
-
-    return props.ambientes.filter((ambiente) => disponibilidad.value[ambiente.id_ambiente] !== false);
+    const partes = normalizarBusqueda(busquedaAmbiente.value).split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    return props.ambientes.filter(ambiente =>
+        !form.id_ambientes.includes(ambiente.id_ambiente)
+        && (!mostrarSoloLibres.value || !estaOcupado(ambiente.id_ambiente))
+        && partes.every(parte => normalizarBusqueda(ambiente.nombre_ambiente).replace(/[^\p{L}\p{N}]+/gu, '').includes(parte))
+    );
 });
 
 function solicitarDisponibilidad() {
@@ -256,7 +257,7 @@ function guardar() {
 </script>
 
 <template>
-    <Head :title="esEdicion ? 'Editar Examen' : 'Registrar Examen'" />
+    <Head :title="esEdicion ? 'Editar Examen' : 'Registrar examen'" />
 
     <AuthenticatedLayout>
         <div class="panel-container">
@@ -265,7 +266,7 @@ function guardar() {
             </div>
 
             <div class="form-card">
-                <h1 class="form-title">{{ esEdicion ? 'Editar Examen' : 'Registrar Examen' }}</h1>
+                <h1 class="form-title">{{ esEdicion ? 'Editar Examen' : 'Registrar examen' }}</h1>
                 <p class="form-subtitle">
                     {{ esEdicion
                         ? (soloNormas
@@ -473,33 +474,24 @@ function guardar() {
 
                         <p v-if="avisoSeleccion" class="disponibilidad-aviso" aria-live="polite">{{ avisoSeleccion }}</p>
 
-                        <div v-if="ambientesVisibles.length > 0" class="ambiente-grid">
-                            <label
-                                v-for="ambiente in ambientesVisibles"
-                                :key="ambiente.id_ambiente"
-                                class="ambiente-item"
-                                :class="{
-                                    'ambiente-item--selected': form.id_ambientes.includes(ambiente.id_ambiente),
-                                    'ambiente-item--libre': estaLibre(ambiente.id_ambiente),
-                                    'ambiente-item--ocupado': estaOcupado(ambiente.id_ambiente),
-                                }"
-                            >
-                                <input
-                                    type="checkbox"
-                                    :checked="form.id_ambientes.includes(ambiente.id_ambiente)"
-                                    :value="ambiente.id_ambiente"
-                                    :disabled="form.processing || estaOcupado(ambiente.id_ambiente)"
-                                    @change="toggleAmbiente(ambiente.id_ambiente)"
-                                />
-                                <span class="ambiente-name">{{ ambiente.nombre_ambiente }}</span>
-                                <span v-if="estaOcupado(ambiente.id_ambiente)" class="ambiente-ocupado-tag">Ocupado</span>
-                                <span v-else class="ambiente-capacity">{{ ambiente.capacidad }} pers.</span>
-                            </label>
-                        </div>
-                        <p v-if="ambientes.length > 0 && ambientesVisibles.length === 0" class="help-text">
-                            No hay ambientes disponibles en ese horario.
-                        </p>
-                        <p v-else-if="ambientes.length === 0" class="help-text">No hay ambientes registrados. Crea uno desde el módulo Ambientes.</p>
+                        <template v-if="ambientes.length">
+                            <label class="form-label" for="buscar-ambiente">Buscar por nombre</label>
+                            <input id="buscar-ambiente" v-model="busquedaAmbiente" @keydown.enter.prevent type="search" class="form-input" placeholder="Ej. Aula 101" />
+                            <div v-if="ambientesVisibles.length" class="resultados-aula" aria-label="Resultados de ambientes">
+                                <button v-for="ambiente in ambientesVisibles" :key="ambiente.id_ambiente" type="button"
+                                    :disabled="form.processing || estaOcupado(ambiente.id_ambiente)" @click="toggleAmbiente(ambiente.id_ambiente)">
+                                    {{ ambiente.nombre_ambiente }} · {{ ambiente.capacidad }} pers.{{ estaOcupado(ambiente.id_ambiente) ? ' · Ocupado' : '' }}
+                                </button>
+                            </div>
+                            <p v-if="!ambientesVisibles.length" class="help-text">No hay ambientes adicionales que coincidan con los filtros.</p>
+                            <ul v-if="ambientesSeleccionados.length" class="ambientes-seleccionados" aria-label="Ambientes seleccionados">
+                                <li v-for="ambiente in ambientesSeleccionados" :key="ambiente.id_ambiente" class="aula-chip">
+                                    <span class="ambiente-name">{{ ambiente.nombre_ambiente }}</span>
+                                    <button type="button" class="quitar-ambiente" :disabled="form.processing" :aria-label="'Quitar ' + ambiente.nombre_ambiente" @click="toggleAmbiente(ambiente.id_ambiente)">×</button>
+                                </li>
+                            </ul>
+                        </template>
+                        <p v-else class="help-text">No hay ambientes registrados. Crea uno desde el módulo Ambientes.</p>
                         <p v-if="form.errors.id_ambientes" class="error-msg">{{ form.errors.id_ambientes }}</p>
                     </div>
 
@@ -507,7 +499,7 @@ function guardar() {
                         <Link href="/examenes" class="btn-cancel">Cancelar</Link>
                         <button type="submit" class="btn-primary" :disabled="form.processing">
                             <LoadingSpinner v-if="form.processing" size="small" />
-                            <span v-else>{{ esEdicion ? 'Guardar Cambios' : 'Registrar Examen' }}</span>
+                            <span v-else>{{ esEdicion ? 'Guardar cambios' : 'Registrar examen' }}</span>
                         </button>
                     </div>
                 </form>
@@ -643,34 +635,30 @@ textarea.form-input { resize: vertical; }
     border-color: var(--color-primary);
 }
 
-.ambiente-item--libre {
-    background-color: #f0fdf4;
-    border-color: #86efac;
+.resultados-aula { max-height: 9rem; overflow: auto; display: grid; border: 1px solid var(--border-light); }
+.resultados-aula button { text-align: left; padding: .4rem .65rem; }
+.resultados-aula button:hover:enabled { background: #eff6ff; }
+.aula-chip { display: inline-flex; align-items: center; gap: .4rem; background: #eff6ff; border-radius: 1rem; padding: .15rem .6rem; }
+.ambientes-seleccionados {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
 }
 
-.ambiente-item--ocupado {
-    background-color: #fef2f2;
-    border-color: #fca5a5;
-    opacity: 0.8;
-    cursor: not-allowed;
+.quitar-ambiente {
+    background: transparent;
+    border: 0;
+    color: var(--color-primary);
+    cursor: pointer;
+    text-decoration: underline;
 }
-
-.ambiente-item input { cursor: pointer; }
-.ambiente-item--ocupado input { cursor: not-allowed; }
 
 .ambiente-name { font-size: 0.875rem; color: #374151; flex: 1; }
 .ambiente-owner { font-size: 0.75rem; color: #9ca3af; font-weight: 400; }
-.ambiente-capacity { font-size: 0.75rem; color: #6b7280; white-space: nowrap; }
 
-.ambiente-ocupado-tag {
-    font-size: 0.6875rem;
-    font-weight: 700;
-    color: #b91c1c;
-    background-color: #fee2e2;
-    border-radius: 9999px;
-    padding: 0.125rem 0.5rem;
-    white-space: nowrap;
-}
 
 /* Acciones */
 .form-actions {

@@ -118,7 +118,7 @@ class AsignaturaUpdateTest extends TestCase
             ->patch(route('asignaturas.update', $this->asignatura), ['nombre_asignatura' => $name])
             ->assertSessionHasNoErrors()->assertSessionHas('success');
 
-        $this->assertSame($name, $this->asignatura->fresh()->nombre_asignatura);
+        $this->assertSame(mb_convert_case($name, MB_CASE_TITLE), $this->asignatura->fresh()->nombre_asignatura);
     }
 
     public function test_nonexistent_subject_returns_404(): void

@@ -36,7 +36,7 @@ const noticiasRender = computed(() => {
 
     <AuthenticatedLayout>
         <div class="panel-container">
-            <h1 class="panel-title">PANEL PRINCIPAL</h1>
+            <h1 class="panel-title">Panel principal</h1>
 
             <!-- Fila de Tarjetas de Estadísticas -->
             <div class="stats-grid">
@@ -70,11 +70,11 @@ const noticiasRender = computed(() => {
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>ASIGNATURA</th>
-                                    <th>FECHA</th>
-                                    <th>HORA</th>
-                                    <th>AMBIENTE</th>
-                                    <th style="text-align: right">ESTADO</th>
+                                    <th>Asignatura</th>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Ambiente</th>
+                                    <th style="text-align: right">Estado</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -87,10 +87,10 @@ const noticiasRender = computed(() => {
                                         <span v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0">
                                             {{ examen.examenes_ambientes.map(ea => ea.ambiente?.nombre_ambiente).filter(Boolean).join(', ') }}
                                         </span>
-                                        <span v-else>N/D</span>
+                                        <span v-else>N/d</span>
                                     </td>
                                     <td style="text-align: right">
-                                        <span class="status-badge" :class="examen.estado_actual">{{ examen.estado_actual ? examen.estado_actual.replace('_', ' ').toUpperCase() : 'PROGRAMADO' }}</span>
+                                        <span class="status-badge" :class="examen.estado_actual">{{ examen.estado_actual ? examen.estado_actual[0].toUpperCase() + examen.estado_actual.slice(1).replaceAll('_', ' ') : 'Programado' }}</span>
                                     </td>
                                 </tr>
                                 
@@ -182,7 +182,6 @@ const noticiasRender = computed(() => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: var(--spacing-xl);
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 1px;
 }
@@ -263,7 +262,6 @@ const noticiasRender = computed(() => {
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-muted);
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     background: var(--bg-main);
 }
@@ -380,7 +378,6 @@ const noticiasRender = computed(() => {
     color: var(--color-active); 
     font-weight: 700; 
     margin-bottom: 4px; 
-    text-transform: uppercase; 
     letter-spacing: 0.05em; 
 }
 :deep(.news-titulo) {

@@ -84,7 +84,7 @@ function irAPagina(url) {
             <Link href="/grupos" class="volver">Volver a grupos</Link>
 
             <div class="grupo-card">
-                <span class="eyebrow">GRUPO</span>
+                <span class="eyebrow">Grupo</span>
                 <h1 class="grupo-titulo">{{ grupo.asignatura?.nombre_asignatura }} · {{ grupo.nombre_grupo }}</h1>
                 <div class="grupo-meta">
                     <span><strong>Docente:</strong> {{ grupo.usuario?.name ?? 'Sin docente' }}</span>

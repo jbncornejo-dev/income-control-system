@@ -33,7 +33,7 @@ function estadoBadgeClass(estado) {
 
     <AuthenticatedLayout>
         <div class="panel-container">
-            <h1 class="panel-title">PANEL DE CONTROL</h1>
+            <h1 class="panel-title">Panel de control</h1>
 
             <!-- CTA Registrar Ingreso -->
             <Link href="/registro-ingreso" class="cta-banner">
@@ -76,11 +76,11 @@ function estadoBadgeClass(estado) {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>ASIGNATURA</th>
-                                <th>HORARIO</th>
-                                <th>AMBIENTES</th>
-                                <th>ESTADO</th>
-                                <th>REGISTRADOS</th>
+                                <th>Asignatura</th>
+                                <th>Horario</th>
+                                <th>Ambientes</th>
+                                <th>Estado</th>
+                                <th>Registrados</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -91,7 +91,7 @@ function estadoBadgeClass(estado) {
                                     <span v-if="examen.examenes_ambientes && examen.examenes_ambientes.length > 0">
                                         {{ examen.examenes_ambientes.map(ea => ea.ambiente?.nombre_ambiente).join(', ') }}
                                     </span>
-                                    <span v-else>N/D</span>
+                                    <span v-else>N/d</span>
                                 </td>
                                 <td>
                                     <span :class="['badge', estadoBadgeClass(examen.estado_actual)]">
@@ -120,7 +120,6 @@ function estadoBadgeClass(estado) {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: 1.5rem;
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 0.05em;
 }
@@ -259,7 +258,6 @@ function estadoBadgeClass(estado) {
     font-size: 0.75rem;
     font-weight: 600;
     display: inline-block;
-    text-transform: uppercase;
     letter-spacing: 0.5px;
 }
 

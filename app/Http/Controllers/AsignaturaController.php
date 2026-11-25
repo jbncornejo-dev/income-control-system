@@ -43,7 +43,15 @@ class AsignaturaController extends Controller
 
     public function update(UpdateAsignaturaRequest $request, Asignatura $asignatura)
     {
-        $asignatura->update($request->safe()->only('nombre_asignatura'));
+        try {
+            $asignatura->update($request->safe()->only('nombre_asignatura'));
+        } catch (QueryException $e) {
+            if ($e->getCode() === '23505') {
+                return back()->withErrors(['nombre_asignatura' => 'Ya existe una asignatura con ese nombre'])->withInput();
+            }
+
+            throw $e;
+        }
 
         // Integración frontend: el formulario Inertia puede enviar PATCH a esta ruta;
         // la redirección conserva el flujo y comparte el mensaje mediante flash.success.
@@ -62,7 +70,7 @@ class AsignaturaController extends Controller
             DB::transaction(fn () => $asignatura->delete());
         } catch (QueryException $e) {
             // La clave foránea también protege si se registra un examen durante el borrado.
-            if ($e->getCode() === '23503') {
+            if (in_array($e->getCode(), ['23503', '23001'], true)) {
                 return back()->with('error', $mensaje);
             }
 

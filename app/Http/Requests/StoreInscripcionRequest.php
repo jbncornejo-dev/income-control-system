@@ -17,7 +17,7 @@ class StoreInscripcionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'id_estudiante' => ['required', 'integer', 'exists:estudiante,id_estudiante'],
+            'id_estudiante' => ['required', 'integer', 'exists:estudiante,id_estudiante,activo,true'],
         ];
     }
 

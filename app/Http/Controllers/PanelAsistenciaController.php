@@ -18,7 +18,7 @@ class PanelAsistenciaController extends Controller
 
     public function index(Request $request)
     {
-        if (! in_array($request->user()?->rol?->nombre_rol, self::ROLES, true)) {
+        if (! $request->user()?->rol?->permiteRuta($request->route()->getName()) && ! in_array($request->user()?->rol?->nombre_rol, self::ROLES, true)) {
             abort(403, 'Acceso Denegado');
         }
 

@@ -14,6 +14,10 @@ createInertiaApp({
     const pinia = createPinia()
     app.use(pinia)
     app.use(plugin)
+    app.config.globalProperties.$permiteAccion = function (accion) {
+      const usuario = this.$page.props.auth.user
+      return !usuario.rol_personalizado || usuario.acciones.includes(accion)
+    }
     app.component('ToastContainer', ToastContainer)
     app.mount(el)
   },

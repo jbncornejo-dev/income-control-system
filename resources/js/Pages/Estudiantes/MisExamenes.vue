@@ -204,7 +204,6 @@ function obtenerTextoHabilitacion(examen) {
     font-size: 1.5rem;
     font-weight: 700;
     color: var(--color-primary);
-    text-transform: uppercase;
     letter-spacing: 0.04em;
     margin: 0 0 0.35rem 0;
 }
@@ -328,7 +327,6 @@ function obtenerTextoHabilitacion(examen) {
     border-radius: 999px;
     font-size: 0.7rem;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.03em;
 }
 

@@ -16,10 +16,16 @@ class DemoOperativoSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('username', 'admin')->first();
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
+        $admin = User::query()->where('activo', true)
+            ->whereHas('rol', fn ($rol) => $rol->where('nombre_rol', 'administrador'))
+            ->orderBy('id')->first();
         $control = User::where('username', 'control')->first();
 
-        if (! $admin || ! $control) {
+        if (! $control) {
             return;
         }
 
@@ -90,14 +96,16 @@ class DemoOperativoSeeder extends Seeder
             }
         }
 
-        AuditoriaLog::firstOrCreate(
-            [
-                'id_usuario' => $admin->id,
-                'tabla_afectada' => 'examen',
-                'id_registro_afectado' => $examenDemo->id_examen,
-                'accion' => 'created',
-            ],
-            ['fecha_hora' => now()->subHour()]
-        );
+        if ($admin) {
+            AuditoriaLog::firstOrCreate(
+                [
+                    'id_usuario' => $admin->id,
+                    'tabla_afectada' => 'examen',
+                    'id_registro_afectado' => $examenDemo->id_examen,
+                    'accion' => 'created',
+                ],
+                ['fecha_hora' => now()->subHour()]
+            );
+        }
     }
 }

@@ -46,7 +46,7 @@ const noticiasRender = computed(() => {
 
     <AuthenticatedLayout>
         <div class="panel-container">
-            <h1 class="panel-title">PANEL PRINCIPAL</h1>
+            <h1 class="panel-title">Panel principal</h1>
 
             <!-- Grid de Tarjetas (Stats) para Docentes -->
             <div class="stats-grid">
@@ -194,7 +194,6 @@ const noticiasRender = computed(() => {
     font-weight: 700;
     color: var(--color-primary);
     margin-bottom: 2rem; /* mb-8 */
-    text-transform: uppercase;
     font-family: var(--font-display);
     letter-spacing: 0.05em;
 }
@@ -556,7 +555,6 @@ const noticiasRender = computed(() => {
     font-size: 0.625rem; /* text-[10px] */
     font-weight: 700;
     color: #A12B33;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     margin-bottom: 0.25rem;
 }

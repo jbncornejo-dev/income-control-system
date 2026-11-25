@@ -36,6 +36,7 @@ class GrupoController extends Controller
             'grupos' => $grupos,
             'asignaturas' => Asignatura::orderBy('nombre_asignatura')->get(['id_asignatura', 'nombre_asignatura']),
             'docentes' => User::query()
+                ->where('activo', true)
                 ->whereHas('rol', fn ($q) => $q->where('nombre_rol', 'docente'))
                 ->orderBy('name')
                 ->get(['id', 'name', 'username']),

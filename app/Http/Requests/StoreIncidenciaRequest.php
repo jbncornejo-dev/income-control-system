@@ -9,6 +9,10 @@ class StoreIncidenciaRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         return in_array(
             $this->user()?->rol?->nombre_rol,
             ['administrador', 'docente', 'personal de control de ingreso'],

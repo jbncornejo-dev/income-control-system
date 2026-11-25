@@ -85,7 +85,6 @@ defineEmits(['reference-error', 'current-error']);
     padding: 3px 10px;
     border-radius: 9999px;
     margin-bottom: 8px;
-    text-transform: uppercase;
     letter-spacing: 0.03em;
     white-space: nowrap;
     text-align: center;
@@ -141,7 +140,6 @@ defineEmits(['reference-error', 'current-error']);
     font-size: 10px;
     font-weight: 600;
     color: #94a3b8;
-    text-transform: uppercase;
     line-height: 1.1;
 }
 </style>

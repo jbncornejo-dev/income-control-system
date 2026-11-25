@@ -16,24 +16,26 @@ const role = computed(() => ({ administrador: 'admin', 'personal de control de i
 const navItems = [
   { label: 'Inicio', href: '/dashboard', roles: ['admin', 'docente', 'control'], icon: Home },
   { label: 'Usuarios', href: '/usuarios', roles: ['admin'], icon: Users },
+  { label: 'Roles', href: '/roles', roles: ['admin'], icon: ShieldCheck },
+  { label: 'Reportes', href: '/reportes', roles: ['admin'], icon: FileText },
   { label: 'Auditoría', href: '/auditoria', roles: ['admin'], icon: ShieldCheck },
   { label: 'Estudiantes', href: '/estudiantes', roles: ['admin'], icon: UserSquare2 },
   { label: 'Asignaturas', href: '/asignaturas', roles: ['admin'], icon: BookOpen },
   { label: 'Ambientes', href: '/ambientes', roles: ['admin'], icon: Building },
-  { label: 'Gestión Exámenes', href: '/examenes', roles: ['admin', 'docente'], icon: FileText },
+  { label: 'Gestión de exámenes', href: '/examenes', roles: ['admin', 'docente'], icon: FileText },
   { label: 'Histórico', href: '/historico', roles: ['admin', 'docente'], icon: History },
   { label: 'Grupos', href: '/grupos', roles: ['admin'], icon: Component },
-  { label: 'Panel Asistencia', href: '/panel-asistencia', roles: ['admin', 'docente', 'control'], icon: ClipboardCheck },
+  { label: 'Panel de asistencia', href: '/panel-asistencia', roles: ['admin', 'docente', 'control'], icon: ClipboardCheck },
   { label: 'Incidencias', href: '/incidencias', roles: ['admin', 'docente', 'control'], icon: AlertCircle },
   { label: 'Estadísticas', href: '/incidencias/estadisticas', roles: ['admin', 'docente'], icon: BarChart3 },
-  { label: 'Registrar Ingreso', href: '/registro-ingreso', roles: ['control'], highlight: true, icon: ScanLine },
-  { label: 'Mi Código QR', href: '/estudiante/panel', roles: ['estudiante'], icon: QrCode },
-  { label: 'Mis Exámenes', href: '/mis-examenes', roles: ['estudiante'], icon: ClipboardList },
+  { label: 'Registrar ingreso', href: '/registro-ingreso', roles: ['control'], highlight: true, icon: ScanLine },
+  { label: 'Mi código QR', href: '/estudiante/panel', roles: ['estudiante'], icon: QrCode },
+  { label: 'Mis exámenes', href: '/mis-examenes', roles: ['estudiante'], icon: ClipboardList },
 ];
 
 // Solo se recalcula cuando cambia el rol, no re-evalúa condicionales en el template
 const visibleNavItems = computed(() =>
-  navItems.filter((item) => role.value && item.roles.includes(role.value))
+  navItems.filter((item) => user.value?.rol_personalizado ? user.value.permisos_menu.includes(item.href) : item.roles.includes(role.value))
 );
 
 const currentMenuLabel = computed(() => {
@@ -67,11 +69,11 @@ function logout() {
     <aside class="sidebar" :class="{ 'sidebar-open': isMobileMenuOpen }">
       <div class="sidebar-header">
         <div class="sidebar-logo-container">
-            <span class="sidebar-logo-text">U<span class="text-gold">M</span>SS</span>
+            <span class="sidebar-logo-text">U<span class="text-gold">M</span>Ss</span>
         </div>
         <div class="brand-text">
           <h1>CIE</h1>
-          <span>{{ role ? role.toUpperCase() + ' PANEL' : 'ADMIN PANEL' }}</span>
+          <span>Panel de evaluaciones</span>
         </div>
       </div>
       <nav class="sidebar-nav">
@@ -116,7 +118,7 @@ function logout() {
           <div v-if="user" class="user-profile">
             <div class="user-info">
               <span class="user-name">{{ user.name }}</span>
-              <span class="role-badge">{{ user.rol }}</span>
+              <span class="role-badge">{{ user.rol ? user.rol[0].toLocaleUpperCase('es') + user.rol.slice(1) : '' }}</span>
             </div>
             <div class="user-avatar">
               {{ user.name.charAt(0).toUpperCase() }}
@@ -131,7 +133,7 @@ function logout() {
 
       </header>
 
-      <main class="content-area">
+      <main class="content-area" scroll-region>
         <slot />
       </main>
 
@@ -143,7 +145,7 @@ function logout() {
           <span>Desarrollado por</span>
           <div class="texcorp-brand">
             <img src="/images/TexCorp.png" alt="TexCorp" class="texcorp-logo">
-            <span class="texcorp-text">TEXCORP</span>
+            <span class="texcorp-text">TexCorp</span>
           </div>
         </div>
       </footer>
@@ -159,6 +161,7 @@ function logout() {
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   width: 100%;
   background-color: var(--bg-main);
   overflow: hidden;
@@ -170,11 +173,14 @@ function logout() {
   flex-direction: column;
   min-width: 0; /* Evita que el contenido desborde horizontalmente */
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
 }
 
 .content-area {
   flex-grow: 1;
+  min-height: 0;
+  min-width: 0;
   /* El padding se delega a las vistas (.panel-container, .page-container) por ahora */
   display: flex;
   flex-direction: column;
@@ -202,6 +208,7 @@ function logout() {
   flex-direction: column;
   flex-shrink: 0;
   height: 100vh;
+  height: 100dvh;
   z-index: 40;
   transition: transform var(--transition-normal);
   border-right: 1px solid rgba(255, 255, 255, 0.1);
@@ -255,7 +262,6 @@ function logout() {
   font-weight: 500;
   color: #C5A059;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
   display: block;
   margin-top: 4px;
 }
@@ -435,7 +441,6 @@ function logout() {
   color: #C5A059;
   font-size: 0.75rem;
   font-weight: 600;
-  text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 

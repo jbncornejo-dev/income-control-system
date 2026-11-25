@@ -41,6 +41,7 @@ class EstudianteIndexTest extends TestCase
             'apellidos' => $estudiante->apellidos,
             'codigo_qr' => $estudiante->codigo_qr,
             'email' => $estudiante->email,
+            'activo' => $estudiante->activo,
         ];
     }
 
@@ -73,6 +74,7 @@ class EstudianteIndexTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => 'QR-2',
+            'activo' => false,
         ]);
 
         $this->actingAs(User::factory()->create())

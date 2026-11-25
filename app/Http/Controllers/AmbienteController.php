@@ -79,7 +79,7 @@ class AmbienteController extends Controller
             DB::transaction(fn () => $ambiente->delete());
         } catch (QueryException $e) {
             // La clave foránea protege si se asocia un examen durante el borrado.
-            if ($e->getCode() === '23503') {
+            if (in_array($e->getCode(), ['23503', '23001'], true)) {
                 return back()->with('error', $mensaje);
             }
 

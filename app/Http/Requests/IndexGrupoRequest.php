@@ -8,6 +8,10 @@ class IndexGrupoRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        if ($this->user()?->rol?->permiteRuta($this->route()?->getName())) {
+            return true;
+        }
+
         return $this->user()?->rol?->nombre_rol === 'administrador';
     }
 

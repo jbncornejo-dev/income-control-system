@@ -177,7 +177,6 @@ const limpiarFiltros = () => {
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.18em;
-    text-transform: uppercase;
     color: rgba(255, 255, 255, 0.72);
 }
 
@@ -255,7 +254,6 @@ const limpiarFiltros = () => {
     font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
-    text-transform: uppercase;
     color: var(--text-muted);
 }
 

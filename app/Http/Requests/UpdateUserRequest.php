@@ -2,52 +2,32 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Rol;
+use App\Support\AdminCredentials;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use App\Models\Rol;
 
 class UpdateUserRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
-
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
-     */
     public function rules(): array
     {
-        $allowedRoles = Rol::whereIn('nombre_rol', [
-            'administrador',
-            'docente',
-            'personal de control de ingreso',
-            'estudiante',
-        ])->pluck('id_rol')->toArray();
+        $usuario = $this->route('usuario');
+        $rol = Rol::find($this->integer('id_rol', $usuario->id_rol));
+        $esAdmin = $rol?->nombre_rol === 'administrador';
+        $promocion = $esAdmin && $usuario->rol?->nombre_rol !== 'administrador';
 
-        // Determinar el ID del usuario de la ruta (puede ser 'user' o 'usuario')
-        $user = $this->route('user') ?? $this->route('usuario');
-        $userId = is_object($user) ? $user->id : $user;
+        $accesoReportes = $rol?->permisos !== null && $usuario->rol?->permisos === null;
 
         return [
-            'id_rol' => ['sometimes', 'required', 'integer', Rule::in($allowedRoles)],
-            'password' => ['nullable', 'string', 'min:8'],
-        ];
-    }
-
-    /**
-     * Get the error messages for the defined validation rules.
-     */
-    public function messages(): array
-    {
-        return [
-            'email.unique' => 'El nombre de usuario o email ya está registrado',
-            'username.unique' => 'El nombre de usuario o email ya está registrado',
+            'id_rol' => ['sometimes', 'required', 'integer', Rule::exists('rol', 'id_rol')],
+            'username' => [
+                Rule::requiredIf($promocion), Rule::prohibitedIf(! $esAdmin), 'nullable', 'string',
+                AdminCredentials::USERNAME, 'not_in:admin,administrador', Rule::unique('users')->ignore($usuario),
+            ],
+            'password' => [
+                Rule::requiredIf($promocion || $accesoReportes), 'nullable', 'string', 'max:72', 'confirmed',
+                $rol?->requiereClaveSegura() ? AdminCredentials::password() : 'min:8',
+            ],
         ];
     }
 }
