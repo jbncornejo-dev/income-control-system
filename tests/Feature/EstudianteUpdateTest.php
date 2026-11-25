@@ -30,7 +30,7 @@ class EstudianteUpdateTest extends TestCase
     private function crearEstudiante(): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -46,6 +46,8 @@ class EstudianteUpdateTest extends TestCase
         $response = $this->put("/estudiantes/{$estudiante->id_estudiante}", [
             'nombres' => 'Ana Maria',
             'apellidos' => 'Perez',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertRedirect(route('login'));
@@ -62,8 +64,8 @@ class EstudianteUpdateTest extends TestCase
             'apellidos' => 'Perez Lopez',
             'codigo_qr' => 'QR-NUEVO',
             // Se envían igual que el frontend (inputs disabled), pero no deben cambiarse.
-            'codigo_universitario' => '9999-99999',
-            'documento_identidad' => '9999999',
+            'codigo_universitario' => '201809372',
+            'documento_identidad' => '1111111',
         ]);
 
         $response->assertSessionHasNoErrors();
@@ -73,11 +75,12 @@ class EstudianteUpdateTest extends TestCase
             'id_estudiante' => $estudiante->id_estudiante,
             'nombres' => 'Ana Maria',
             'apellidos' => 'Perez Lopez',
-            'codigo_qr' => 'QR-NUEVO',
+            // El QR ya no se modifica a través del CRUD.
+            'codigo_qr' => 'QR-1',
         ]);
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
         ]);
     }
@@ -92,13 +95,15 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => 'QR-1',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasNoErrors();
         $this->assertDatabaseCount('estudiante', 1);
     }
 
-    public function test_can_clear_codigo_qr(): void
+    public function test_cannot_change_codigo_qr_via_update(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
@@ -108,22 +113,25 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => '',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasNoErrors();
+        // El QR ya no forma parte de la edición: no se puede modificar ni limpiar.
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
-            'codigo_qr' => null,
+            'codigo_qr' => 'QR-1',
         ]);
     }
 
-    public function test_rejects_duplicate_codigo_qr_on_update(): void
+    public function test_ignores_duplicate_codigo_qr_on_update(): void
     {
         $this->withoutMiddleware(ValidateCsrfToken::class);
         $user = $this->createUser();
         $estudiante = $this->crearEstudiante();
         Estudiante::create([
-            'codigo_universitario' => '2020-00002',
+            'codigo_universitario' => '201809373',
             'documento_identidad' => '2222222',
             'nombres' => 'Juan',
             'apellidos' => 'Gomez',
@@ -134,9 +142,11 @@ class EstudianteUpdateTest extends TestCase
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
             'codigo_qr' => 'QR-2',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
-        $response->assertSessionHasErrors('codigo_qr');
+        $response->assertSessionHasNoErrors();
         $this->assertDatabaseHas('estudiante', [
             'id_estudiante' => $estudiante->id_estudiante,
             'codigo_qr' => 'QR-1',
@@ -152,6 +162,8 @@ class EstudianteUpdateTest extends TestCase
         $response = $this->actingAs($user)->put("/estudiantes/{$estudiante->id_estudiante}", [
             'nombres' => '',
             'apellidos' => '',
+            'codigo_universitario' => $estudiante->codigo_universitario,
+            'documento_identidad' => $estudiante->documento_identidad,
         ]);
 
         $response->assertSessionHasErrors(['nombres', 'apellidos']);

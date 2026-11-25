@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable
 {
@@ -18,10 +19,15 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'id_rol',
+        'activo',
+        'id_estudiante',
         'name',
         'email',
+        'email_verified_at',
         'username',
+        'documento_identidad',
         'password',
+        'debe_cambiar_password',
     ];
 
     /**
@@ -44,7 +50,23 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'activo' => 'boolean',
+            'debe_cambiar_password' => 'boolean',
         ];
+    }
+
+    public function puedeIngresar(): bool
+    {
+        return $this->activo !== false
+            && ($this->id_estudiante === null || $this->estudiante?->activo !== false);
+    }
+
+    public function revocarSesiones(): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::connection(config('session.connection'))->table(config('session.table'))
+                ->where('user_id', $this->id)->delete();
+        }
     }
 
     // Relación de muchos a uno (user-rol)
@@ -69,5 +91,42 @@ class User extends Authenticatable
     public function auditorias()
     {
         return $this->hasMany(AuditoriaLog::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a muchos (user-grupo)
+    public function grupos()
+    {
+        return $this->hasMany(Grupo::class, 'id_usuario', 'id');
+    }
+
+    // Relación de uno a uno (cuenta de usuario - estudiante)
+    public function estudiante()
+    {
+        return $this->belongsTo(Estudiante::class, 'id_estudiante', 'id_estudiante');
+    }
+
+    /**
+     * ¿La cuenta fue creada con una contraseña inicial temporal?
+     */
+    public function esCuentaEstudiantePendiente(): bool
+    {
+        return (bool) $this->debe_cambiar_password;
+    }
+
+    public function examenesAsignados()
+    {
+        return $this->belongsToMany(
+            Examen::class,
+            'examen_personal_control',
+            'id_usuario',
+            'id_examen',
+            'id',
+            'id_examen'
+        );
+    }
+
+    public function habilitacionesAsignadas()
+    {
+        return $this->hasMany(Habilitacion::class, 'id_personal_control');
     }
 }

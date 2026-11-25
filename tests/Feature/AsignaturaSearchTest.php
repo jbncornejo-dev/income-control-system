@@ -46,11 +46,22 @@ class AsignaturaSearchTest extends TestCase
             'combined matching filters' => [['id_asignatura' => 12, 'nombre_asignatura' => 'cálculo'], [12]],
             'combined conflicting filters' => [['id_asignatura' => 21, 'nombre_asignatura' => 'cálculo'], []],
             'no matches' => [['nombre_asignatura' => 'Química'], []],
-            'accent sensitive' => [['nombre_asignatura' => 'calculo'], []],
+            'without accent' => [['nombre_asignatura' => 'calculo'], [1, 12]],
             'empty filters' => [['id_asignatura' => '', 'nombre_asignatura' => ''], [1, 12, 21]],
             'whitespace filters' => [['id_asignatura' => '  ', 'nombre_asignatura' => '  '], [1, 12, 21]],
             'no filters' => [[], [1, 12, 21]],
         ];
+    }
+
+    public function test_accented_search_matches_name_without_accent(): void
+    {
+        Asignatura::insert(['id_asignatura' => 40, 'nombre_asignatura' => 'Algebra Lineal']);
+
+        $this->get(route('asignaturas.index', ['nombre_asignatura' => 'álgebra']))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Asignaturas/Index')
+                ->where('asignaturas.total', 1)
+                ->where('asignaturas.data.0.id_asignatura', 40));
     }
 
     #[DataProvider('literalNames')]

@@ -17,7 +17,7 @@ class EnsureUserHasRole
     {
         $role = $request->user()?->rol?->nombre_rol;
 
-        if ($role === null || ! in_array($role, $roles, true)) {
+        if (! in_array($role, $roles, true) && ! $request->user()?->rol?->permiteRuta($request->route()->getName())) {
             abort(403);
         }
 

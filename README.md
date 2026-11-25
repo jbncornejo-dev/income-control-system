@@ -75,7 +75,7 @@ cd app
    # Genera la clave de la aplicación
    php artisan key:generate
 
-   # Ejecuta las migraciones
+   # Ejecuta las migraciones y carga los datos demo
    php artisan migrate --seed
    ```
    > Compila la interfaz:
@@ -200,3 +200,115 @@ npm run build
 > contenedor `workspace`.
 
 Cuando termines, ejecuta `exit` para salir del contenedor `workspace` y volver a tu máquina host.
+
+
+## Accesos de demostración
+
+Con `APP_ENV=local`, ejecuta `php artisan migrate --seed` y usa uno de estos
+accesos.
+
+| Rol | Correo | Contraseña |
+| --- | --- | --- |
+| Administrador | administrador@gmail.com | `SalchiPapa123*` |
+| Docente | docente@example.com | `pass` |
+| Personal de control | control@example.com | `pass` |
+| Estudiante | estudiante@example.com | `pass` |
+
+El administrador demo también puede ingresar con el usuario `administrador.local`.
+
+Para actualizar solo las cuentas demo de una base local ya inicializada,
+ejecuta `php artisan db:seed --class=DemoUserSeeder`.
+
+## Puesta en marcha en el servidor de la universidad
+
+Configurar Laravel con `APP_ENV=production`, `APP_DEBUG=false`, HTTPS,
+almacenamiento persistente y las credenciales PostgreSQL de la universidad.
+Con `SESSION_DRIVER=database`, la desactivación de una cuenta individual
+invalida también sus sesiones almacenadas.
+
+Después de compilar los recursos y configurar el entorno, ejecutar:
+
+```bash
+php artisan migrate --force
+php artisan db:seed --force
+php artisan storage:link
+php artisan admin:provisionar
+```
+
+En producción, el seeder general registra los roles base. El último comando
+solicita un correo y un nombre de usuario individual, y lee la contraseña sin
+mostrarla. Ejecutarlo con `--rotar=ID` para reemplazar las
+credenciales de un administrador existente conservando su historial. Desde
+**Usuarios** se pueden crear más cuentas administrativas o asignar ese rol a
+una cuenta existente con credenciales nuevas. En **Roles** se pueden crear
+perfiles personalizados de exportación, limitar sus asignaturas y asignarlos
+desde **Usuarios**.
+
+### Backups en el servidor
+
+Ejecutar `scripts/backup-servidor.sh` con Bash en el host Linux. Se necesitan
+`pg_dump`, `pg_restore`, `createdb`, `tar`, `gzip`, `sha256sum` y `flock`. Usar
+un cliente PostgreSQL de la misma versión mayor que el servidor. En un
+despliegue con contenedores, dar al proceso acceso de lectura al volumen de
+`storage/app/public` y conectividad a PostgreSQL. El directorio de copias
+debe estar fuera del sitio web y en un volumen persistente con permisos `0700`.
+
+Preparar un archivo de entorno privado para la cuenta del sistema que realizará
+los backups. El archivo indicado en `PGPASSFILE` debe tener permisos `0600`.
+
+```bash
+export PGHOST=127.0.0.1 PGPORT=5432 PGDATABASE=control_ingreso
+export PGUSER=cuenta_backup PGPASSFILE=/ruta/privada/pgpass
+export PUBLIC_STORAGE_DIR=/ruta/volumen/storage/app/public
+export BACKUP_DIR=/ruta/privada/backups/cie
+export BACKUP_RETENTION_DAYS=14
+```
+
+La cuenta de backup requiere conexión y lectura de tablas y secuencias de la
+base. Ejecutar manualmente una primera vez:
+
+```bash
+. /ruta/privada/backup-cie.env
+bash /ruta/app/scripts/backup-servidor.sh crear
+```
+
+Para automatizarlo, instalar esta entrada en el `crontab` de esa cuenta,
+ajustando las rutas y creando previamente el directorio de logs con permisos
+privados:
+
+```cron
+0 2 * * * /bin/bash -c 'source /ruta/privada/backup-cie.env && exec /bin/bash /ruta/app/scripts/backup-servidor.sh crear' >> /ruta/privada/logs/backup-cie.log 2>&1
+```
+
+Cada copia contiene PostgreSQL, los archivos públicos persistentes (como las
+fotos de estudiantes) y un manifiesto SHA-256. La copia aparece una vez
+completada. La retención usa los días indicados. El valor `0` conserva todas
+las copias. Guardar también una copia protegida de la configuración, `APP_KEY`
+y los permisos de conexión, necesarios para levantar la aplicación si se
+pierde el host.
+
+### Restauración
+
+1. Elegir una copia y preparar el acceso PostgreSQL de un operador con
+   permisos para crear una base, instalar `unaccent` y restaurar el esquema.
+   Conservar el nombre de la base activa en `PGDATABASE` y usar un nombre nuevo
+   para la restauración. Si el operador y la cuenta web son distintos, conceder
+   a la cuenta web los permisos de la nueva base antes de conectarla.
+2. Ejecutar el siguiente comando. Verifica las sumas de ambos archivos,
+   restaura PostgreSQL en una transacción y extrae los archivos a una ruta nueva.
+
+```bash
+bash /ruta/app/scripts/backup-servidor.sh restaurar \
+  /ruta/privada/backups/cie/backup-AAAAMMDDTHHMMSSZ-sufijo \
+  control_ingreso_restaurado /ruta/volumen/public-restaurado
+```
+
+3. Probar la copia con una instancia aislada usando la versión de la aplicación
+   compatible con la copia. Verificar el acceso, los registros y la apertura de
+   fotografías. Registrar la fecha y el resultado del simulacro.
+4. Para reemplazar la base activa, poner la aplicación en mantenimiento y
+   pausar los procesos que escriben en la base. Conservar la base y el volumen
+   previos, configurar la aplicación para utilizar la nueva base y montar el
+   directorio restaurado en `storage/app/public` con permisos para la cuenta
+   web. Regenerar la configuración en caché, probar y reabrir la aplicación.
+   Si hay un problema, volver a la configuración y al volumen anteriores.

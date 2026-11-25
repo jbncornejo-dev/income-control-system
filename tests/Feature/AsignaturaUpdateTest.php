@@ -44,6 +44,7 @@ class AsignaturaUpdateTest extends TestCase
     {
         $examen = Examen::create([
             'id_asignatura' => $this->asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,
@@ -117,7 +118,7 @@ class AsignaturaUpdateTest extends TestCase
             ->patch(route('asignaturas.update', $this->asignatura), ['nombre_asignatura' => $name])
             ->assertSessionHasNoErrors()->assertSessionHas('success');
 
-        $this->assertSame($name, $this->asignatura->fresh()->nombre_asignatura);
+        $this->assertSame(mb_convert_case($name, MB_CASE_TITLE), $this->asignatura->fresh()->nombre_asignatura);
     }
 
     public function test_nonexistent_subject_returns_404(): void

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePasswordChanged;
 use App\Http\Middleware\EnsureUserHasRole;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
@@ -13,10 +14,15 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Confiar en los proxies de Render para mantener el protocolo HTTPS
+        $middleware->trustProxies(at: '*');
+
         $middleware->alias([
             'role' => EnsureUserHasRole::class,
+            'password.pendiente' => EnsurePasswordChanged::class,
         ]);
         $middleware->web(append: [
+            \App\Http\Middleware\EnsureActiveAccount::class,
             HandleInertiaRequests::class,
         ]);
         $middleware->redirectGuestsTo('/login');

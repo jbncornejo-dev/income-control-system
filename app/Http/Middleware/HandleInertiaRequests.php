@@ -42,7 +42,13 @@ class HandleInertiaRequests extends Middleware
                     'id' => $request->user()->id,
                     'name' => $request->user()->name,
                     'email' => $request->user()->email,
+                    'username' => $request->user()->username,
                     'rol' => $request->user()->rol?->nombre_rol,
+                    'nombre_rol' => $request->user()->rol?->nombre_rol,
+                    'acciones' => $request->user()->rol?->permisos ?? [],
+                    'permisos_menu' => $request->user()->rol?->recursos() ?? [],
+                    'rol_personalizado' => $request->user()->rol?->esPersonalizado() ?? false,
+                    'requiere_clave_segura' => $request->user()->rol?->requiereClaveSegura() ?? false,
                 ] : null,
             ],
             'flash' => [

@@ -12,18 +12,14 @@ use App\Models\Incidencia;
 use App\Models\RegistroIngreso;
 use App\Models\Rol;
 use App\Models\User;
-use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class EstudianteDestroyTest extends TestCase
 {
     use RefreshDatabase;
-
-    private const MENSAJE_BLOQUEO = 'No se puede eliminar el estudiante porque tiene registros asociados en el sistema';
 
     protected function setUp(): void
     {
@@ -34,7 +30,7 @@ class EstudianteDestroyTest extends TestCase
     private function crearEstudiante(): Estudiante
     {
         return Estudiante::create([
-            'codigo_universitario' => '2020-00001',
+            'codigo_universitario' => '201809372',
             'documento_identidad' => '1111111',
             'nombres' => 'Ana',
             'apellidos' => 'Perez',
@@ -47,6 +43,7 @@ class EstudianteDestroyTest extends TestCase
 
         return Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $this->crearPeriodo()->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,
@@ -66,18 +63,20 @@ class EstudianteDestroyTest extends TestCase
         ]);
     }
 
-    public function test_administrador_deletes_student_without_associated_records(): void
+    public function test_administrador_disables_and_reactivates_student(): void
     {
         $estudiante = $this->crearEstudiante();
 
-        $this->actingAs(User::factory()->create())->delete(route('estudiantes.destroy', $estudiante))
-            ->assertRedirect(route('estudiantes.index'))
-            ->assertSessionHas('success', 'Estudiante eliminado correctamente.');
+        $this->actingAs(User::factory()->create())->from('/estudiantes')->delete(route('estudiantes.destroy', $estudiante))
+            ->assertRedirect('/estudiantes')
+            ->assertSessionHas('success', 'Estudiante desactivado.');
 
-        $this->assertModelMissing($estudiante);
+        $this->assertFalse($estudiante->fresh()->activo);
+        $this->patch(route('estudiantes.activate', $estudiante))->assertRedirect();
+        $this->assertTrue($estudiante->fresh()->activo);
     }
 
-    public function test_cannot_delete_student_with_habilitacion_and_preserves_relationship(): void
+    public function test_disables_student_with_habilitacion_and_preserves_relationship(): void
     {
         $estudiante = $this->crearEstudiante();
         $examen = $this->crearExamen();
@@ -90,15 +89,14 @@ class EstudianteDestroyTest extends TestCase
         $this->actingAs(User::factory()->create())->from('/estudiantes')
             ->delete(route('estudiantes.destroy', $estudiante))
             ->assertRedirect('/estudiantes')
-            ->assertSessionHas('error', self::MENSAJE_BLOQUEO)
-            ->assertSessionMissing('success');
+            ->assertSessionHas('success', 'Estudiante desactivado.');
 
-        $this->assertModelExists($estudiante);
+        $this->assertFalse($estudiante->fresh()->activo);
         $this->assertModelExists($examen);
         $this->assertModelExists($habilitacion);
     }
 
-    public function test_cannot_delete_student_with_registro_ingreso_and_preserves_relationship(): void
+    public function test_disables_student_with_registro_ingreso_and_preserves_relationship(): void
     {
         $estudiante = $this->crearEstudiante();
         $examenAmbiente = $this->crearExamenAmbiente($this->crearExamen(), $this->crearAmbiente());
@@ -113,14 +111,13 @@ class EstudianteDestroyTest extends TestCase
         $this->actingAs(User::factory()->create())->from('/estudiantes')
             ->delete(route('estudiantes.destroy', $estudiante))
             ->assertRedirect('/estudiantes')
-            ->assertSessionHas('error', self::MENSAJE_BLOQUEO)
-            ->assertSessionMissing('success');
+            ->assertSessionHas('success', 'Estudiante desactivado.');
 
-        $this->assertModelExists($estudiante);
+        $this->assertFalse($estudiante->fresh()->activo);
         $this->assertModelExists($registro);
     }
 
-    public function test_cannot_delete_student_with_incidencia_and_preserves_relationship(): void
+    public function test_disables_student_with_incidencia_and_preserves_relationship(): void
     {
         $estudiante = $this->crearEstudiante();
         $examen = $this->crearExamen();
@@ -136,43 +133,29 @@ class EstudianteDestroyTest extends TestCase
         $this->actingAs(User::factory()->create())->from('/estudiantes')
             ->delete(route('estudiantes.destroy', $estudiante))
             ->assertRedirect('/estudiantes')
-            ->assertSessionHas('error', self::MENSAJE_BLOQUEO)
-            ->assertSessionMissing('success');
+            ->assertSessionHas('success', 'Estudiante desactivado.');
 
-        $this->assertModelExists($estudiante);
+        $this->assertFalse($estudiante->fresh()->activo);
         $this->assertModelExists($incidencia);
     }
 
-    public function test_foreign_key_blocks_registro_created_between_check_and_delete(): void
+    public function test_disabled_student_cannot_use_an_existing_session_or_log_in(): void
     {
         $estudiante = $this->crearEstudiante();
-        $examenAmbiente = $this->crearExamenAmbiente($this->crearExamen(), $this->crearAmbiente());
-        $usuario = User::factory()->create();
-        $this->actingAs(User::factory()->create());
-        $registro = null;
+        $rol = Rol::create(['nombre_rol' => 'estudiante']);
+        $usuario = User::factory()->create([
+            'id_rol' => $rol->id_rol,
+            'id_estudiante' => $estudiante->id_estudiante,
+            'password' => 'ClaveEstudiante123',
+        ]);
+        $administrador = User::factory()->create();
 
-        // Asociar un registro de ingreso tras la consulta reproduce la ventana de carrera en PostgreSQL.
-        DB::listen(function (QueryExecuted $query) use ($estudiante, $examenAmbiente, $usuario, &$registro) {
-            if ($registro === null && str_starts_with($query->sql, 'select exists')
-                && str_contains($query->sql, 'from "registro_ingreso"')) {
-                $registro = RegistroIngreso::create([
-                    'id_estudiante' => $estudiante->id_estudiante,
-                    'id_examen_ambiente' => $examenAmbiente->id_examen_ambiente,
-                    'id_usuario' => $usuario->id,
-                    'fecha_hora_ingreso' => now(),
-                ]);
-            }
-        });
-
-        $this->from('/estudiantes')->delete(route('estudiantes.destroy', $estudiante))
-            ->assertRedirect('/estudiantes')
-            ->assertSessionHas('error', self::MENSAJE_BLOQUEO)
-            ->assertSessionMissing('success');
-
-        $this->assertNotNull($registro);
-        $this->assertModelExists($estudiante);
-        $this->assertModelExists($examenAmbiente);
-        $this->assertModelExists($registro);
+        $this->actingAs($administrador)->delete(route('estudiantes.destroy', $estudiante))->assertRedirect();
+        $this->actingAs($usuario)->get('/dashboard')->assertRedirect('/login');
+        $this->assertGuest();
+        $this->post('/login', [
+            'identificador' => $usuario->username, 'password' => 'ClaveEstudiante123',
+        ])->assertSessionHasErrors('identificador');
     }
 
     public function test_nonexistent_student_returns_404(): void

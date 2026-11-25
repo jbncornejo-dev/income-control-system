@@ -2,65 +2,99 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Rol;
+use App\Models\Estudiante;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AuthController extends Controller
 {
     public function store(Request $request)
     {
         $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
+            'identificador' => ['required', 'string'],
+            'password' => ['required', 'string'],
         ]);
 
-        if (! Auth::attempt($request->only('email', 'password'), $request->boolean('remember'))) {
-            return back()->withErrors([
-                'email' => 'Credenciales inválidas.',
-            ])->onlyInput('email');
+        $limite = 'login:ip:'.$request->ip();
+        if (RateLimiter::tooManyAttempts($limite, 20)) {
+            return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
         }
 
+        $user = $this->resolverUsuarioPorIdentificador($request->input('identificador'));
+        $limiteCuenta = $user ? 'login:cuenta:'.$user->id : null;
+        if ($limiteCuenta && RateLimiter::tooManyAttempts($limiteCuenta, 10)) {
+            return back()->withErrors(['identificador' => 'Demasiados intentos. Intenta de nuevo en un minuto.']);
+        }
+
+        $claveAdminDebil = $user?->rol?->nombre_rol === 'administrador'
+            && in_array($request->password, ['pass', $user->documento_identidad], true);
+        $cuentaDemo = in_array($user?->username, ['docente', 'docente2', 'control', 'estudiante'], true);
+        $demoFueraDeLocal = ! app()->isLocal() && $cuentaDemo && $request->password === 'pass';
+
+        if (! $user?->puedeIngresar() || $claveAdminDebil || $demoFueraDeLocal || ! Auth::attempt(['id' => $user->id, 'activo' => true, 'password' => $request->password], $request->boolean('remember'))) {
+            RateLimiter::hit($limite, 60);
+            if ($limiteCuenta) {
+                RateLimiter::hit($limiteCuenta, 60);
+            }
+            return back()->withErrors([
+                'identificador' => 'Credenciales inválidas.',
+            ])->onlyInput('identificador');
+        }
+
+        RateLimiter::clear($limiteCuenta);
         $request->session()->regenerate();
 
+        // Las cuentas con contraseña temporal deben cambiarla antes de usar el panel.
+        if ($user->debe_cambiar_password) {
+            return redirect()->route('cambiar-password.show');
+        }
+
+        // Todos los usuarios van a /dashboard.
+        // El archivo web.php decidirá qué vista renderizar según su rol.
         return redirect()->intended(route('dashboard'));
     }
 
-    public function register(Request $request)
+    /**
+     * Resuelve la cuenta a partir de cualquiera de los identificadores
+     * válidos: correo electrónico, código universitario (username) o
+     * documento de identidad del estudiante.
+     */
+    private function resolverUsuarioPorIdentificador(string $identificador): ?User
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
-        ]);
+        $identificador = trim($identificador);
 
-        // Public registration must never grant administrator access.
-        $rol = Rol::firstOrCreate(['nombre_rol' => 'personal de control de ingreso']);
-
-        $baseUsername = Str::slug(explode(' ', trim($request->name))[0].'_'.Str::before($request->email, '@'));
-        $baseUsername = Str::limit($baseUsername, 45, '');
-        $username = $baseUsername;
-        $suffix = 1;
-        while (User::where('username', $username)->exists()) {
-            $suffixStr = (string) $suffix++;
-            $username = Str::limit($baseUsername, 50 - strlen($suffixStr), '').$suffixStr;
+        if ($identificador === '') {
+            return null;
         }
 
-        $user = User::create([
-            'id_rol' => $rol->id_rol,
-            'name' => $request->name,
-            'username' => $username,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+        if (str_contains($identificador, '@')) {
+            // Login por correo: se consulta primero la cuenta y, si el correo
+            // aún no está sincronizado en users, el del registro del estudiante.
+            $usuario = User::query()->where('email', $identificador)->first();
 
-        Auth::login($user);
-        $request->session()->regenerate();
+            if ($usuario !== null) {
+                return $usuario;
+            }
 
-        return redirect()->route('dashboard');
+            $estudiante = Estudiante::query()->where('email', $identificador)->first();
+
+            return $estudiante?->user;
+        }
+
+        // Código universitario (el username de la cuenta del estudiante).
+        $usuario = User::query()->where('username', $identificador)->first();
+
+        if ($usuario !== null) {
+            return $usuario;
+        }
+
+        // Documento de identidad del estudiante.
+        $estudiante = Estudiante::query()->where('documento_identidad', $identificador)->first();
+
+        return $estudiante?->user
+            ?? User::query()->where('documento_identidad', $identificador)->first();
     }
 
     public function destroy(Request $request)

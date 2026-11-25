@@ -1,42 +1,62 @@
 <template>
   <div>
-    <div class="form-group">
-      <label>Nombres *</label>
-      <input type="text" v-model="form.nombres" placeholder="Nombres del estudiante" />
-      <p v-if="form.errors.nombres" class="form-error">{{ form.errors.nombres }}</p>
-    </div>
-    <div class="form-group">
-      <label>Apellidos *</label>
-      <input type="text" v-model="form.apellidos" placeholder="Apellidos del estudiante" />
-      <p v-if="form.errors.apellidos" class="form-error">{{ form.errors.apellidos }}</p>
-    </div>
-    <div class="form-group">
-      <label>Código Universitario *</label>
-      <input 
-        type="text" 
-        v-model="form.codigo_universitario" 
-        placeholder="Ej: 2020-12345" 
-        maxlength="20" 
-        :disabled="isEdit" 
+    <FormField :error="form.errors.nombres" error-tag="p">
+      <TextInput
+        id="nombres"
+        type="text"
+        v-model="form.nombres"
+        label="Nombres *"
+        placeholder="Nombres del estudiante"
+        :class="{ 'input-error': form.errors.nombres }"
       />
-      <p v-if="form.errors.codigo_universitario" class="form-error">{{ form.errors.codigo_universitario }}</p>
-    </div>
-    <div class="form-group">
-      <label>Documento de Identidad *</label>
-      <input 
-        type="text" 
-        v-model="form.documento_identidad" 
-        placeholder="CI / Documento" 
-        maxlength="20" 
-        :disabled="isEdit" 
+    </FormField>
+    <FormField :error="form.errors.apellidos" error-tag="p">
+      <TextInput
+        id="apellidos"
+        type="text"
+        v-model="form.apellidos"
+        label="Apellidos *"
+        placeholder="Apellidos del estudiante"
+        :class="{ 'input-error': form.errors.apellidos }"
       />
-      <p v-if="form.errors.documento_identidad" class="form-error">{{ form.errors.documento_identidad }}</p>
-    </div>
-    <div class="form-group">
-      <label>Código QR (opcional)</label>
-      <input type="text" v-model="form.codigo_qr" placeholder="QR si aplica" maxlength="255" />
-      <p v-if="form.errors.codigo_qr" class="form-error">{{ form.errors.codigo_qr }}</p>
-    </div>
+    </FormField>
+    <FormField :error="form.errors.codigo_universitario" error-tag="p">
+      <TextInput
+        id="codigo_universitario"
+        type="text"
+        v-model="form.codigo_universitario"
+        label="Código Universitario *"
+        placeholder="9 dígitos iniciando con el año de ingreso (ej: 201809372)"
+        maxlength="9"
+        inputmode="numeric"
+        :disabled="isEdit"
+        :class="{ 'input-error': form.errors.codigo_universitario }"
+      />
+    </FormField>
+    <FormField :error="form.errors.documento_identidad" error-tag="p">
+      <TextInput
+        id="documento_identidad"
+        type="text"
+        v-model="form.documento_identidad"
+        label="Documento de Identidad *"
+        placeholder="6 a 8 dígitos (ej: 12590804)"
+        maxlength="8"
+        inputmode="numeric"
+        :disabled="isEdit"
+        :class="{ 'input-error': form.errors.documento_identidad }"
+      />
+    </FormField>
+    <FormField :error="form.errors.email" error-tag="p">
+      <TextInput
+        id="email"
+        type="email"
+        v-model="form.email"
+        label="Correo institucional"
+        placeholder="Ej: 201809372@est.umss.edu"
+        maxlength="255"
+        :class="{ 'input-error': form.errors.email }"
+      />
+    </FormField>
     <div v-if="form.processing" style="display: flex; justify-content: center; margin-top: 12px;">
       <LoadingSpinner size="medium" />
     </div>
@@ -47,6 +67,8 @@
 import { useForm } from '@inertiajs/vue3'
 import { useToastStore } from '@/stores/useToastStore'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
+import FormField from '@/components/ui/FormField.vue'
+import TextInput from '@/components/ui/TextInput.vue'
 import { computed } from 'vue'
 
 const props = defineProps({
@@ -66,12 +88,10 @@ const form = useForm({
   apellidos: props.estudiante?.apellidos || '',
   codigo_universitario: props.estudiante?.codigo_universitario || '',
   documento_identidad: props.estudiante?.documento_identidad || '',
-  codigo_qr: props.estudiante?.codigo_qr || '',
+  email: props.estudiante?.email || '',
 })
 
 const emitirGuardado = () => {
-  if (form.codigo_qr === '') form.codigo_qr = null
-
   if (isEdit.value) {
     form.put(`/estudiantes/${props.estudiante.id}`, {
       onSuccess: () => {
@@ -86,11 +106,11 @@ const emitirGuardado = () => {
     form.post('/estudiantes', {
       onSuccess: () => {
         form.reset()
-        toastStore.success('Estudiante registrado correctamente.')
+        toastStore.success('Estudiante registrado exitosamente.')
         emit('success')
       },
       onError: () => {
-        toastStore.error('Error al registrar el estudiante.')
+        toastStore.error('Por favor, revisa los errores en el formulario.')
       },
     })
   }
@@ -100,12 +120,5 @@ defineExpose({ emitirGuardado })
 </script>
 
 <style scoped>
-.form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px; }
-input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-.form-error { color: #b3261e; font-size: 12px; margin: 4px 0 0; }
-input:disabled {
-  background-color: #e9ecef;
-  color: #6c757d;
-  cursor: not-allowed;
-}
+/* Los estilos son manejados por forms.css y TextInput globalmente */
 </style>

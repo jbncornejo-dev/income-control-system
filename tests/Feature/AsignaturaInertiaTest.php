@@ -71,8 +71,10 @@ class AsignaturaInertiaTest extends TestCase
     public function test_blocked_delete_shares_error_instead_of_success_and_preserves_row(): void
     {
         $asignatura = Asignatura::create(['nombre_asignatura' => 'Cálculo I']);
+        $periodo = $this->crearPeriodo();
         Examen::create([
             'id_asignatura' => $asignatura->id_asignatura,
+            'id_periodo' => $periodo->id_periodo,
             'fecha' => now()->addDay()->toDateString(),
             'hora_inicio' => '10:00',
             'duracion_minutos' => 60,

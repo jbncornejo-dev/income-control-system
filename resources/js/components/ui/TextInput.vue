@@ -1,0 +1,96 @@
+<template>
+    <div class="input-wrapper">
+        <label v-if="label" :for="inputId" class="input-label">{{ label }}</label>
+        <input 
+            v-bind="$attrs"
+            :id="inputId"
+            :type="type"
+            :value="modelValue"
+            @input="$emit('update:modelValue', $event.target.value)"
+            :placeholder="placeholder"
+            :disabled="disabled"
+            :class="['input-control', { 'input-expanded': expanded, 'input-search': isSearch, 'input-disabled': disabled }]"        />
+    </div>
+</template>
+
+<script setup>
+import { computed, useAttrs } from 'vue';
+
+defineOptions({ inheritAttrs: false });
+
+const attrs = useAttrs();
+const inputId = computed(() => attrs.id || `input-${Math.random().toString(36).substring(2, 9)}`);
+
+defineProps({
+    modelValue: [String, Number],
+    label: String,
+    type: { type: String, default: 'text' },
+    placeholder: String,
+    expanded: { type: Boolean, default: false },
+    isSearch: { type: Boolean, default: false },
+    disabled: { type: Boolean, default: false }
+});
+
+defineEmits(['update:modelValue']);
+</script>
+
+<style scoped>
+.input-wrapper {
+    width: 100%;
+}
+
+.input-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: var(--spacing-sm);
+    font-family: var(--font-family);
+}
+
+.input-control {
+    width: 100%;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: 14px;
+    color: var(--text-dark);
+    background-color: var(--color-cream);
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    font-family: var(--font-family);
+}
+
+.input-control:focus {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-input-focus);
+}
+
+/* Modificador para el buscador heredado de styles.css */
+.input-search {
+    border: 1px solid var(--color-primary);
+    padding: 10px 15px;
+}
+
+.input-expanded {
+    flex-grow: 1;
+    width: auto;
+}
+
+/* Modificador para campos deshabilitados (solo texto grisáceo) */
+.input-disabled {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--text-muted);
+    box-shadow: none;
+    cursor: not-allowed;
+    padding: 0;
+}
+
+.input-disabled:focus {
+    border-color: transparent;
+    box-shadow: none;
+}
+</style>

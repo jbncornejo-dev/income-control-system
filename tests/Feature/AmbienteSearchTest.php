@@ -39,12 +39,39 @@ class AmbienteSearchTest extends TestCase
             'middle of name' => [['nombre_ambiente' => 'torio de'], [30]],
             'trim whitespace' => [['nombre_ambiente' => '  aula  '], [10, 20]],
             'no matches' => [['nombre_ambiente' => 'Biblioteca'], []],
-            'accent sensitive' => [['nombre_ambiente' => 'Fisica'], []],
+            'without accent' => [['nombre_ambiente' => 'Fisica'], [30]],
             'accent and case' => [['nombre_ambiente' => 'FÍSICA'], [30]],
+            'exact capacity' => [['nombre_ambiente' => '80'], [20]],
+            'capacity is not partial' => [['nombre_ambiente' => '8'], []],
+            'numeric name and capacity' => [['nombre_ambiente' => '20'], [30]],
+            'zero only searches names' => [['nombre_ambiente' => '0'], []],
+            'out of range number only searches names' => [['nombre_ambiente' => '2147483648'], []],
             'empty' => [['nombre_ambiente' => ''], [10, 20, 30]],
             'whitespace' => [['nombre_ambiente' => '   '], [10, 20, 30]],
             'omitted' => [[], [10, 20, 30]],
         ];
+    }
+
+    public function test_numeric_search_matches_name_or_capacity_without_duplicates(): void
+    {
+        Ambiente::insert([
+            ['id_ambiente' => 40, 'nombre_ambiente' => 'Aula 80', 'capacidad' => 80],
+            ['id_ambiente' => 50, 'nombre_ambiente' => 'Sala 80', 'capacidad' => 40],
+        ]);
+
+        $response = $this->getJson(route('ambientes.index', ['nombre_ambiente' => '80']));
+
+        $response->assertOk()->assertJsonPath('ambientes.total', 3);
+        $this->assertSame([20, 40, 50], array_column($response->json('ambientes.data'), 'id_ambiente'));
+    }
+
+    public function test_accented_search_matches_name_without_accent(): void
+    {
+        Ambiente::insert(['id_ambiente' => 40, 'nombre_ambiente' => 'Salon Este', 'capacidad' => 40]);
+
+        $this->getJson(route('ambientes.index', ['nombre_ambiente' => 'salón']))
+            ->assertOk()->assertJsonPath('ambientes.total', 1)
+            ->assertJsonPath('ambientes.data.0.id_ambiente', 40);
     }
 
     #[DataProvider('literalNames')]
